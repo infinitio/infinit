@@ -66,30 +66,24 @@ with Meta(enable_emails = True) as meta:
   user = User(meta, 'foobar@infinit.io')
   user.login()
 
-  email = "endive@infinit.io"
+  email = 'endive@infinit.io'
   user.put('user/accounts/%s' % email)
   user.put('user/accounts/%s' % 'baz@infinit.io')
   user.put('user/accounts/%s' % email)
 
-# Ask for the primary email.
+# Re-adding the primary email is a no-op
 with Meta(enable_emails = True) as meta:
   import sys
   user = User(meta, 'foobar@infinit.io')
   user.login()
-
   meta.mailer = MailService()
-  try:
-    user.put('user/accounts/%s' % user.email)
-    assert False
-  except HTTPException:
-    pass
+  user.put('user/accounts/%s' % user.email)
 
 # Delete pending.
 with Meta(enable_emails = True) as meta:
   import sys
   user = User(meta, 'foobar@infinit.io')
   user.login()
-
   # Delete an unknown email.
   throws(lambda: user.delete('user/accounts/invalid@infinit.io'))
 
@@ -98,13 +92,6 @@ with Meta(enable_emails = True) as meta:
   import sys
   user = User(meta, 'foobar@infinit.io')
   user.login()
-
-  # Delete an unknown email.
-  try:
-    user.delete('user/accounts/%s' % 'invalid@infinit.io')
-    assert False # It should throw.
-  except HTTPException as e:
-    pass
 
   # Add an auxiliary email and delete it.
   meta.mailer = MailService()
@@ -118,7 +105,6 @@ with Meta(enable_emails = True) as meta:
   user.delete('user/accounts/%s' % email)
   res = user.post('user/search_emails', {'emails': [email]})
   assert len(res['users']) == 0
-
   # You can't delete your primary address.
   try:
     user.delete('user/accounts/%s' % user.email)

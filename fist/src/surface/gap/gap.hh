@@ -507,6 +507,23 @@ gap_invitation_message_sent_metric(gap_State* state,
                                    gap_InviteMessageMethod method,
                                    std::string const& fail_reason);
 
+/// Sent when UI blocks action preemptively.
+gap_Status
+gap_file_transfer_limit_metric(gap_State* state,
+                               uint64_t limit,
+                               uint64_t transfer_size);
+
+/// Sent when UI blocks action preemptively.
+gap_Status
+gap_link_quota_exceeded_metric(gap_State* state,
+                               uint64_t size,
+                               uint64_t used,
+                               uint64_t quota);
+
+/// Sent when UI blocks action preemptively.
+gap_Status
+gap_send_to_self_limit_metric(gap_State* state, uint64_t limit);
+
 /// Send user report
 gap_Status
 gap_send_user_report(gap_State* state,

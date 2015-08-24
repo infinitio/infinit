@@ -32,12 +32,14 @@ namespace infinit
       http_status,
       how_ended,
       initialization_time,
+      limit,
       message,
       message_length,
       method,
       metric_sender_id,
       onboarding,
       operation,
+      plan,
       proxy_type,
       recipient_id,
       referral_code,
@@ -151,8 +153,6 @@ namespace infinit
                 int http_status,
                 std::string const& aws_error_code,
                 std::string const& message) override;
-      void
-      _quota_exceeded(uint64_t size, uint64_t current, uint64_t total) override;
 
     /// Implementation of user metrics.
     private:
@@ -204,6 +204,18 @@ namespace infinit
                                     std::string const& code,
                                     std::string const& method,
                                     std::string const& fail_reason) override;
+
+      void
+      _link_quota_exceeded(uint64_t size,
+                           uint64_t current,
+                           uint64_t total) override;
+
+      void
+      _send_to_self_limit_reached(uint64_t limit) override;
+
+      void
+      _file_transfer_limit_reached(uint64_t limit,
+                                   uint64_t transfer_size) override;
 
     /// Implementations of UI metrics.
     private:

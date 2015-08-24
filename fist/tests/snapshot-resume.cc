@@ -12,7 +12,8 @@ class CreateEmptyServer
 protected:
   virtual
   elle::UUID
-  _create_empty() override
+  _create_empty(std::string const& sender_id,
+                std::string const& recipient_identifier) override
   {
     this->_created.open();
     reactor::sleep();
@@ -59,11 +60,12 @@ public:
 
 protected:
   elle::UUID
-  _create_empty() override
+  _create_empty(std::string const& sender_id,
+                std::string const& recipient_identifier) override
   {
     BOOST_CHECK(!this->_created);
     this->_created.open();
-    this->_id = Super::_create_empty();
+    this->_id = Super::_create_empty(sender_id, recipient_identifier);
     return this->_id;
   }
 

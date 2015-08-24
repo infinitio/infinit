@@ -15,120 +15,55 @@ namespace tests
              std::string email,
              boost::optional<infinit::cryptography::rsa::KeyPair> keys,
              std::unique_ptr<papier::Identity> identity)
-    : _id(std::move(id))
+    : infinit::oracles::meta::User()
     , _email(std::move(email))
     , _keys(keys)
     , _identity(std::move(identity))
     , _facebook_id(boost::lexical_cast<std::string>(elle::UUID::random()))
-  {}
-
-  std::string
-  User::links_json() const
   {
-    // I wish I could use elle::serialization::SerializerOut.
-    std::string str = "[";
-    for (auto const& link: this->links)
-      str += link_representation(link.second) + ", ";
-
-    if (!this->links.empty())
-      str = str.substr(0, str.length() - 2);
-    str += "]";
-    return str;
+    this->id = id.repr();
+    if (this->_keys)
+    {
+      std::string public_key_serialized;
+      this->_keys.get().K().Save(public_key_serialized);
+      this->public_key = public_key_serialized;
+      this->register_status = "ok";
+    }
+    else
+    {
+      this->register_status = "ghost";
+    }
   }
 
-  std::string
-  User::swaggers_json() const
+  void
+  User::add_connected_device(elle::UUID const& device_id)
   {
-    std::string str = "[";
-    for (auto const& user: this->swaggers)
-      str += user->json() + ", ";
+    for (auto const& id: this->connected_devices)
+      if (device_id == id)
+        return;
+    this->connected_devices.push_back(device_id);
+  }
 
-    if (!this->swaggers.empty())
-      str = str.substr(0, str.length() - 2);
-    str += "]";
-    return str;
+  void
+  User::remove_connected_device(elle::UUID const& device_id)
+  {
+    auto& vec = this->connected_devices;
+    vec.erase(std::remove(vec.begin(), vec.end(), device_id), vec.end());
   }
 
   void
   User::print(std::ostream& stream) const
   {
-    stream << "User(" << this->email() << ", " << this->id() << ")";
-  }
-
-  std::string
-  User::devices_json() const
-  {
-    std::string str = "[";
-    for (auto const& device: this->connected_devices)
-      str += elle::sprintf("\"%s\", ", device);
-    if (!this->connected_devices.empty())
-      str = str.substr(0, str.length() - 2);
-    str += "]";
-    return str;
+    stream << "User(" << this->email() << ", " << this->id << ")";
   }
 
   std::string
   User::json() const
   {
-    std::string public_key_serialized;
-    if (this->_keys)
-      this->_keys.get().K().Save(public_key_serialized);
-
-    auto res = elle::sprintf(
-      "{"
-      "  \"id\": \"%s\","
-      "  \"public_key\": \"%s\","
-      "  \"fullname\": \"%s\","
-      "  \"handle\": \"%s\","
-      "  \"connected_devices\": %s,"
-      "  \"status\": %s,"
-      "  \"register_status\": \"%s\","
-      "  \"_id\": \"%s\""
-      "}",
-      this->id(),
-      public_key_serialized,
-      this->email(),
-      this->email(),
-      this->devices_json(),
-      this->connected_devices.empty() ? "false" : "true",
-      !this->ghost() ? "ok" : "ghost",
-      this->id());
-    return res;
-  }
-
-  bool
-  User::ghost() const
-  {
-    return !this->_keys;
-  }
-
-  std::string
-  User::self_json() const
-  {
-    std::string identity_serialized;
-    this->_identity->Save(identity_serialized);
-
-    std::string public_key_serialized;
-    this->_keys.get().K().Save(public_key_serialized);
-    return elle::sprintf(
-      "{"
-      "  \"id\": \"%s\","
-      "  \"public_key\": \"%s\","
-      "  \"fullname\": \"\","
-      "  \"handle\": \"\","
-      "  \"connected_devices\": %s,"
-      "  \"register_status\": \"\","
-      "  \"email\": \"%s\","
-      "  \"identity\": \"%s\","
-      "  \"devices\": [],"
-      "  \"favorites\": [],"
-      "  \"success\": true"
-      "}",
-      this->id(),
-      public_key_serialized,
-      this->devices_json(),
-      this->email(),
-      identity_serialized);
+    elle::Buffer serialized =
+      elle::serialization::json::serialize(
+        static_cast<infinit::oracles::meta::User>(*this));
+    return serialized.string();
   }
 
   Client::Client(Server& server,
@@ -142,14 +77,18 @@ namespace tests
     state->attach_callback<surface::gap::State::ConnectionStatus>(
       [&] (surface::gap::State::ConnectionStatus const& notif)
       {
-        ELLE_TRACE_SCOPE("connection status notification: %s", notif);
+        ELLE_TRACE_SCOPE("connection status: %s %s %s",
+                         notif.status ? "online" : "offline",
+                         notif.still_trying ? "trying" : "",
+                         !notif.last_error.empty() ? notif.last_error : "");
       }
       );
 
     state->attach_callback<surface::gap::State::UserStatusNotification>(
       [&] (surface::gap::State::UserStatusNotification const& notif)
       {
-        ELLE_TRACE_SCOPE("user status notification: %s", notif);
+        ELLE_TRACE_SCOPE("user (%s) status changed: %s",
+                         notif.id, notif.status ? "online" : "offline");
       });
   }
 
@@ -172,24 +111,13 @@ namespace tests
   {
     this->state->login(this->user.email(), password);
     this->state->logged_in().wait();
-    this->user.connected_devices.insert(this->device_id);
+    this->user.add_connected_device(this->device_id);
   }
 
   void
   Client::logout()
   {
     this->state->logout();
-    this->user.connected_devices.erase(this->device_id);
-  }
-
-  std::string
-  User::link_representation(infinit::oracles::LinkTransaction const& link)
-  {
-    std::stringstream link_stream;
-    {
-      typename elle::serialization::json::SerializerOut output(link_stream);
-      const_cast<infinit::oracles::LinkTransaction&>(link).serialize(output);
-    }
-    return link_stream.str();
+    this->user.remove_connected_device(this->device_id);
   }
 }

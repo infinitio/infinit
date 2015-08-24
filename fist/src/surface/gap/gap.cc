@@ -524,11 +524,6 @@ gap_poll(gap_State* state)
     else
       ret = gap_internal_error;
   }
-  catch (infinit::oracles::meta::Exception const& err)
-  {
-    ELLE_ERR("poll error: %s", err.what());
-    ret = (gap_Status) err.err;
-  }
   catch (surface::gap::Exception const& err)
   {
     ELLE_ERR("poll error: %s", err.what());
@@ -1905,6 +1900,54 @@ gap_invitation_message_sent_metric(gap_State* state,
                                                              code,
                                                              method_str,
                                                              fail_reason);
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_file_transfer_limit_metric(gap_State* state,
+                               uint64_t limit,
+                               uint64_t transfer_size)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "send file transfer limit metric",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.metrics_reporter()->file_transfer_limit_reached(limit,
+                                                            transfer_size);
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_link_quota_exceeded_metric(gap_State* state,
+                               uint64_t size,
+                               uint64_t used,
+                               uint64_t quota)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "send file link quota exceeded metric",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.metrics_reporter()->link_quota_exceeded(size, used, quota);
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_send_to_self_limit_metric(gap_State* state, uint64_t limit)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "send self transfer limit metric",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.metrics_reporter()->send_to_self_limit_reached(limit);
       return gap_ok;
     });
 }

@@ -1,7 +1,8 @@
 #include "Device.hh"
 
-#include <elle/UUID.hh>
 #include <elle/log.hh>
+#include <elle/serialization/json.hh>
+#include <elle/UUID.hh>
 
 #include <fist/tests/_detail/Authority.hh>
 
@@ -10,25 +11,25 @@
 namespace tests
 {
   Device::Device(infinit::cryptography::rsa::PublicKey const& key,
-                   boost::optional<elle::UUID> device)
-    : _id(device ? device.get() : elle::UUID::random())
-    , _passport(boost::lexical_cast<std::string>(this->_id), "osef", key, tests::authority)
+                 boost::optional<elle::UUID> device_id)
+    : infinit::oracles::meta::Device()
+    , _passport_(boost::lexical_cast<std::string>(this->id),
+                 "osef", key, tests::authority)
   {
+    this->id = device_id ? device_id.get() : elle::UUID::random();
+    this->name = elle::sprintf("device-name/%s", this->id);
+    std::string passport_string;
+    if (this->_passport_.Save(passport_string) == elle::Status::Error)
+      throw std::runtime_error("unabled to save the passport");
+    this->passport = passport_string;
   }
 
   std::string
   Device::json() const
   {
-    std::string passport_string;
-    if (this->_passport.Save(passport_string) == elle::Status::Error)
-      throw std::runtime_error("unabled to save the passport");
-    return elle::sprintf(
-      "{"
-      "  \"id\" : \"%s\","
-      "  \"name\": \"device\","
-      "  \"passport\": \"%s\""
-      "}",
-      this->id(),
-      passport_string);
+    elle::Buffer serialized =
+      elle::serialization::json::serialize(
+        static_cast<infinit::oracles::meta::Device>(*this));
+    return serialized.string();
   }
 }

@@ -733,15 +733,18 @@ namespace surface
                   bool screenshot);
 
       surface::gap::LinkTransaction
-      link_to_gap_link(uint32_t id,
-                       infinit::oracles::LinkTransaction const& transaction,
-                       gap_TransactionStatus status) const;
+      link_to_gap_link(
+        uint32_t id,
+        infinit::oracles::LinkTransaction const& transaction,
+        gap_TransactionStatus status,
+        boost::optional<gap_Status> status_info = boost::none) const;
 
       surface::gap::PeerTransaction
       transaction_to_gap_transaction(
         uint32_t id,
         infinit::oracles::PeerTransaction const& transaction,
-        gap_TransactionStatus status) const;
+        gap_TransactionStatus status,
+        boost::optional<gap_Status> status_info = boost::none) const;
       /*------------------.
       | Peer Transactions |
       `------------------*/

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from utils import *
+from bson import ObjectId
 
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
@@ -21,3 +22,31 @@ with Meta() as meta:
       continue
     assertEq(res[key], transaction[key])
   assertEq(res['recipient_id'], transaction['recipient_id'])
+
+  # Over limit for basic user.
+  size_to_send = 20 * 1000 * 1000 * 1000
+  try:
+    transaction, res = alice.sendfile(recipient = bob.id,
+                                      total_size = size_to_send,
+                                      initialize = True)
+  except HTTPException as e:
+    assertEq(e.status, 402)
+    assertEq(e.content['error'], error.FILE_TRANSFER_SIZE_LIMITED[0])
+    assertEq(e.content['reason'], error.FILE_TRANSFER_SIZE_LIMITED[1])
+    assertEq(e.content['limit'], 10 * 1000 * 1000 * 1000)
+
+  # Make sure send to self is blocked too.
+  # XXX: RESTORE LIMITATION.
+  # throws(lambda: alice.sendfile(recipient = alice.id,
+  #                               total_size = size_to_send,
+  #                               initialize = True))
+
+  meta.meta.change_plan(bson.ObjectId(bob.id), 'premium')
+  bob.sendfile(recipient = alice.id,
+               total_size = size_to_send,
+               initialize = True)
+
+  # Make sure send to self works too.
+  bob.sendfile(recipient = bob.id,
+               total_size = size_to_send,
+               initialize = True)

@@ -262,9 +262,10 @@ namespace surface
     }
 
     void
-    TransactionMachine::gap_status(gap_TransactionStatus v)
+    TransactionMachine::gap_status(gap_TransactionStatus v,
+                                   boost::optional<gap_Status> status_info)
     {
-      this->_transaction.status(v);
+      this->_transaction.status(v, status_info);
     }
 
     gap_TransactionStatus
@@ -466,7 +467,8 @@ namespace surface
     void
     TransactionMachine::cancel(std::string const& reason)
     {
-      ELLE_TRACE_SCOPE("%s: cancel transaction %s: %s", *this, this->data()->id, reason);
+      ELLE_TRACE_SCOPE(
+        "%s: cancel transaction %s: %s", *this, this->data()->id, reason);
       if (!this->canceled().opened())
         this->_metrics_ended(infinit::oracles::Transaction::Status::canceled,
                              reason);
@@ -517,8 +519,11 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: finalize transaction: %s", *this, s);
       if (this->data()->id.empty())
+      {
         ELLE_TRACE("%s: no need to finalize transaction: id is still empty",
                    *this);
+        this->data()->status = s;
+      }
       else
       {
         try
@@ -527,11 +532,6 @@ namespace surface
           this->data()->status = s;
           this->transaction()._snapshot_save();
           this->_metrics_ended(s);
-        }
-        catch (infinit::oracles::meta::Exception const& e)
-        {
-          ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                   *this, this->transaction_id(), elle::exception_string());
         }
         catch (elle::Error const&)
         {

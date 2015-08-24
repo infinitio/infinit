@@ -3,6 +3,8 @@
 #include <elle/Error.hh>
 #include <elle/os/file.hh>
 
+#include <infinit/oracles/meta/error/AccountLimitationError.hh>
+
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
 
@@ -67,32 +69,36 @@ namespace surface
       else
         this->_run_from_snapshot();
 
-      typedef infinit::oracles::meta::QuotaExceeded QuotaExceeded;
+      typedef infinit::oracles::meta::LinkQuotaExceeded QuotaExceeded;
       auto quota_exceeded_e = [this] (std::exception_ptr e)
       {
         try
         {
           std::rethrow_exception(e);
         }
-        catch(QuotaExceeded const& e)
+        catch (QuotaExceeded const& e)
         {
-          ELLE_WARN("quota exceeded: %s", e);
-          this->gap_status(gap_transaction_payment_required);
-          auto quota = e.quota();
-          auto usage = e.usage();
+          ELLE_WARN("link quota exceeded: %s", e);
+          gap_Status meta_error = static_cast<gap_Status>(e.meta_error());
+          this->gap_status(gap_transaction_payment_required, meta_error);
           if (this->state().metrics_reporter())
-            this->state().metrics_reporter()->quota_exceeded(
-              this->total_size(), quota, usage);
+          {
+            this->state().metrics_reporter()->link_quota_exceeded(
+              this->total_size(), e.quota(), e.usage());
+            this->_metrics_ended(
+              infinit::oracles::Transaction::Status::canceled,
+              "link quota exceeded");
+          }
           return;
         }
         elle::unreachable();
       };
 
       this->_machine.transition_add_catch_specific<QuotaExceeded>(
-        this->_create_transaction_state, this->_end_state, true).action_exception(
+        this->_create_transaction_state, this->_cancel_state, true).action_exception(
           quota_exceeded_e);
       this->_machine.transition_add_catch_specific<QuotaExceeded>(
-        this->_initialize_transaction_state, this->_end_state, true).action_exception(
+        this->_initialize_transaction_state, this->_cancel_state, true).action_exception(
           quota_exceeded_e);
     }
 
@@ -292,7 +298,7 @@ namespace surface
       {
         auto lock = this->state().transaction_update_lock.lock();
         auto response =
-          this->state().meta().create_link(
+          this->state().meta().fill_link(
             files, this->archive_info().first, this->message(),
             this->screenshot(), this->transaction_id());
         *this->_data = std::move(response.transaction());

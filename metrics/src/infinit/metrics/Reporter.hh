@@ -86,6 +86,10 @@ namespace infinit
 
       static
       void
+      metric_sender_plan(std::string const& plan);
+
+      static
+      void
       metric_features(std::unordered_map<std::string, std::string> const& features);
 
     /// Transaction metrics.
@@ -157,9 +161,6 @@ namespace infinit
                 int http_status,
                 std::string const& aws_error_code,
                 std::string const& message);
-
-      void
-      quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
 
     /// Transaction metrics implementation.
     protected:
@@ -237,10 +238,6 @@ namespace infinit
                  std::string const& aws_error_code,
                  std::string const& message);
 
-      virtual
-      void
-      _quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
-
     /// User metrics.
     public:
       void
@@ -294,6 +291,15 @@ namespace infinit
                            std::string const& code,
                            bool link,
                            std::string const& fail_reason);
+
+      void
+      link_quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
+
+      void
+      send_to_self_limit_reached(uint64_t limit);
+
+      void
+      file_transfer_limit_reached(uint64_t limit, uint64_t transfer_size);
 
     /// User metrics implementation.
     protected:
@@ -362,6 +368,18 @@ namespace infinit
                                     std::string const& method,
                                     std::string const& fail_reason);
 
+      virtual
+      void
+      _link_quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
+
+      virtual
+      void
+      _send_to_self_limit_reached(uint64_t limit);
+
+      virtual
+      void
+      _file_transfer_limit_reached(uint64_t limit, uint64_t transfer_size);
+
       /// UI metrics.
     public:
       void
@@ -389,6 +407,11 @@ namespace infinit
     protected:
       void
       name(std::string name);
+
+    public:
+      static
+      std::string
+      metric_sender_plan();
 
     /// Static class attribute accessors.
     protected:
@@ -422,6 +445,9 @@ namespace infinit
 
       static
       std::string _metric_device_id;
+
+      static
+      std::string _metric_sender_plan;
 
       static
       std::unordered_map<std::string, std::string>

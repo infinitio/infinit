@@ -24,7 +24,7 @@ import infinit.oracles.emailer
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
-# This create a code with more than 8 billions possibilities.
+# This allows for a code with > 8 billion possibilities.
 code_alphabet = '23456789abcdefghijkmnpqrstuvwxyz'
 code_length = 7
 
@@ -391,13 +391,13 @@ class Mixin:
         recipient_id = self.__register_ghost({
           'email': peer_email,
           'fullname': peer_email, # This is safe as long as we don't allow searching for ghost users.
-          'accounts': [{'type':'email', 'id': peer_email}],
+          'accounts': [sort_dict({'type':'email', 'id': peer_email})],
         }, recipient)
       if is_a_phone_number:
         recipient_id = self.__register_ghost({
           'phone_number': phone_number,
           'fullname': phone_number, # Same comment.
-          'accounts': [{'type':'phone', 'id': phone_number}],
+          'accounts': [sort_dict({'type':'phone', 'id': phone_number})],
         }, recipient)
       if recipient_id is None:
         return self.bad_request({
@@ -548,6 +548,7 @@ class Mixin:
     Errors:
     Using an id that doesn't exist.
     """
+    elle.log.debug('fill transaction %s' % self)
     if id_or_email is None and recipient_identifier is None:
       self.bad_request({
         'reason': 'you must provide id_or_email or recipient_identifier'
@@ -586,12 +587,26 @@ class Mixin:
       # Add to referral
       self.database.users.update(
         {'_id': recipient['_id']},
-        {'$addToSet': {'referred_by': sender['_id']}}
+        self.__add_referrer_update_query(sender, 'ghost_invite'),
       )
     elle.log.debug("transaction recipient has id %s" % recipient['_id'])
     _id = sender['_id']
     elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'
                    % (self.user_agent, self.user_version, new_user,  is_ghost))
+    # Check limits.
+    limit_reached = ()
+    quotas = self.__quotas(sender)
+    if recipient['_id'] == sender['_id']: # Send to self.
+      elle.log.trace("send to self")
+      send_to_self_quota = quotas['send_to_self']
+      limit = send_to_self_quota['quota']
+      sent_to_self = send_to_self_quota['used']
+      elle.log.debug("limit (%s) / sent to self (%s)" % (limit, sent_to_self))
+      if limit is not None and sent_to_self >= limit:
+        limit_reached = (error.SEND_TO_SELF_LIMIT_REACHED, limit)
+    transfer_size_limit = quotas['p2p']['limit']
+    if transfer_size_limit is not None and total_size > transfer_size_limit:
+      limit_reached = (error.FILE_TRANSFER_SIZE_LIMITED, transfer_size_limit)
     transaction = {
       'sender_id': _id,
       'sender_fullname': sender['fullname'],
@@ -628,6 +643,8 @@ class Mixin:
             message,
             ] + files)
       }
+    if len(limit_reached):
+      transaction['limit_reached'] = limit_reached[0][0]
     if transaction_id is not None:
       transaction['status'] = transaction_status.INITIALIZED
       self.database.transactions.update(
@@ -651,6 +668,12 @@ class Mixin:
           time = False)
     else:
       transaction_id = self.database.transactions.insert(transaction)
+    if len(limit_reached) and False:
+      self.payment_required({
+        'error': limit_reached[0][0],
+        'reason': limit_reached[0][1],
+        'limit': limit_reached[1],
+      })
     transaction['_id'] = transaction_id
     self._increase_swag(sender['_id'], recipient['_id'])
     if recipient['_id'] == sender['_id']:
@@ -1096,6 +1119,9 @@ class Mixin:
           recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
           message = transaction,
         )
+        if transaction['sender_id'] == transaction['recipient_id'] and \
+           status == transaction_status.FINISHED:
+          self._quota_updated_notification(sender, version = (0, 9, 40)) # XXX 41.
       return diff
 
   @api('/transaction/search')

@@ -123,18 +123,18 @@ class Mixin:
     return credentials
 
   def _link_check_quota(self, user, new_link_size):
-    elle.log.trace('checking link quota')
-    if 'quota' in user and 'total_link_size' in user.get('quota', {}):
-      quota = user['quota']['total_link_size']
-      usage = user.get('total_link_size', 0) + new_link_size
-      elle.log.trace('usage: %s quota: %s' %(usage, quota))
-      if quota >= 0 and quota < usage:
-        self.quota_exceeded(
-          {
-            'reason': 'link size quota of %s reached' % quota,
-            'quota': int(quota),
-            'usage': int(usage),
-          })
+    elle.log.trace('checking link quota for %s big link' % new_link_size)
+    user_links = self.__quotas(user)['links']
+    elle.log.trace('usage: %s quota: %s' % (
+      user_links['used'], user_links['quota']))
+    if (user_links['used'] + new_link_size) > user_links['quota']:
+      self.quota_exceeded(
+        {
+          'reason': 'Link size quota of %s reached' % user_links['quota'],
+          'quota': int(user_links['quota']),
+          'usage': int(user_links['used']),
+          'link_size': int(new_link_size)
+        })
 
   @api('/link_empty', method = 'POST')
   @require_logged_in_fields(['quota', 'total_link_size'])
@@ -215,15 +215,7 @@ class Mixin:
         self.require_premium()
       link_size = __link_size_from_file_list(files)
       self._link_check_quota(user, link_size)
-      self.notifier.notify_some(
-        notifier.MODEL_UPDATE,
-        message = {
-          'account': {
-            'link_size_used': user.get('total_link_size', 0) + link_size,
-          }
-        },
-        recipient_ids = {user['_id']},
-        version = (0, 9, 37))
+      self._quota_updated_notification(user, extra_link_size = link_size)
       creation_time = self.now
       # Maintain a list of all elements in document here.
       # Do not add a None hash as this causes problems with concurrency.
@@ -313,6 +305,14 @@ class Mixin:
       'files': 'file_list',
     }
     link['share_link'] = self._make_share_link(link['hash'])
+    link['has_password'] = link.get('password') is not None
+    if link.get('file_size') is None:
+      total_size = 0
+      for f in link['file_list']:
+        total_size += f['size']
+      link['size'] = total_size
+    else:
+      link['size'] = link.get('file_size')
     link = dict(
       (key, link.get(key in mapping and mapping[key] or key)) for key in (
         'id',
@@ -320,6 +320,7 @@ class Mixin:
         'ctime',
         'expiry_time',    # Needed until 0.9.9.
         'files',
+        'has_password',
         'hash',
         'message',
         'mtime',
@@ -328,6 +329,7 @@ class Mixin:
         'sender_device_id',
         'sender_id',
         'share_link',
+        'size',
         'status',
     ))
     if link['expiry_time'] is None: # Needed until 0.9.9.
@@ -441,15 +443,7 @@ class Mixin:
                   elle.log.warn('Link deletion failed with %s on %s: %s' %
                                 ( r.status_code, link['_id'], r.content))
                 # The delete can fail if on aws and there was a partial
-                # upload, or if on gcs if nothing was uploaded at all
-                if link['status'] == transaction_status.FINISHED:
-                  if 'file_size' in link:
-                    user = self.database.users.find_and_modify(
-                      {'_id': user['_id']},
-                      {'$inc': {'total_link_size': link['file_size'] * -1}},
-                      new = True,
-                    )
-                    self._quota_updated_notification(user)
+                # upload, or if on gcs if nothing was uploaded at all.
             else: #status = FINISHED
               # Get effective size
               head = self._generate_op_url(link, 'HEAD')
@@ -466,12 +460,6 @@ class Mixin:
                   'file_size': file_size,
                   'quota_counted': True
                 })
-                user = self.database.users.find_and_modify(
-                  {'_id': user['_id']},
-                  {'$inc': {'total_link_size': file_size}},
-                  new = True,
-                )
-                self._quota_updated_notification(user)
       if expiration_date is not None:
         update['expiration_date'] = expiration_date
       if message is not None:
@@ -488,6 +476,8 @@ class Mixin:
         {'$set': update},
         new = True,
       )
+      if 'status' in update and user is not None:
+        self._quota_updated_notification(user)
       self.notifier.notify_some(
         notifier.LINK_TRANSACTION,
         recipient_ids = {link['sender_id']},
@@ -519,6 +509,7 @@ class Mixin:
     mapping = {
       'id': '_id',
       'files': 'file_list',
+      'size': 'file_size',
     }
     ret_link = dict(
       (key, link.get(key in mapping and mapping[key] or key))
@@ -535,11 +526,18 @@ class Mixin:
           'progress',
           'sender_id',
           'sender_device_id',
+          'size',
           'status',
       ])
     if link.get('link') is not None:
       ret_link['link'] = link['link']
-    ret_link['password'] = link.get('password') is not None
+    ret_link['password'] = link.get('password') is not None # deprecated in favour of 'has_password'
+    ret_link['has_password'] = link.get('password') is not None
+    if ret_link['size'] is None:
+      total_size = 0
+      for f in link['file_list']:
+        total_size += f['size']
+      ret_link['size'] = total_size
     return ret_link
 
   @api('/links/<id_or_hash>')
@@ -566,7 +564,7 @@ class Mixin:
         custom_domain = custom_domain,
       )
 
-  # Deprecated in favor of /link/<hash>
+  # Deprecated in favor of /links/<hash>
   @api('/link/<hash>')
   def link_by_hash(self, hash,
                    password = None,
@@ -680,6 +678,7 @@ class Mixin:
                  mtime = None,
                  offset: int = 0,
                  count: int = 500,
+                 include_failed: bool = False,
                  include_deleted: bool = False,
                  include_canceled: bool = False,
                  include_expired: bool = False,
@@ -708,6 +707,8 @@ class Mixin:
           {'expiry_time': {'$gt': self.now}},
         ]
       nin = []
+      if not include_deleted:
+        nin.append(transaction_status.FAILED)
       if not include_deleted:
         nin.append(transaction_status.DELETED)
       if not include_canceled:
@@ -753,6 +754,20 @@ class Mixin:
         }
       },
       multi = True)
+
+  def __link_usage(self, user):
+    res = self.database.links.aggregate([
+      {
+        '$match': {
+          'sender_id': user['_id'],
+          'status': transaction_status.FINISHED,
+          'quota_counted': True,
+        }
+      },
+      {
+        '$group': {'_id': None, 'total':{'$sum': '$file_size'}}
+      }])['result']
+    return res[0]['total'] if len(res) else 0
 
   # Generate url on storage for given HTTP operation
   def _generate_op_url(self, link, op):
@@ -816,6 +831,5 @@ class Mixin:
       'expiration_date': {'$lt': self.now},
     })
     for link in expired:
-      print(link)
       self.link_update(link = link,
                        status = transaction_status.DELETED)

@@ -49,37 +49,8 @@ namespace infinit
 
       namespace json = elle::format::json;
 
-      class Exception
-        : public elle::Exception
-      {
-      public:
-        Error const err;
-        Exception(Error const& error, std::string const& message = "");
-
-      public:
-        bool operator ==(Exception const& e) const;
-        bool operator ==(Error const& error) const;
-        bool operator !=(Error const& error) const;
-      };
-
-      class QuotaExceeded
-        : public elle::Error
-      {
-      public:
-        QuotaExceeded(std::string const& reason,
-                      uint64_t quota,
-                      uint64_t usage)
-          : elle::Error(reason)
-          , _quota(quota)
-          , _usage(usage)
-        {}
-
-        ELLE_ATTRIBUTE_R(uint64_t, quota);
-        ELLE_ATTRIBUTE_R(uint64_t, usage);
-      };
-
-      struct User:
-         public elle::Printable
+      struct User
+        : public elle::Printable
       {
         typedef std::vector<elle::UUID> Devices;
         std::string id;
@@ -282,6 +253,9 @@ namespace infinit
       class CreatePeerTransactionResponse
       {
       public:
+        CreatePeerTransactionResponse(User const& recipient,
+                                      std::string const& id,
+                                      bool recipient_is_ghost = false);
         CreatePeerTransactionResponse() = default;
         ELLE_ATTRIBUTE_R(User, recipient);
         ELLE_ATTRIBUTE_R(std::string, created_transaction_id);
@@ -603,24 +577,26 @@ namespace infinit
                      bool negate = false,
                      int count = 0) const;
 
+        /// Create a barebones transaction on Meta.
+        std::string
+        create_transaction(std::string const& recipient_id_or_email,
+                           std::list<std::string> const& files,
+                           uint64_t count,
+                           std::string const& message = "") const;
+
+        /// Fill the barebones transaction.
         CreatePeerTransactionResponse
-        create_transaction(
+        fill_transaction(
           std::string const& recipient_id_or_email,
           std::list<std::string> const& files,
           uint64_t count,
           uint64_t size,
           bool is_dir,
           elle::UUID const& device_uuid,
-          std::string const& message = "",
-          boost::optional<std::string const&> transaction_id = boost::none,
+          std::string const& message,
+          std::string const& transaction_id,
           boost::optional<elle::UUID> recipient_device_id = {}
           ) const;
-
-        /// Create an empty transaction
-        /// Deprecated by barebones overload
-        /// @return: the transaction_id
-        std::string
-        create_transaction() const;
 
         UpdatePeerTransactionResponse
         update_transaction(std::string const& transaction_id,
@@ -628,12 +604,6 @@ namespace infinit
                            elle::UUID const& device_id = elle::UUID(),
                            std::string const& device_name = "",
                            boost::optional<bool> pause = boost::none) const;
-
-        std::string
-        create_transaction(std::string const& recipient_id_or_email,
-                           std::list<std::string> const& files,
-                           uint64_t count,
-                           std::string const& message = "") const;
 
       private:
         typedef std::vector<std::pair<std::string, uint16_t>> adapter_type;
@@ -657,19 +627,17 @@ namespace infinit
       | Links |
       `------*/
       public:
-        CreateLinkTransactionResponse
-        create_link(LinkTransaction::FileList const& file_list,
-                    std::string const& name,
-                    std::string const& message,
-                    bool screenshot,
-                    boost::optional<std::string const&> link_id = boost::none) const;
-
         /// create an empty link, to be initialized later.
         /// @return: the link ID.
         std::string
         create_link() const;
 
-
+        CreateLinkTransactionResponse
+        fill_link(LinkTransaction::FileList const& file_list,
+                  std::string const& name,
+                  std::string const& message,
+                  bool screenshot,
+                  std::string const& link_id) const;
 
         void
         update_link(std::string const& id,

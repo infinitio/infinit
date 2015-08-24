@@ -27,7 +27,7 @@ ELLE_TEST_SCHEDULED(peer_reject)
     recipient.login();
     auto& transaction = sender.state->transaction_peer_create(
       recipient_user.email(),
-      std::vector<std::string>{transfered.path().string().c_str()},
+      std::vector<std::string>{transfered.path().string()},
       "message");
     reactor::Barrier waiting, rejected;
     auto conn = transaction.status_changed().connect(

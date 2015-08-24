@@ -119,7 +119,8 @@ namespace surface
     State::transaction_to_gap_transaction(
       uint32_t id,
       infinit::oracles::PeerTransaction const& transaction,
-      gap_TransactionStatus status) const
+      gap_TransactionStatus status,
+      boost::optional<gap_Status> status_info) const
     {
       return surface::gap::PeerTransaction(
         id,
@@ -134,14 +135,16 @@ namespace surface
         transaction.is_directory,
         transaction.message,
         transaction.canceler,
-        transaction.id);
+        transaction.id,
+        status_info);
     }
 
     surface::gap::LinkTransaction
     State::link_to_gap_link(
       uint32_t id,
       infinit::oracles::LinkTransaction const& link,
-      gap_TransactionStatus status) const
+      gap_TransactionStatus status,
+      boost::optional<gap_Status> status_info) const
     {
       return surface::gap::LinkTransaction(
         id,
@@ -155,7 +158,8 @@ namespace surface
         link.sender_device_id,
         link.message,
         link.id,
-        link.screenshot ? link.screenshot.get() : false);
+        link.screenshot ? link.screenshot.get() : false,
+        status_info);
     }
 
     uint32_t

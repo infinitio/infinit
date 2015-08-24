@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+
+from utils import *
+import os
+from random import uniform
+
+# Add avatar.
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  previous_quota = alice.me['quotas']['send_to_self']['quota']
+  previous_bonuses = {
+    'send_to_self': alice.me['quotas']['send_to_self']['bonus'],
+  }
+  assert alice.me['has_avatar'] == False
+  with open('%s/avatar.jpg' % os.path.dirname(__file__), 'rb') as f:
+    alice.post('user/avatar', body = f.read())
+  assert alice.me['has_avatar'] == True
+  assertGT(alice.me['quotas']['send_to_self']['quota'],
+           previous_quota)
+  for bonus in ['send_to_self']:
+    assertGT(alice.me['quotas'][bonus]['bonus'],
+             previous_bonuses[bonus])
+
+def social_post(user, medium):
+  previous_links = user.me['quotas']['links']['quota']
+  previous_send_to_self = user.me['quotas']['send_to_self']['quota']
+  previous_bonuses = {
+    'send_to_self': alice.me['quotas']['send_to_self']['bonus'],
+    'links': alice.me['quotas']['links']['bonus']
+  }
+  user.post('user/social_posts/' + medium)
+  assertGT(user.me['quotas']['links']['quota'],
+           previous_links)
+  assertGT(user.me['quotas']['send_to_self']['quota'],
+           previous_send_to_self)
+  for bonus in ['send_to_self', 'links']:
+    assertGT(alice.me['quotas'][bonus]['bonus'],
+             previous_bonuses[bonus])
+  throws(lambda: user.post('user/social_posts/' + medium))
+  assert medium in user.me['social_posts'].keys()
+
+# Facebook then Twitter.
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  social_post(alice, 'facebook')
+  social_post(alice, 'twitter')
+
+# Twitter then Facebook.
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  social_post(alice, 'twitter')
+  social_post(alice, 'facebook')
+
+# Link facebook.
+with Meta() as meta, Trophonius(meta) as t:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+
+  meta.inner.facebook = Facebook()
+  bob = User(meta, facebook = True, check_registration = True)
+  meta.inner.facebook.set_next_client_data({
+    'id': int(uniform(1000000000000000, 1500000000000000)),
+    'email': 'boo@infinit.io',
+  })
+  bob.facebook_connect("token", check_registration = True)
+  assertGT(bob.me['quotas']['links']['quota'],
+           alice.me['quotas']['links']['quota'])
+  assertGT(bob.me['quotas']['send_to_self']['quota'],
+           alice.me['quotas']['send_to_self']['quota'])
+  meta.inner.facebook.set_next_client_data({
+    'id': int(uniform(1000000000000000, 1500000000000000)),
+    'email': None,
+  })
+  alice.put('user/accounts_facebook',
+            {'long_lived_access_token': 'super_token'})
+  assertEq(bob.me['quotas']['links']['quota'],
+           alice.me['quotas']['links']['quota'])
+  assertEq(bob.me['quotas']['send_to_self']['quota'],
+           alice.me['quotas']['send_to_self']['quota'])
+
+
+# Link facebook.
+with Meta() as meta, Trophonius(meta) as t:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+
+  def _change_send_to_self_quota(user, value):
+    res = meta.database.users.find_and_modify(
+      {'_id': bson.ObjectId(user.id)},
+      {'$set': {
+        'quotas.send_to_self.quota': value,
+      }},
+      new = True)
+    assertEq(res['quotas']['send_to_self']['quota'],
+             value)
+    assertEq(user.me['quotas']['send_to_self']['quota'],
+             value)
+  def _change_links_quota(user, value):
+    res = meta.database.users.find_and_modify(
+      {'_id': bson.ObjectId(user.id)},
+      {'$set': {
+        'quotas.links.storage': value,
+      }},
+      new = True)
+    assertEq(res['quotas']['links']['storage'],
+             value)
+    assertEq(user.me['quotas']['links']['quota'],
+             value)
+
+  _change_send_to_self_quota(alice, 1000)
+  _change_send_to_self_quota(alice, None)
+  _change_send_to_self_quota(alice, 10)
+  # Check if bonuses still apply.
+  User(meta, 'bob@infinit.io', referral_code = alice.referral_code).login()
+  assertGT(alice.me['quotas']['send_to_self']['quota'], 10)
+
+  # New alice.
+  alice = User(meta, 'alice2@infinit.io')
+  alice.login()
+  _change_links_quota(alice, 1000)
+  _change_links_quota(alice, 100000000000)
+  _change_links_quota(alice, 10)
+  # Check if bonuses still apply.
+  User(meta, 'bob2@infinit.io', referral_code = alice.referral_code).login()
+  assertGT(alice.me['quotas']['links']['quota'], 10)

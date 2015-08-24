@@ -22,6 +22,7 @@ namespace tests
       !home.empty() ? home.string() : this->_temporary_dir.path().string(),
       authority
       )
+    , _trophonius_fingerprint(fingerprint)
   {
     this->_state.s3_hostname(aws::URL{"http://",
                              elle::sprintf("localhost:%s", server.port()),

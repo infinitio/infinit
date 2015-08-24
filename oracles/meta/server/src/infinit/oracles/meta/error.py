@@ -26,7 +26,9 @@ errors = {
   'transaction_doesnt_belong_to_you': (-50002, "This transaction doesn't belong to you."),
   'transaction_doesnt_exist': (-50001, "This transaction doesn't exists."),
   'transaction_id_not_valid': (-219, "This transaction id is not valid."),
-  'quota_reached' : (-221, 'Max storage size reached, upgrade your plan.'),
+  'link_storage_limit_reached': (-221, 'Link storage limit reached.'),
+  'send_to_self_limit_reached': (-222, 'Send to self transaction limit reached.'),
+  'file_transfer_size_limited': (-223, 'File transfer size limited.'),
 
   # User
   'already_logged_in': (-102, "You are already logged in."),

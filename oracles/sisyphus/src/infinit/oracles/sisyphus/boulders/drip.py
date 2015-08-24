@@ -698,9 +698,16 @@ class ActivityReminder(Drip):
         i = d['device']
         if i:
           if i not in devices:
-            device = meta.users.find_one(
-              {'devices.id': i}, fields = fields)['devices'][0]
-            device = {k: device.get(k) for k in ('id', 'name', 'os')}
+            owner = meta.users.find_one(
+              {'devices.id': i}, fields = fields)
+            if owner is not None:
+              device = owner['devices'][0]
+              device = {
+                k: device.get(k)
+                for k in ('id', 'name', 'os')
+              }
+            else:
+              device = None
             devices[i] = device
           else:
             device = devices[i]
@@ -726,6 +733,9 @@ class ActivityReminder(Drip):
   @property
   def user_fields(self):
     res = super().user_fields
+    res.append('devices.id')
+    res.append('devices.name')
+    res.append('devices.os')
     res.append('transactions.unaccepted')
     res.append('transactions.pending')
     return res
@@ -857,7 +867,7 @@ class Tips(Drip):
       },
       guard = self.hasnt_sent_to_self,
       guard_transition = True,
-      template = 'Send to Self Tip',
+      template = 'Send to Device',
       hint = self.index[1],
     )
     response.update(transited)

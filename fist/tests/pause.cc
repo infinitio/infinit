@@ -180,7 +180,7 @@ ELLE_TEST_SCHEDULED(pause_resume)
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = valgrind(15);
+  auto timeout = valgrind(25);
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(pause_transfer), 0, timeout);
   suite.add(BOOST_TEST_CASE(pause_snapshot), 0, timeout);

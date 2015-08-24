@@ -22,7 +22,6 @@
 # include <surface/gap/LinkTransaction.hh>
 # include <surface/gap/State.hh>
 
-
 /// - Utils -----------------------------------------------------------------
 class gap_State
 {
@@ -171,11 +170,6 @@ catch_to_gap_status(std::function<Type ()> const& func,
       ret = gap_api_error;
     else
       ret = gap_network_error;
-  }
-  catch (infinit::oracles::meta::Exception const& err)
-  {
-    ELLE_ERR("%s: error: %s", name, elle::exception_string());
-    ret = (gap_Status) err.err;
   }
   catch (surface::gap::Exception const& err)
   {

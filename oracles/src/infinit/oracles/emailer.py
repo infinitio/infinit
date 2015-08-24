@@ -215,13 +215,16 @@ def avatar(i, meta):
   return '%s/user/%s/avatar' % (meta, i)
 
 def user_vars(user, meta):
-  return {
+  res = {
     'avatar': avatar(user['_id'], meta),
     'email': user.get('email'),
     'fullname': user.get('fullname'),
     'id': str(user['_id']),
     'os': user.get('os', []),
   }
+  if 'devices' in user:
+    res['devices'] = user['devices']
+  return res
 
 def transaction_vars(transaction, user, meta):
   sender = transaction['sender_id'] == user['_id']

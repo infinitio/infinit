@@ -10,6 +10,24 @@ namespace infinit
     | Construction |
     `-------------*/
 
+    LinkTransaction::LinkTransaction(uint32_t click_count_,
+                                     std::string cloud_location_,
+                                     FileList file_list_,
+                                     std::string hash_,
+                                     std::string message_,
+                                     std::string name_,
+                                     std::string share_link_,
+                                     boost::optional<bool> screenshot_)
+      : click_count(click_count_)
+      , cloud_location(cloud_location_)
+      , file_list(file_list_)
+      , hash(hash_)
+      , message(message_)
+      , name(name_)
+      , share_link(share_link_)
+      , screenshot(screenshot_)
+    {}
+
     LinkTransaction::LinkTransaction():
       Transaction(),
       click_count(),
@@ -49,6 +67,9 @@ namespace infinit
       s.serialize("screenshot", this->screenshot);
     }
 
+    using elle::serialization::Hierarchy;
+    static const Hierarchy<Transaction>::Register<LinkTransaction> _registerLinkTransaction;
+
     uint64_t
     LinkTransaction::size() const
     {
@@ -61,9 +82,6 @@ namespace infinit
                     });
       return sum;
     }
-
-    using elle::serialization::Hierarchy;
-    static Hierarchy<Transaction>::Register<LinkTransaction> _register;
 
     /*----------.
     | Printable |
