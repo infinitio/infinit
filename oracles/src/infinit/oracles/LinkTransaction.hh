@@ -50,6 +50,8 @@ namespace infinit
       std::string name;
       std::string share_link;
       boost::optional<bool> screenshot;
+    private:
+      boost::optional<uint64_t> _size;
 
     public:
       uint64_t

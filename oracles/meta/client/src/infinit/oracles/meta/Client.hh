@@ -253,13 +253,14 @@ namespace infinit
       class CreatePeerTransactionResponse
       {
       public:
-        CreatePeerTransactionResponse(User const& recipient,
-                                      std::string const& id,
-                                      bool recipient_is_ghost = false);
+        CreatePeerTransactionResponse(
+          User const& recipient,
+          PeerTransaction const& transaction,
+          boost::optional<int32_t> status_info = boost::none);
         CreatePeerTransactionResponse() = default;
         ELLE_ATTRIBUTE_R(User, recipient);
-        ELLE_ATTRIBUTE_R(std::string, created_transaction_id);
-        ELLE_ATTRIBUTE_R(bool, recipient_is_ghost);
+        ELLE_ATTRIBUTE_R(boost::optional<int32_t>, status_info);
+        ELLE_ATTRIBUTE_R(PeerTransaction, transaction);
 
         CreatePeerTransactionResponse(elle::serialization::SerializerIn& s);
         void

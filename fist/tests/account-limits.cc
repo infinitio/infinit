@@ -15,7 +15,6 @@ namespace tests
   class SendToSelfServer
     : public Server
   {
-
   protected:
     std::string
     _transaction_post(Headers const& headers,
@@ -52,11 +51,11 @@ ELLE_TEST_SCHEDULED(send_to_self_limit)
     sender.login();
     auto& transaction = sender.state->transaction_peer_create(
       sender_user.email(),
-      std::vector<std::string>{transfered.path().string().c_str()},
+      std::vector<std::string>{transfered.path().string()},
       "message");
     reactor::Barrier payment_required, canceled;
     transaction.status_changed().connect(
-      [&] (gap_TransactionStatus status)
+      [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
       {
         ELLE_LOG("new local transaction status: %s", status);
         switch (status)
@@ -144,11 +143,11 @@ ELLE_TEST_SCHEDULED(transfer_size_limit)
     sender.login();
     auto& transaction = sender.state->transaction_peer_create(
       sender_user.email(),
-      std::vector<std::string>{transfered.path().string().c_str()},
+      std::vector<std::string>{transfered.path().string()},
       "message");
     reactor::Barrier payment_required, canceled;
     transaction.status_changed().connect(
-      [&] (gap_TransactionStatus status)
+      [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
       {
         ELLE_LOG("new local transaction status: %s", status);
         server.transaction(transaction.data()->id);
@@ -268,7 +267,8 @@ ELLE_TEST_SCHEDULED(link_storage_limit_reached)
     auto& link = sender.state->transactions().at(link_id);
     reactor::Barrier payment_required, canceled;
     link->status_changed().connect(
-      [&] (gap_TransactionStatus status)
+      [&] (gap_TransactionStatus status,
+           boost::optional<gap_Status> status_info)
       {
         ELLE_LOG("new local link status: %s", status);
         switch (status)
@@ -292,6 +292,92 @@ ELLE_TEST_SCHEDULED(link_storage_limit_reached)
   }
 }
 
+/*-----------------------------.
+| Ghost Download Limit Reached |
+`-----------------------------*/
+
+namespace tests
+{
+  class GhostDownloadLimitServer
+    : public Server
+  {
+  public:
+    ELLE_ATTRIBUTE_RX(reactor::Barrier, callback_attached);
+
+  protected:
+    std::string
+    _transaction_put(Headers const& headers,
+                     Cookies const& cookies,
+                     Parameters const& parameters,
+                     elle::Buffer const& body,
+                     elle::UUID const& id) override
+    {
+      reactor::wait(this->callback_attached());
+      elle::IOStream stream(body.istreambuf());
+      elle::serialization::json::SerializerIn input(stream, false);
+      std::string email;
+      input.serialize("recipient_identifier", email);
+      auto& recipient = [&] () -> User const& {
+        auto& users_by_email = this->users().get<1>();
+        auto recipient = users_by_email.find(email);
+        bool ghost = recipient == users_by_email.end();
+        return ghost ? generate_ghost_user(email) : *recipient;
+      }();
+      auto& transaction = **this->transactions().find(id.repr());
+      std::stringstream res;
+      {
+        elle::serialization::json::SerializerOut output(res, false);
+        output.serialize("recipient", recipient);
+        output.serialize("status_info_code", static_cast<int32_t>(
+          infinit::oracles::meta::Error::ghost_download_limit_reached));
+        auto ptr = std::unique_ptr<infinit::oracles::Transaction>(
+          new infinit::oracles::PeerTransaction(transaction));
+        output.serialize("transaction", ptr);
+      }
+      return res.str();
+    }
+  };
+}
+
+ELLE_TEST_SCHEDULED(ghost_download_limit_reached)
+{
+  tests::GhostDownloadLimitServer server;
+  auto const& sender_user =
+    server.register_user("sender@infinit.io", "password");
+  elle::filesystem::TemporaryDirectory sender_home(
+    "ghost-download-limit-reached_sender");
+  elle::filesystem::TemporaryFile transfered("file");
+  {
+    tests::Client sender(server, sender_user, sender_home.path());
+    sender.login();
+    auto& transaction = sender.state->transaction_peer_create(
+      sender_user.email(),
+      std::vector<std::string>{transfered.path().string()},
+      "message");
+    reactor::Barrier done;
+    transaction.status_changed().connect(
+      [&] (gap_TransactionStatus status,
+           boost::optional<gap_Status> status_info)
+      {
+        ELLE_LOG("new local transaction status: %s", status);
+        server.transaction(transaction.data()->id);
+        switch (status)
+        {
+          case gap_transaction_new:
+            ELLE_LOG("check status info");
+            BOOST_CHECK_EQUAL(gap_ghost_download_limit_reached,
+                              static_cast<gap_Status>(status_info.get()));
+            done.open();
+            break;
+          default:
+            break;
+        }
+      });
+    server.callback_attached().open();
+    reactor::wait(done);
+  }
+}
+
 
 ELLE_TEST_SUITE()
 {
@@ -300,4 +386,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(send_to_self_limit), 0, timeout);
   suite.add(BOOST_TEST_CASE(transfer_size_limit), 0, timeout);
   suite.add(BOOST_TEST_CASE(link_storage_limit_reached), 0, timeout);
+  suite.add(BOOST_TEST_CASE(ghost_download_limit_reached), 0, timeout);
 }

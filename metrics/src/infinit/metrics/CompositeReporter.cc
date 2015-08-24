@@ -378,6 +378,15 @@ namespace infinit
     }
 
     void
+    CompositeReporter::_ghost_download_limit_reached(
+      std::string const& ghost_id)
+    {
+      this->_dispatch(std::bind(&Reporter::_ghost_download_limit_reached,
+                                std::placeholders::_1,
+                                ghost_id));
+    }
+
+    void
     CompositeReporter::_file_transfer_limit_reached(uint64_t limit,
                                                     uint64_t transfer_size)
     {

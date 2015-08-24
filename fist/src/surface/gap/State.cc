@@ -188,7 +188,7 @@ namespace surface
 #if defined(INFINIT_ANDROID) || defined(INFINIT_IOS)
       config.s3.multipart_upload.parallelism = 2;
 #else
-      config.s3.multipart_upload.parallelism = 8;
+      config.s3.multipart_upload.parallelism = 4;
 #endif
       config.s3.multipart_upload.chunk_size = 0;
       config.enable_file_mirroring =
@@ -1376,6 +1376,9 @@ namespace surface
           ELLE_DEBUG("%s: apply model update", *this);
           ELLE_DUMP("new model: %s", u);
           u.apply(this->_model);
+          // FIXME: Remove manual call to change when das handles parent object
+          // changed signal.
+          this->_model.account.changed().operator()(this->_model.account);
           break;
         }
         case infinit::oracles::trophonius::NotificationType::paused:

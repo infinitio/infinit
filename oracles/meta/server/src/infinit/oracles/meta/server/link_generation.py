@@ -130,6 +130,7 @@ class Mixin:
     if (user_links['used'] + new_link_size) > user_links['quota']:
       self.quota_exceeded(
         {
+          'error': error.LINK_STORAGE_LIMIT_REACHED[0],
           'reason': 'Link size quota of %s reached' % user_links['quota'],
           'quota': int(user_links['quota']),
           'usage': int(user_links['used']),
@@ -767,7 +768,8 @@ class Mixin:
       {
         '$group': {'_id': None, 'total':{'$sum': '$file_size'}}
       }])['result']
-    return res[0]['total'] if len(res) else 0
+    total = res[0]['total'] if len(res) else 0
+    return int(total)
 
   # Generate url on storage for given HTTP operation
   def _generate_op_url(self, link, op):

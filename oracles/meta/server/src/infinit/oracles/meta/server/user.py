@@ -78,6 +78,12 @@ class Mixin:
             self.__ghost_profile_url(user, type = 'phone'))
         if 'shorten_ghost_profile_url' in user:
           del user['shorten_ghost_profile_url']
+    if self.admin:
+      self.__plan_and_quotas(user)
+      if 'stripe_id' in user:
+        user['stripe'] = stripe.Customer.retrieve(
+          user['stripe_id'],
+          api_key = self.stripe_api_key).get('subscriptions', {})
     return user
 
   def __sent_to_self(self, user):
@@ -104,6 +110,16 @@ class Mixin:
     user['devices'] = [d['id'] for d in user['devices']]
     return user
 
+  def __plan_and_quotas(self, user):
+    # Quotas.
+    user.update({'quotas': self.__quotas(user)})
+    user['social_posts'] = {
+      social_post['medium']: social_post['date']
+      for social_post in user.get('social_posts', {})
+    }
+    # If you has no plan or 'None', return basic.
+    user['plan'] = user.get('plan', 'basic') or 'basic'
+
   def __user_self(self, user):
     user = self.__user(user)
     if 'favorites' not in user:
@@ -116,15 +132,7 @@ class Mixin:
       )
       if cus.subscriptions.total_count > 0:
           user['subscription_data'] = cus.subscriptions.data[0]
-    # Quotas.
-    user.update({'quotas': self.__quotas(user)})
-    user['social_posts'] = {
-      social_post['medium']: social_post['date']
-      for social_post in user.get('social_posts', {})
-    }
-    # If you has no plan or 'None', return basic.
-    user['plan'] = user.get('plan', 'basic') or 'basic'
-
+    self.__plan_and_quotas(user)
     # Remove '_id' key, replaced earlier by 'id'.
     del user['_id']
     return user
@@ -149,14 +157,15 @@ class Mixin:
     if self.admin:
       res += [
         'account',
-        'accounts',
+        'blocked_referrer',
         'creation_time',
         'email',
         'email_confirmed',
         'features',
         'os',
         'total_link_size',
-      ]
+        'stripe_id',
+      ] + self.__referral_fields
     return res
 
   @property
@@ -269,6 +278,45 @@ class Mixin:
       h += str(int(random.random() * 10))
     return h
 
+  def __ensure_ghost_download_limit(self, ghost):
+    """
+    Set the ghost's download remaining field if it hasn't been already.
+    """
+    self.__user_fetch_and_modify(
+      query = {
+        '_id': ghost['_id'],
+        'register_status': 'ghost',
+        'ghost_downloads_remaining': {'$exists': False},
+      },
+      update = {
+        '$set':
+        {
+          'ghost_downloads_remaining': int(2),
+        },
+      },
+      fields = {}, new = False)
+
+  def __user_id_premium(self, user_id: bson.ObjectId):
+    """
+    Check if a user_id has a premium account.
+    """
+    return self.__user_fetch(
+      {
+        '_id': user_id,
+        'plan': 'premium',
+      }) is not None
+
+  def __user_id_ghost_download_limited(self, user_id: bson.ObjectId):
+    """
+    Check if ghost has reached their direct download limit.
+    """
+    return self.__user_fetch(
+      {
+        '_id': user_id,
+        'register_status': 'ghost',
+        'ghost_downloads_remaining': {'$lte': 0},
+      }) is not None
+
   ## -------- ##
   ## Sessions ##
   ## -------- ##
@@ -373,6 +421,9 @@ class Mixin:
         referral_code = user.get('used_referral_link', None)
         if referral_code:
           res['referral_code'] = referral_code
+    plan = user.get('plan', 'basic') or 'basic'
+    if plan == 'basic' and self.eligible_for_plus(user['_id']):
+      self.__update_to_plus_if_needed(user['_id'])
     return user, res
 
   def _login_response(self,
@@ -458,16 +509,30 @@ class Mixin:
 
     # Check if this is the first login of this user
     res = self.database.users.find_and_modify(
-      {
-        '_id': user['_id'],
-      },
+      { '_id': user['_id'], },
       { '$set': {'last_connection': time.time()}},
       fields = ['last_connection', 'referred_by'],
       new = False
     )
     if res and 'last_connection' not in res and 'referred_by' in res:
-      self.process_referrals(user, [referrer['id'] for referrer in res['referred_by']
-                                    if isinstance(referrer, dict)])
+      referrer_ids = [referrer['id'] for referrer in res['referred_by']
+                      if isinstance(referrer, dict)]
+      def _same_device_as_referrer(device_id, referrer_ids):
+        for referrer in [self.__user_fetch({'_id': id}) for id in referrer_ids]:
+          for device in referrer.get('devices', []):
+            if device['id'] == str(device_id):
+              return referrer['_id']
+        return None
+      blocked_referrer = _same_device_as_referrer(device_id, referrer_ids)
+      if blocked_referrer:
+        self.__user_fetch_and_modify(
+          {'_id': user['_id']},
+          {'$set': {'blocked_referrer': blocked_referrer}},
+          [],
+          False
+        )
+        referrer_ids.remove(blocked_referrer)
+      self.process_referrals(user, referrer_ids)
     bottle.request.session['device'] = device['id']
     bottle.request.session['identifier'] = user['_id']
     elle.log.trace("successfully connected as %s on device %s" %
@@ -1159,8 +1224,9 @@ class Mixin:
       user_id = recipient['_id']
       request.update(extra_fields)
       del request['accounts']
-      self.database.users.update( {'_id': user_id},
-        { '$set': request})
+      self.database.users.update(
+        {'_id': user_id},
+        {'$set': request})
     else:
       request.update(extra_fields)
       user_id = self._register(**request)
@@ -2518,12 +2584,21 @@ class Mixin:
     out.seek(0)
     small_out.seek(0)
     import bson.binary
-    self.database.users.update(
+    res = self.__user_fetch_and_modify(
       {'_id': user['_id']},
-      {'$set': {
-        'avatar': bson.binary.Binary(out.read()),
-        'small_avatar': bson.binary.Binary(small_out.read()),
-      }})
+      {
+        '$set':
+        {
+          'avatar': bson.binary.Binary(out.read()),
+          'small_avatar': bson.binary.Binary(small_out.read()),
+        }
+      },
+      fields = self.__referral_fields + ['small_avatar'],
+      new = False
+    )
+    if 'small_avatar' not in res:
+      user.update({'has_avatar': True})
+      self._quota_updated_notification(user)
     return self.success()
 
   ## ----------------- ##
@@ -2849,7 +2924,7 @@ class Mixin:
 
   def _change_plan(self, user, new_plan_name):
     current_plan = self.plans[user.get('plan', 'basic')]
-    if new_plan_name == 'basic' and self.__eligible_for_plus(user['_id']):
+    if new_plan_name == 'basic' and self.eligible_for_plus(user['_id']):
       new_plan_name = 'plus'
     new_plan = self.plans[new_plan_name]
     fset = dict()
@@ -2892,7 +2967,7 @@ class Mixin:
       res = {
         'plan': plan or user['plan']
       }
-      eligible_for_plus = self.__eligible_for_plus(user['_id'])
+      eligible_for_plus = self.eligible_for_plus(user['_id'])
       # Subscribing to a paying plan without source raises an error
       # Update user's payment source, represented by a token
       if stripe_token is not None:
@@ -3674,11 +3749,14 @@ class Mixin:
   ## Plans ##
   ## ----- ##
 
-  def __eligible_for_plus(self, referrer):
+  def eligible_for_plus(self, referrer):
     number_of_referred = self.__referred_by(referrer,
                                             registered_user = True).count()
     # The first you referrer gives you plus 2 send to self.
-    return number_of_referred >= 2
+    return self.__eligible_for_plus(number_of_referred)
+
+  def __eligible_for_plus(self, number_of_referrees):
+    return number_of_referrees >= 2
 
   ## ------------ ##
   ## Social posts ##
@@ -3715,7 +3793,11 @@ class Mixin:
             'date': self.now
           }
         }
-      })
+      },
+      new = True,
+      fields = self.__referral_fields
+    )
+    self._quota_updated_notification(user)
     return {}
 
   ## -------- ##
@@ -3729,6 +3811,7 @@ class Mixin:
     assert isinstance(referrer, bson.ObjectId)
     query = {
       'referred_by.id': referrer,
+      'blocked_referrer' : {'$ne': referrer},
     }
     if registered_user:
       query['last_connection'] = {'$exists': True}
@@ -3808,22 +3891,28 @@ class Mixin:
     elle.log.trace('process referral for %s (referred by %s)' % (new_user['accounts'], referrals))
     #FIXME: send email
     for referrer in referrals:
-      update = {}
-      if self.__eligible_for_plus(referrer):
-        update['$set'] = {
-          'plan': 'plus',
-        }
-        self.database.users.update(
-          {
-            '_id': referrer,
-            '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
-          },
-          update)
+      self.__update_to_plus_if_needed(referrer)
     referrers = list(map(lambda x: self.user_from_identifier(
       x, fields = self.__referral_fields),
                          referrals))
     for user in referrers + [new_user]:
       self._quota_updated_notification(user)
+
+  def __update_to_plus_if_needed(self, user):
+    if self.eligible_for_plus(user):
+      update = {
+        '$set': {
+          'plan': 'plus',
+        }
+      }
+      res = self.database.users.update(
+        {
+          '_id': user,
+          '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
+        },
+        update)
+      return res['n'] == 1
+    return False
 
   ## ------ ##
   ## Quotas ##
@@ -3834,9 +3923,12 @@ class Mixin:
     # Get the user quota according to his plan or his custom account
     # limitations.
     user_quotas = user.get('quotas', {})
-    user_plan = self.plans[user.get('plan', 'basic')]['quotas']
     number_of_referred = self.__referred_by(user['_id'],
                                             registered_user = True).count()
+    plan = user.get('plan', 'basic')
+    if plan is None or plan == 'basic' and self.__eligible_for_plus(number_of_referred):
+      plan = 'plus'
+    user_plan = self.plans[plan]['quotas']
     social_posts = user.get('social_posts', [])
     social_posts = set((post['medium'] for post in social_posts))
     facebook_linked = 'facebook' in set((account['type']
@@ -3844,10 +3936,10 @@ class Mixin:
     def _send_to_self_quota(user):
       send_to_self = user_plan['send_to_self']
       bonuses = send_to_self['bonuses']
-      bonus = number_of_referred * bonuses['referrer'] + \
-              int(user.get('has_avatar', False)) + \
-              len(social_posts) * bonuses['social_post'] + \
-              facebook_linked * bonuses['facebook_linked']
+      bonus = int(number_of_referred * bonuses['referrer'] + \
+                  int(user.get('has_avatar', False)) + \
+                  len(social_posts) * bonuses['social_post'] + \
+                  facebook_linked * bonuses['facebook_linked'])
       if send_to_self['default_quota'] == None:
         return None, bonus
       quota = user_quotas.get('send_to_self', {}).get(
@@ -3856,6 +3948,7 @@ class Mixin:
       elle.log.debug('send to self quota before bonuses: %s' % quota)
       if quota is None:
         return quota, bonus
+      quota = int(quota)
       elle.log.debug('send to self quota after bonuses: %s' % quota)
       return quota + bonus, bonus
 
@@ -3871,19 +3964,23 @@ class Mixin:
       # + (number of referred) * bonus
       # + referred bonus if referred by someone
       # + other bonuses.
-      storage = user_quotas.get('links', {}).get(
+      storage = int(user_quotas.get('links', {}).get(
         'storage',
-        links['default_storage'])
+        links['default_storage']))
       elle.log.debug('link storage before bonuses: %s' % storage)
-      bonus = number_of_referred * bonuses['referrer'] + \
-              bonuses['referree'] * bool(len(user.get('referred_by', []))) + \
-              len(social_posts) * bonuses['social_post'] + \
-              facebook_linked * bonuses['facebook_linked']
+      bonus = int(number_of_referred * bonuses['referrer'] + \
+                  bonuses['referree'] * bool(len(user.get('referred_by', []))) + \
+                  len(social_posts) * bonuses['social_post'] + \
+                  facebook_linked * bonuses['facebook_linked'])
       elle.log.debug('link storage after bonuses: %s' % storage)
       return storage + bonus, bonus
 
     link_storage = _link_storage(user)
+    assert isinstance(link_storage[0], (int, type(None)))
+    assert isinstance(link_storage[1], (int, type(None)))
     send_to_self_quota = _send_to_self_quota(user)
+    assert isinstance(send_to_self_quota[0], (int, type(None)))
+    assert isinstance(send_to_self_quota[1], (int, type(None)))
     return {
       'links': {
         'quota': link_storage[0],

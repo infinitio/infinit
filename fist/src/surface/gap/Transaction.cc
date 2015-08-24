@@ -631,7 +631,7 @@ namespace surface
     Transaction::status(gap_TransactionStatus status,
                         boost::optional<gap_Status> status_info)
     {
-      if (status != this->_status)
+      if (status != this->_status || status_info)
       {
         ELLE_TRACE_SCOPE("%s: change GAP status to %s", *this, status);
         this->_status = status;
@@ -651,7 +651,7 @@ namespace surface
             this->state().link_to_gap_link(
               this->id(), *link_data, status, status_info));
         }
-        this->_status_changed(status);
+        this->_status_changed(status, status_info);
       }
     }
 

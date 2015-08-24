@@ -456,7 +456,6 @@ namespace surface
     void
     PeerSendMachine::_initialize_transaction()
     {
-      this->gap_status(gap_transaction_new);
       ELLE_TRACE_SCOPE("%s: initialize transaction", *this);
       int64_t size = 0;
       try
@@ -519,6 +518,19 @@ namespace surface
         this->data()->is_ghost = peer.ghost();
         this->data()->recipient_id = peer.id;
         this->transaction()._snapshot_save();
+        boost::optional<gap_Status> status_info = boost::none;
+        if (transaction_response.status_info())
+        {
+          status_info =
+            static_cast<gap_Status>(transaction_response.status_info().get());
+          if (status_info == gap_ghost_download_limit_reached &&
+              this->state().metrics_reporter())
+          {
+            this->state().metrics_reporter()->ghost_download_limit_reached(
+              this->data()->recipient_id);
+          }
+        }
+        this->gap_status(gap_transaction_new, status_info);
       }
       ELLE_TRACE("%s: initialized transaction %s", *this, this->transaction_id());
       // Populate the frete.

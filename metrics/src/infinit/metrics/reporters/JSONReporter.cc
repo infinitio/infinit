@@ -370,7 +370,7 @@ namespace infinit
                                        uint64_t quota)
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("quota_exceeded");
+      data[this->_key_str(JSONKey::event)] = std::string("app/quota_exceeded");
       data[this->_key_str(JSONKey::total_size)] = size;
       data[this->_key_str(JSONKey::used_storage)] = used;
       data[this->_key_str(JSONKey::quota)] = quota;
@@ -382,7 +382,7 @@ namespace infinit
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
-        std::string("send_to_self_limited");
+        std::string("app/send_to_self_limited");
       data[this->_key_str(JSONKey::limit)] = limit;
       this->_send(this->_user_dest, data);
     }
@@ -393,9 +393,19 @@ namespace infinit
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
-        std::string("transfer_size_limited");
+        std::string("app/transfer_size_limited");
       data[this->_key_str(JSONKey::limit)] = limit;
       data[this->_key_str(JSONKey::total_size)] = transfer_size;
+      this->_send(this->_user_dest, data);
+    }
+
+    void
+    JSONReporter::_ghost_download_limit_reached(std::string const& ghost_id)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] =
+        std::string("app/ghost_download_limited");
+      data[this->_key_str(JSONKey::ghost)] = ghost_id;
       this->_send(this->_user_dest, data);
     }
 

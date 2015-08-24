@@ -184,7 +184,7 @@ ELLE_TEST_SCHEDULED(disconnect)
       "message");
   reactor::Barrier done;
   transaction.status_changed().connect(
-      [&] (gap_TransactionStatus status)
+      [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
       {
         ELLE_LOG("new local transaction status: %s", status);
         if (status == gap_transaction_waiting_accept)

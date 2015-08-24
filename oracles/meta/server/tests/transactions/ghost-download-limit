@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+
+from utils import *
+from infinit.oracles.meta import error
+from infinit.oracles.utils import key
+
+def __sign_path(path):
+  return '%s?key=%s' % (path, key('/%s' % path))
+
+def __ghost_downloads_remaining(email):
+  ghost = meta.database.users.find_one({'email': ghost_email})
+  return ghost['ghost_downloads_remaining']
+
+with Meta() as meta:
+  ghost_email = 'ghost@infinit.io'
+
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  basic_t1, res = alice.sendfile(recipient = ghost_email,
+                                 initialize = True,
+                                 use_identifier = False)
+  assertEq(res.get('status_info_code'), None)
+  res = alice.transaction_update(basic_t1['_id'],
+                                 transaction_status.GHOST_UPLOADED)
+  assertIn('download_link', res)
+
+  basic_t2, res = alice.sendfile(recipient = ghost_email,
+                                 initialize = True,
+                                 use_identifier = False)
+  assertEq(res.get('status_info_code'), None)
+  res = alice.transaction_update(basic_t2['_id'],
+                                 transaction_status.GHOST_UPLOADED)
+  assertIn('download_link', res)
+
+  bob = User(meta, 'bob@infinit.io')
+  meta.database.users.update({'email': 'bob@infinit.io'},
+                             {'$set': {'plan': 'premium'}})
+  bob.login()
+  prem_t1, res = bob.sendfile(recipient = ghost_email,
+                              initialize = True,
+                              use_identifier = False)
+  assertEq(res.get('status_info_code'), None)
+  res = bob.transaction_update(prem_t1['_id'],
+                               transaction_status.GHOST_UPLOADED)
+  assertIn('download_link', res)
+
+  check = User(meta, 'check@infinit.io')
+
+  # Basic sender.
+  # Ensure that ghost's remaining count decreases.
+  res = check.get(__sign_path('transaction/%s' % basic_t1['_id']))
+  assertIn('download_link', res)
+  check.post(__sign_path('transactions/%s/downloaded' % basic_t1['_id']))
+  assertEq(__ghost_downloads_remaining(ghost_email), 1)
+
+  # Premium sender.
+  # Ensure that ghost's remaining count is not decremented.
+  res = check.get(__sign_path('transaction/%s' % prem_t1['_id']))
+  assertIn('download_link', res)
+  check.post(__sign_path('transactions/%s/downloaded' % prem_t1['_id']))
+  assertEq(__ghost_downloads_remaining(ghost_email), 1)
+
+  # Basic sender.
+  # Ensure that ghost's remaining count decreases.
+  res = check.get(__sign_path('transaction/%s' % basic_t2['_id']))
+  assertIn('download_link', res)
+  check.post(__sign_path('transactions/%s/downloaded' % basic_t2['_id']))
+  assertEq(__ghost_downloads_remaining(ghost_email), 0)
+
+  # Premium sender.
+  # Ensure that sender isn't given status_info_code.
+  # Ensure that ghost can still download from premium.
+  prem_t2, res = bob.sendfile(recipient = ghost_email,
+                              initialize = True,
+                              use_identifier = False)
+  assertEq(res.get('status_info_code'), None)
+  res = bob.transaction_update(prem_t2['_id'],
+                               transaction_status.GHOST_UPLOADED)
+  assertIn('download_link', res)
+
+  res = check.get(__sign_path('transaction/%s' % prem_t2['_id']))
+  assertIn('download_link', res)
+  check.post(__sign_path('transactions/%s/downloaded' % prem_t2['_id']))
+  assertEq(__ghost_downloads_remaining(ghost_email), 0)
+
+  # Basic sender.
+  # Ensure that sender is given status_info_code.
+  # Ensure that ghost isn't given download link.
+  basic_t3, res = alice.sendfile(recipient = ghost_email,
+                                 initialize = True,
+                                 use_identifier = False)
+  assertEq(res.get('status_info_code'), error.GHOST_DOWNLOAD_LIMIT_REACHED[0])
+  res = alice.transaction_update(basic_t3['_id'],
+                                 transaction_status.GHOST_UPLOADED)
+  assertIn('download_link', res)
+
+  res = check.get(__sign_path('transaction/%s' % basic_t3['_id']))
+  assertNin('download_link', res)
+  check.post(__sign_path('transactions/%s/downloaded' % basic_t3['_id']))
+  assertEq(__ghost_downloads_remaining(ghost_email), 0)

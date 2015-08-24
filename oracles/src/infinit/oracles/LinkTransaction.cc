@@ -55,6 +55,7 @@ namespace infinit
       s.serialize("id", this->id);
       s.serialize("click_count", this->click_count);
       s.serialize("ctime", this->ctime);
+      s.serialize("size", this->_size);
       s.serialize("files", this->file_list);
       s.serialize("hash", this->hash);
       s.serialize("message", this->message);
@@ -73,6 +74,9 @@ namespace infinit
     uint64_t
     LinkTransaction::size() const
     {
+      if (this->_size)
+        return this->_size.get();
+
       uint64_t sum = 0;
       std::for_each(this->file_list.begin(),
                     this->file_list.end(),

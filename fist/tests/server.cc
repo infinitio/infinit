@@ -915,9 +915,16 @@ namespace tests
     elle::serialization::json::SerializerIn input(stream, false);
     std::string recipient_identifier;
     input.serialize("recipient_identifier", recipient_identifier);
-    return elle::sprintf(
-      "{\"created_transaction_id\":\"%s\"}",
-      this->_create_empty(user.id, recipient_identifier));
+    elle::UUID const& id = this->_create_empty(user.id, recipient_identifier);
+    auto const& transaction = **this->_transactions.find(id.repr());
+    std::unique_ptr<infinit::oracles::Transaction> ptr(
+      new infinit::oracles::PeerTransaction(transaction));
+    std::stringstream res;
+    {
+      elle::serialization::json::SerializerOut output(res, false);
+      output.serialize("transaction", ptr);
+    }
+    return res.str();
   }
 
   std::string
@@ -956,7 +963,7 @@ namespace tests
       }}();
 
     // BMI shouldn't be used like that...
-    auto& tr = **this->_transactions.find(boost::lexical_cast<std::string>(id));
+    auto& tr = **this->_transactions.find(id.repr());
     tr.status = infinit::oracles::Transaction::Status::initialized;
     tr.sender_id = user.id;
     tr.sender_device_id = device.id.repr();
@@ -984,14 +991,15 @@ namespace tests
     this->_users.modify(this->_users.get<0>().find(user.id), UpdateSwag(rec));
     this->_users.modify(this->_users.get<0>().find(rec.id), UpdateSwag(user));
 
-    auto res = elle::sprintf(
-      "{"
-      "\"created_transaction_id\": \"%s\","
-      "\"recipient\": %s,"
-      "\"recipient_is_ghost\": %s"
-      "}", id, rec.json(),
-      rec.ghost() ? "true" : "false");
-    return res;
+    std::stringstream res;
+    {
+      elle::serialization::json::SerializerOut output(res, false);
+      output.serialize("recipient", rec);
+      std::unique_ptr<infinit::oracles::Transaction> ptr(
+        new infinit::oracles::PeerTransaction(tr));
+      output.serialize("transaction", ptr);
+    }
+    return res.str();
   }
 
   User const&

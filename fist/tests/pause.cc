@@ -38,7 +38,7 @@ ELLE_TEST_SCHEDULED(pause_transfer)
     "message");
   reactor::Barrier paused;
   auto conn = state_transaction.status_changed().connect(
-    [&] (gap_TransactionStatus status)
+    [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
     {
       t_id = state_transaction.data()->id;
       ELLE_LOG("new sender transaction status: %s", status);

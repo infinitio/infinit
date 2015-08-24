@@ -407,6 +407,13 @@ namespace infinit
     }
 
     void
+    Reporter::ghost_download_limit_reached(std::string const& ghost_id)
+    {
+      this->_push(
+        std::bind(&Reporter::_ghost_download_limit_reached, this, ghost_id));
+    }
+
+    void
     Reporter::ui(std::string const& event,
                  std::string const& from,
                  Additional const& additional)
@@ -650,6 +657,10 @@ namespace infinit
     void
     Reporter::_file_transfer_limit_reached(uint64_t limit,
                                            uint64_t transfer_size)
+    {}
+
+    void
+    Reporter::_ghost_download_limit_reached(std::string const& ghost_id)
     {}
 
     /*--------------------------.

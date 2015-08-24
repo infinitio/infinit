@@ -183,7 +183,7 @@ class Mixin:
           notifier.PEER_TRANSACTION,
           recipient_ids = {transaction['sender_id'],
                            transaction['recipient_id']},
-          message = transaction,
+          message = self._transaction_view(transaction),
         )
 
   def cancel_transactions(self, user, device_id = None):
@@ -271,6 +271,20 @@ class Mixin:
         transaction['sender_id'],
         counts = ['reached_peer', 'reached'],
         time = False)
+      if not self.__user_id_premium(transaction['sender_id']):
+        self.__user_fetch_and_modify(
+          query = {
+            '_id': transaction['recipient_id'],
+            'register_status': 'ghost',
+            'ghost_downloads_remaining': {'$gt': 0},
+          },
+          update = {
+            '$inc':
+            {
+              'ghost_downloads_remaining': int(-1),
+            },
+          },
+          fields = {}, new = False)
     # Update transaction
     diff = {'status': transaction_status.FINISHED}
     transaction = self.database.transactions.find_and_modify(
@@ -283,7 +297,7 @@ class Mixin:
         notifier.PEER_TRANSACTION,
         recipient_ids =
           {transaction['sender_id'], transaction['recipient_id']},
-        message = transaction,
+        message = self._transaction_view(transaction),
       )
       return diff
     else:
@@ -319,6 +333,12 @@ class Mixin:
       if not transaction:
         self.not_found()
       else:
+        no_ghost_downloads = \
+          self.__user_id_ghost_download_limited(transaction['recipient_id'])
+        sender_premium = self.__user_id_premium(transaction['sender_id'])
+        has_download_link = transaction.get('download_link')
+        if no_ghost_downloads and has_download_link and not sender_premium:
+          del transaction['download_link']
         return transaction
 
   # FIXME: Nuke this ! Use the user fetching routines from user.py and
@@ -589,6 +609,7 @@ class Mixin:
         {'_id': recipient['_id']},
         self.__add_referrer_update_query(sender, 'ghost_invite'),
       )
+      self.__ensure_ghost_download_limit(recipient)
     elle.log.debug("transaction recipient has id %s" % recipient['_id'])
     _id = sender['_id']
     elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'
@@ -654,7 +675,7 @@ class Mixin:
       self.notifier.notify_some(
         notifier.PEER_TRANSACTION,
         recipient_ids = {transaction['recipient_id']},
-        message = transaction,
+        message = self._transaction_view(transaction),
       )
       self.__update_transaction_stats(
         sender,
@@ -668,7 +689,7 @@ class Mixin:
           time = False)
     else:
       transaction_id = self.database.transactions.insert(transaction)
-    if len(limit_reached) and False:
+    if len(limit_reached) and self.user_version >= (0, 9, 42):
       self.payment_required({
         'error': limit_reached[0][0],
         'reason': limit_reached[0][1],
@@ -681,13 +702,17 @@ class Mixin:
                      transaction, recipient,
                      send = recipient_device_id is None)
     recipient_view = self.__user_view(recipient)
-    return self.success({
+    res = {
       'created_transaction_id': transaction_id, # deprecated
-      'remaining_invitations': sender.get('remaining_invitations', 0),
+      'remaining_invitations': sender.get('remaining_invitations', 0), # deprecated
       'recipient_is_ghost': is_ghost, # deprecated
       'recipient': recipient_view,
       'transaction': self._transaction_view(transaction),
-      })
+    }
+    if is_ghost and not self.__user_id_premium(sender['_id']):
+      if self.__user_id_ghost_download_limited(recipient['_id']):
+        res.update({'status_info_code': error.GHOST_DOWNLOAD_LIMIT_REACHED[0]})
+    return self.success(res)
 
   def __delight(self, user, template, transaction, peer, send = True):
     if 'delight' not in user.get('emailing', {}):
@@ -803,6 +828,7 @@ class Mixin:
       # on an unknown status. Make them think clould_buffered is the
       # same as created.
       for t in res:
+        t = self._transaction_view(t)
         if t['status'] == transaction_status.CLOUD_BUFFERED:
           t['status'] = transaction_status.INITIALIZED
       # /FIXME
@@ -1117,7 +1143,7 @@ class Mixin:
         self.notifier.notify_some(
           notifier.PEER_TRANSACTION,
           recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
-          message = transaction,
+          message = self._transaction_view(transaction),
         )
         if transaction['sender_id'] == transaction['recipient_id'] and \
            status == transaction_status.FINISHED:
@@ -1411,10 +1437,11 @@ class Mixin:
         {'$limit': limit},
       ])['result']
     return {
-      "running_transactions": list(runnings),
-      "final_transactions": list(finals),
+      "running_transactions": [self._transaction_view(t) for t in runnings],
+      "final_transactions": [self._transaction_view(t) for t in finals],
     }
 
   # FIXME: fill and apply this everywhere relevant
   def _transaction_view(self, transaction):
+    transaction['id'] = transaction['_id'] # Start deprecating _id
     return transaction

@@ -1089,11 +1089,11 @@ namespace infinit
 
       CreatePeerTransactionResponse::CreatePeerTransactionResponse(
         User const& recipient,
-        std::string const& id,
-        bool recipient_is_ghost)
+        PeerTransaction const& transaction,
+        boost::optional<int32_t> status_info)
           : _recipient(recipient)
-          , _created_transaction_id(id)
-          , _recipient_is_ghost(recipient_is_ghost)
+          , _status_info(status_info)
+          , _transaction(transaction)
       {}
 
       CreatePeerTransactionResponse::CreatePeerTransactionResponse(
@@ -1106,9 +1106,9 @@ namespace infinit
       CreatePeerTransactionResponse::serialize(
         elle::serialization::Serializer& s)
       {
-        s.serialize("created_transaction_id", this->_created_transaction_id);
         s.serialize("recipient", this->_recipient);
-        s.serialize("recipient_is_ghost", this->_recipient_is_ghost);
+        s.serialize("status_info_code", this->_status_info);
+        s.serialize("transaction", this->_transaction);
       }
 
       UpdatePeerTransactionResponse::UpdatePeerTransactionResponse(
@@ -1156,9 +1156,9 @@ namespace infinit
         _check_account_limit(url, request);
         this->_handle_errors(request);
         SerializerIn input(url, request);
-        std::string created_transaction_id;
-        input.serialize("created_transaction_id", created_transaction_id);
-        return created_transaction_id;
+        PeerTransaction transaction;
+        input.serialize("transaction", transaction);
+        return transaction.id;
       }
 
       CreatePeerTransactionResponse
