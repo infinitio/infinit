@@ -301,6 +301,9 @@ namespace infinit
       void
       file_transfer_limit_reached(uint64_t limit, uint64_t transfer_size);
 
+      void
+      ghost_download_limit_reached(std::string const& ghost_id);
+
     /// User metrics implementation.
     protected:
       virtual
@@ -379,6 +382,10 @@ namespace infinit
       virtual
       void
       _file_transfer_limit_reached(uint64_t limit, uint64_t transfer_size);
+
+      virtual
+      void
+      _ghost_download_limit_reached(std::string const& ghost_id);
 
       /// UI metrics.
     public:

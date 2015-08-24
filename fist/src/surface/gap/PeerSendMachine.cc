@@ -523,6 +523,12 @@ namespace surface
         {
           status_info =
             static_cast<gap_Status>(transaction_response.status_info().get());
+          if (status_info == gap_ghost_download_limit_reached &&
+              this->state().metrics_reporter())
+          {
+            this->state().metrics_reporter()->ghost_download_limit_reached(
+              this->data()->recipient_id);
+          }
         }
         this->gap_status(gap_transaction_new, status_info);
       }

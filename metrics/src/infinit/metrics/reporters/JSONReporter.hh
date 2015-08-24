@@ -217,6 +217,9 @@ namespace infinit
       _file_transfer_limit_reached(uint64_t limit,
                                    uint64_t transfer_size) override;
 
+      void
+      _ghost_download_limit_reached(std::string const& ghost_id) override;
+
     /// Implementations of UI metrics.
     private:
       void
