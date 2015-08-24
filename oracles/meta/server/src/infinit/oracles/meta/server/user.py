@@ -421,6 +421,9 @@ class Mixin:
         referral_code = user.get('used_referral_link', None)
         if referral_code:
           res['referral_code'] = referral_code
+    plan = user.get('plan', 'basic') or 'basic'
+    if plan == 'basic' and self.eligible_for_plus(user['_id']):
+      self.__update_to_plus_if_needed(user['_id'])
     return user, res
 
   def _login_response(self,
@@ -2921,7 +2924,7 @@ class Mixin:
 
   def _change_plan(self, user, new_plan_name):
     current_plan = self.plans[user.get('plan', 'basic')]
-    if new_plan_name == 'basic' and self.__eligible_for_plus(user['_id']):
+    if new_plan_name == 'basic' and self.eligible_for_plus(user['_id']):
       new_plan_name = 'plus'
     new_plan = self.plans[new_plan_name]
     fset = dict()
@@ -2964,7 +2967,7 @@ class Mixin:
       res = {
         'plan': plan or user['plan']
       }
-      eligible_for_plus = self.__eligible_for_plus(user['_id'])
+      eligible_for_plus = self.eligible_for_plus(user['_id'])
       # Subscribing to a paying plan without source raises an error
       # Update user's payment source, represented by a token
       if stripe_token is not None:
@@ -3746,11 +3749,14 @@ class Mixin:
   ## Plans ##
   ## ----- ##
 
-  def __eligible_for_plus(self, referrer):
+  def eligible_for_plus(self, referrer):
     number_of_referred = self.__referred_by(referrer,
                                             registered_user = True).count()
     # The first you referrer gives you plus 2 send to self.
-    return number_of_referred >= 2
+    return self.__eligible_for_plus(number_of_referred)
+
+  def __eligible_for_plus(self, number_of_referrees):
+    return number_of_referrees >= 2
 
   ## ------------ ##
   ## Social posts ##
@@ -3885,22 +3891,28 @@ class Mixin:
     elle.log.trace('process referral for %s (referred by %s)' % (new_user['accounts'], referrals))
     #FIXME: send email
     for referrer in referrals:
-      update = {}
-      if self.__eligible_for_plus(referrer):
-        update['$set'] = {
-          'plan': 'plus',
-        }
-        self.database.users.update(
-          {
-            '_id': referrer,
-            '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
-          },
-          update)
+      self.__update_to_plus_if_needed(referrer)
     referrers = list(map(lambda x: self.user_from_identifier(
       x, fields = self.__referral_fields),
                          referrals))
     for user in referrers + [new_user]:
       self._quota_updated_notification(user)
+
+  def __update_to_plus_if_needed(self, user):
+    if self.eligible_for_plus(user):
+      update = {
+        '$set': {
+          'plan': 'plus',
+        }
+      }
+      res = self.database.users.update(
+        {
+          '_id': user,
+          '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
+        },
+        update)
+      return res['n'] == 1
+    return False
 
   ## ------ ##
   ## Quotas ##
@@ -3911,9 +3923,12 @@ class Mixin:
     # Get the user quota according to his plan or his custom account
     # limitations.
     user_quotas = user.get('quotas', {})
-    user_plan = self.plans[user.get('plan', 'basic')]['quotas']
     number_of_referred = self.__referred_by(user['_id'],
                                             registered_user = True).count()
+    plan = user.get('plan', 'basic')
+    if plan is None or plan == 'basic' and self.__eligible_for_plus(number_of_referred):
+      plan = 'plus'
+    user_plan = self.plans[plan]['quotas']
     social_posts = user.get('social_posts', [])
     social_posts = set((post['medium'] for post in social_posts))
     facebook_linked = 'facebook' in set((account['type']

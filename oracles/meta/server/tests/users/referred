@@ -19,6 +19,23 @@ with Meta() as meta:
   bob.login()
   assert alice.referrees[0]['has_logged_in'] == True
 
+# Reprocess referral at login if needed.
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  alice.post('user/invite', {'identifier': 'bob@infinit.io'})
+  alice.post('user/invite', {'identifier': 'eve@infinit.io'})
+  User(meta, 'bob@infinit.io').login()
+  User(meta, 'eve@infinit.io').login()
+  assertEq(alice.me['plan'], 'plus')
+  meta.database.users.update(
+    {'_id': bson.ObjectId(alice.id)},
+    {'$set': {'plan': 'basic'}})
+  assertEq(alice.me['plan'], 'basic')
+  alice.logout()
+  alice.login()
+  assertEq(alice.me['plan'], 'plus')
+
 # Retro compatiblity (referred_by).
 # Referred_by uses to be referred_by = (id, id, id).
 with Meta() as meta:
