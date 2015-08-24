@@ -20,6 +20,7 @@ def targets(action):
     yield '//fist-gui-qt/%s' % action
   if action == 'build':
     yield '//python'
-  # Run the functional tests on the Mac Mini only.
+  # Run the elle and functional tests on the Mac Mini only.
   if action == 'check' and osyst == 'osx':
+    yield '//elle/check'
     yield '//functional/check'
