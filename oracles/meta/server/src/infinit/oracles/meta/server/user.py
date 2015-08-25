@@ -3856,6 +3856,8 @@ class Mixin:
 
     def _recipient(entry):
       if entry['register_status'] != 'ok':
+        if len(entry['accounts']) == 0:
+          return 'deleted'
         return entry['accounts'][0]['id']
       else:
         return entry['email']

@@ -203,3 +203,19 @@ with Meta() as meta:
   User(meta, 'serge.karmazov@infinit.io', referral_code = jean_luc.referral_code).login()
   assertGT(jean_luc.link_quota, previous)
   assertEq(len(jean_luc.referrees), len(referrees) + 1)
+
+# Deleted users.
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  alice.post('user/invite', {'identifier': 'bob@infinit.io'})
+  bob = User(meta, 'bob@infinit.io')
+  assertEq(len(alice.referrees), 1)
+  bob.login()
+  assertEq(len(alice.referrees), 1)
+  bob.delete('user')
+  assertEq(len(alice.referrees), 1)
+  assertEq(alice.referrees[0]['recipient'], 'deleted')
+  alice.post('user/invite', {'identifier': 'eve@infinit.io'})
+  User(meta, 'eve@infinit.io').login()
+  assertEq(len(alice.referrees), 2)
