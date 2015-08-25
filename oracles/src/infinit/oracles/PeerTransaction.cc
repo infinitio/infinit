@@ -87,7 +87,15 @@ namespace infinit
     void
     PeerTransaction::serialize(elle::serialization::Serializer& s)
     {
-      s.serialize("id", this->id);
+      // FIXME: backwards compatibility for pre-0.9.42 snapshots.
+      try
+      {
+        s.serialize("id", this->id);
+      }
+      catch (elle::serialization::Error const&)
+      {
+        s.serialize("_id", this->id);
+      }
       s.serialize("sender_id", this->sender_id);
       s.serialize("sender_fullname", this->sender_fullname);
       s.serialize("sender_device_id", this->sender_device_id);
