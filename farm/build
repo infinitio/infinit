@@ -5,6 +5,11 @@ import subprocess
 import sys
 import targets
 
-os.chdir('%s' % os.environ['DIR_BUILD'])
+arch, osyst, comp = os.environ['BUILDFARM_NAME'].split('-')
+
+os.chdir(os.environ['DIR_BUILD'])
+jobs = os.environ['JOBS']
+if osyst == 'osx':
+  jobs = str(int(int(jobs) / 2))
 subprocess.check_call(
-  ['python3', 'drake', '-j', os.environ['JOBS'],] + list(targets.targets('build')))
+  ['python3', 'drake', '-j', jobs] + list(targets.targets('build')))
