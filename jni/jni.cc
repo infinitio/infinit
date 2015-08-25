@@ -1366,6 +1366,12 @@ extern "C" jobject Java_io_infinit_State_gapQuotas(
   return res;
 }
 
+extern "C" jlong Java_io_infinit_State_gapSendToSelfLimitMetric(
+  JNIEnv* env, jobject thiz, jlong handle, jint value)
+{
+  return gap_send_to_self_limit_metric((gap_State*)handle, value);
+}
+
 void to_plain_invitation(JNIEnv* env, surface::gap::PlainInvitation const& in,
                          jobject out)
 {
