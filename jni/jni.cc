@@ -23,6 +23,8 @@
 #include <jni.h>
 #include <elle/os/environ.hh>
 #include <surface/gap/gap.hh>
+#include <surface/gap/State.hh>
+#include <surface/gap/gap_bridge.hh>
 
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
@@ -192,7 +194,9 @@ static jobject to_linktransaction(JNIEnv* env, surface::gap::LinkTransaction con
 {
   static jclass lt_class = 0;
   static jclass ts_class;
+  static jclass gs_class;
   static jmethodID ts_get_value;
+  static jmethodID gs_get_value;
   static jmethodID lt_init;
   if (!lt_class)
   {
@@ -202,6 +206,9 @@ static jobject to_linktransaction(JNIEnv* env, surface::gap::LinkTransaction con
     ts_class = env->FindClass("io/infinit/TransactionStatus");
     ts_class = (jclass)env->NewGlobalRef(ts_class);
     ts_get_value = env->GetStaticMethodID(ts_class, "GetValue", "(I)Lio/infinit/TransactionStatus;");
+    gs_class = env->FindClass("io/infinit/GapStatus");
+    gs_class = (jclass)env->NewGlobalRef(gs_class);
+    gs_get_value = env->GetStaticMethodID(gs_class, "GetValue", "(I)Lio/infinit/GapStatus;");
   }
   jobject res = env->NewObject(lt_class, lt_init);
   jobject tmp;
@@ -232,6 +239,11 @@ static jobject to_linktransaction(JNIEnv* env, surface::gap::LinkTransaction con
   tmp = env->NewStringUTF(t.meta_id.c_str());
   env->SetObjectField(res, f, tmp);
   env->DeleteLocalRef(tmp);
+  f = env ->GetFieldID(lt_class, "statusInfo", "Lio/infinit/GapStatus;");
+  jobject si = env->CallStaticObjectMethod(gs_class, gs_get_value,
+    t.status_info? *t.status_info : 1);
+  env->SetObjectField(res, f, si);
+  env->DeleteLocalRef(si);
   return res;
 }
 static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction const& t)
@@ -239,7 +251,9 @@ static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction con
   static jclass pt_class = 0;
   static jclass string_class;
   static jclass ts_class;
+  static jclass gs_class;
   static jmethodID pt_init;
+  static jmethodID gs_get_value;
   static jmethodID string_init;
   static jmethodID ts_get_value;
   if (!pt_class)
@@ -253,6 +267,9 @@ static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction con
     ts_class = env->FindClass("io/infinit/TransactionStatus");
     ts_class = (jclass)env->NewGlobalRef(ts_class);
     ts_get_value = env->GetStaticMethodID(ts_class, "GetValue", "(I)Lio/infinit/TransactionStatus;");
+    gs_class = env->FindClass("io/infinit/GapStatus");
+    gs_class = (jclass)env->NewGlobalRef(gs_class);
+    gs_get_value = env->GetStaticMethodID(gs_class, "GetValue", "(I)Lio/infinit/GapStatus;");
   }
   jobject res = env->NewObject(pt_class, pt_init);
   jobject tmp;
@@ -304,6 +321,11 @@ static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction con
   tmp = env->NewStringUTF(t.meta_id.c_str());
   env->SetObjectField(res, f, tmp);
   env->DeleteLocalRef(tmp);
+  f = env ->GetFieldID(pt_class, "statusInfo", "Lio/infinit/GapStatus;");
+  jobject si = env->CallStaticObjectMethod(gs_class, gs_get_value,
+    t.status_info? *t.status_info : 1);
+  env->SetObjectField(res, f, si);
+  env->DeleteLocalRef(si);
   return res;
 }
 
@@ -1316,6 +1338,32 @@ extern "C" jlong Java_io_infinit_State_gapDisconnect(
   JNIEnv* env, jobject thiz, jlong handle)
 {
   return gap_disconnect((gap_State*)handle);
+}
+
+extern "C" jobject Java_io_infinit_State_gapQuotas(
+  JNIEnv* env, jobject thiz, jlong handle)
+{
+  gap_State* st = (gap_State*)handle;
+  surface::gap::State& s = st->state();
+  infinit::oracles::meta::Account a = s.account();
+  static jclass q_class = 0;
+  static jmethodID q_init;
+  if (!q_class)
+  {
+    q_class = env->FindClass("io/infinit/Quotas");
+    q_class = (jclass)env->NewGlobalRef(q_class);
+    q_init = env->GetMethodID(q_class, "<init>", "()V");
+  }
+  jobject res = env->NewObject(q_class, q_init);
+  jfieldID f = env->GetFieldID(q_class, "send_to_self_current", "J");
+  env->SetLongField(res, f, a.quotas.value().send_to_self.used);
+  f = env->GetFieldID(q_class, "send_to_self_limit", "J");
+  env->SetLongField(res, f,
+                     a.quotas.value().send_to_self.quota? *a.quotas.value().send_to_self.quota : -1);
+  f = env->GetFieldID(q_class, "p2p_limit", "J");
+  env->SetLongField(res, f, a.quotas.value().p2p.limit?
+    *a.quotas.value().p2p.limit : -1);
+  return res;
 }
 
 void to_plain_invitation(JNIEnv* env, surface::gap::PlainInvitation const& in,
