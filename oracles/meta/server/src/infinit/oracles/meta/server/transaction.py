@@ -338,8 +338,7 @@ class Mixin:
         sender_premium = self.__user_id_premium(transaction['sender_id'])
         has_download_link = transaction.get('download_link')
         if no_ghost_downloads and has_download_link and not sender_premium:
-          pass # XXX: Wait for the website to be released.
-          # del transaction['download_link']
+          del transaction['download_link']
         return transaction
 
   # FIXME: Nuke this ! Use the user fetching routines from user.py and
