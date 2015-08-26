@@ -1029,6 +1029,19 @@ class User(Client):
                 'status': status,
               })
 
+  def create_team(self, name, stripe_token):
+    return self.post('teams',
+                     {
+                       'name': name,
+                       'stripe_token': stripe_token
+                    })
+
+  def add_team_member(self, user_id):
+    return self.put('team/members/%s' % user_id)
+
+  def delete_team_member(self, user_id):
+    return self.delete('team/members/%s' % user_id)
+
 # Fake facebook.
 class Facebook:
 

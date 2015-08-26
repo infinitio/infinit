@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+
+import datetime
+
+from utils import *
+from infinit.oracles.meta import error
+
+with Stripe() as stripe:
+  # Creating and deleting.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    leader = User(meta, 'boss@infinit.io')
+    leader.login()
+    team = leader.create_team(
+      name = 'infinit', stripe_token = stripe.pay(leader.email))
+    team = leader.get('team')
+    assertEq(team['name'], 'infinit')
+    assertEq(team['admin']['_id'], leader.id)
+    assertEq(len(team['members']), 1)
+    assertEq(team['members'][0]['_id'], leader.id)
+
+    throws(lambda: leader.delete('team'), 403)
+    leader.delete('team', {'password': leader.password})
+    throws(lambda: leader.get('team'), 404)
+
+  # Team uniqueness.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    leader = User(meta, 'boss@infinit.io')
+    leader.login()
+    team = leader.create_team(
+      name = 'infinit', stripe_token = stripe.pay(leader.email))
+    # Leader already has a team.
+    throws(lambda: leader.create_team(
+      name = 'bombarde', stripe_token = stripe.pay(leader.email)),
+           401)
+
+  # Team name uniqueness.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    leader = User(meta, 'boss@infinit.io')
+    leader.login()
+    team = leader.create_team(
+      name = 'infinit', stripe_token = stripe.pay(leader.email))
+    bob = User(meta, 'bob@infinit.io')
+    bob.login()
+    throws(lambda: bob.create_team(
+      name = 'infinit', stripe_token = stripe.pay(leader.email)),
+           409)
+    leader.put('team', {'name': 'bombarde'})
+    # 'infinit' is now available.
+    bob.create_team(
+      name = 'infinit', stripe_token = stripe.pay(leader.email))
+
+  # Adding and removing users.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    leader = User(meta, 'boss@infinit.io')
+    leader.login()
+    team = leader.create_team(
+      name = 'infinit', stripe_token = stripe.pay(leader.email))
+    # Invite an existing user.
+    baptiste = User(meta, 'baptiste@infinit.io')
+    leader.add_team_member(baptiste.id)
+    assertEq(len(leader.get('team')['members']), 2)
+    # Invite
+    raph = User(meta, 'raph@infinit.io')
+    leader.add_team_member(raph.id)
+    assertEq(len(leader.get('team')['members']), 3)
+    # Delete a user.
+    leader.delete_team_member(raph.id)
+    assertEq(len(leader.get('team')['members']), 2)
+
+  # Team view as member.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    leader = User(meta, 'boss@infinit.io')
+    leader.login()
+    team = leader.create_team(
+      name = 'infinit', stripe_token = stripe.pay(leader.email))
+    baptiste = User(meta, 'baptiste@infinit.io')
+    leader.add_team_member(baptiste.id)
+    baptiste.login()
+    # Get info about the team as non leader.
+    team = baptiste.get('team')
+    assertEq(len(team['members']), 2)
+    assertEq(team['admin']['_id'], leader.id)
+
+  # Deleting a team should remove all members.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    leader = User(meta, 'boss@infinit.io')
+    leader.login()
+    leader.create_team(
+      name = 'infinit', stripe_token = stripe.pay(leader.email))
+    baptiste = User(meta, 'baptiste@infinit.io')
+    leader.add_team_member(baptiste.id)
+    # Get info about the team as non leader.
+    baptiste.login()
+    team = baptiste.get('team')
+    assertEq(len(team['members']), 2)
+    assertEq(team['admin']['_id'], leader.id)
+    leader.delete('team', {'password': leader.password})
+    throws(lambda: baptiste.get('team'), 404)
+    throws(lambda: leader.get('team'), 404)
+
+  # Invite user who already has a team (and get out of a team).
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    leader = User(meta, 'boss@infinit.io')
+    leader.login()
+    team_infinit = leader.create_team(
+      name = 'infinit', stripe_token = stripe.pay(leader.email))
+    dropbox = User(meta, 'boss@dropbox.com')
+    dropbox.login()
+    team_dropbox = dropbox.create_team(
+      name = 'dropbox', stripe_token = stripe.pay(dropbox.email))
+    invitee = User(meta, 'invitee@infinit.io')
+    invite_guido = lambda x: x.add_team_member(invitee.id)
+    invite_guido(dropbox)
+    throws(lambda: invite_guido(leader), 403)
+    invitee.login()
+    assertEq(invitee.get('team')['name'], team_dropbox['name'])
+    throws(lambda: invitee.delete('team/leave'), 401)
+    invitee.post('team/leave', {'password': invitee.password})
+    invite_guido(leader)
+    assertEq(invitee.get('team')['name'], team_infinit['name'])

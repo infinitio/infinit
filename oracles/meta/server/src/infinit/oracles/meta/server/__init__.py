@@ -48,6 +48,7 @@ from . import root
 from . import transaction
 from . import trophonius
 from . import user
+from . import team
 from . import waterfall
 from . import facebook
 from . import shortener
@@ -83,6 +84,7 @@ class Meta(bottle.Bottle,
            device.Mixin,
            features.Mixin,
            trophonius.Mixin,
+           team.Mixin,
            apertus.Mixin,
            waterfall.Waterfall,
            link_generation.Mixin,
@@ -358,6 +360,12 @@ class Meta(bottle.Bottle,
     # Plans.
     #---------------------------------------------------------------------------
     self.__database.plans.ensure_index([('name', 1)], unique = True)
+
+    #---------------------------------------------------------------------------
+    # Teams.
+    #---------------------------------------------------------------------------
+    self.__database.teams.ensure_index([('name', 1)], unique = True)
+    self.__database.teams.ensure_index([('members', 1)], unique = True)
 
   @property
   def mailer(self):

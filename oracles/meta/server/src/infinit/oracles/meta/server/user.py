@@ -169,6 +169,10 @@ class Mixin:
     return res
 
   @property
+  def user_view_fields(self):
+    return self.__user_view_fields
+
+  @property
   def __referral_fields(self):
     return [
       'accounts',
@@ -197,6 +201,7 @@ class Mixin:
       'quota',
       'total_link_size',
     ] + self.__referral_fields
+
 
   def __user_fetch(self, query, fields = None):
     if fields is None or 'has_avatar' not in fields:
