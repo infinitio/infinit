@@ -763,7 +763,7 @@ class Mixin:
     # For a smoother transition, sessions registered as email are
     # still available.
     methods = {
-      'identifier': self._user_by_id,
+      'identifier': self.user_by_id,
       'email': self.user_by_email,
     }
     with dump('get user from session: %s' % bottle.request.session):
@@ -1376,7 +1376,7 @@ class Mixin:
   def accounts_users_api(self, user):
     fields = ['accounts']
     if isinstance(user, bson.ObjectId):
-      user = self._user_by_id(user, fields = fields)
+      user = self.user_by_id(user, fields = fields)
     else:
       user = self.user_by_id_or_email(user, fields = fields)
     if not self.admin and user['_id'] != self.user['_id']:
@@ -1966,7 +1966,12 @@ class Mixin:
     assert isinstance(id, bson.ObjectId)
     return {'_id': id}
 
-  def _user_by_id(self, _id, fields, ensure_existence = True):
+  def users_by_ids(self, ids, fields = None):
+    for id in ids:
+      assert isinstance(id, bson.ObjectId)
+    return self.__users_fetch({'_id': {'$in': ids}}, fields)
+
+  def user_by_id(self, _id, fields, ensure_existence = True):
     """Get a user using by id.
 
     _id -- the _id of the user.
@@ -2140,9 +2145,9 @@ class Mixin:
     else:
       try:
         id = bson.ObjectId(id_or_email)
-        return self._user_by_id(id,
-                                fields = fields,
-                                ensure_existence = ensure_existence)
+        return self.user_by_id(id,
+                               fields = fields,
+                               ensure_existence = ensure_existence)
       except bson.errors.InvalidId:
         self.bad_request('invalid user id: %r' % id_or_email)
 
@@ -2212,9 +2217,6 @@ class Mixin:
                                  offset : int = 0):
     return self.__users_by_emails_search(emails, limit, offset)
 
-  def users_from_identifiers(self, identifiers, fields = None):
-    return [self.user_from_identifier(i, fields = fields) for i in identifiers]
-
   def user_from_identifier(self,
                            identifier,
                            country_code = None,
@@ -2229,11 +2231,11 @@ class Mixin:
     # ObjectIds
     if isinstance(identifier, bson.ObjectId):
       assert account_type is None or account_type == 'id'
-      return self._user_by_id(identifier, **args)
+      return self.user_by_id(identifier, **args)
     # Explicit cases
     if account_type is not None:
       if account_type == 'id':
-        return self._user_by_id(self.__object_id(identifier), **args)
+        return self.user_by_id(self.__object_id(identifier), **args)
       elif account_type == 'email':
         return self.user_by_email(identifier, **args)
       elif account_type == 'facebook':
@@ -2265,7 +2267,7 @@ class Mixin:
       return self.user_by_facebook_id(identifier, **args)
     # Try as an id
     try:
-      return self._user_by_id(bson.ObjectId(identifier), **args)
+      return self.user_by_id(bson.ObjectId(identifier), **args)
     except:
       pass
     # Try as a handle
@@ -2306,8 +2308,8 @@ class Mixin:
       assert isinstance(lhs, bson.ObjectId)
       assert isinstance(rhs, bson.ObjectId)
 
-      # lh_user = self._user_by_id(lhs)
-      # rh_user = self._user_by_id(rhs)
+      # lh_user = self.user_by_id(lhs)
+      # rh_user = self.user_by_id(rhs)
 
       # if lh_user is None or rh_user is None:
       #   raise Exception("unknown user")
@@ -2397,7 +2399,7 @@ class Mixin:
     assert isinstance(user_id, bson.ObjectId)
     # FIXME: surely that user is already fetched. It's probably self
     # anyway ...
-    user = self._user_by_id(user_id, fields = ['swaggers'])
+    user = self.user_by_id(user_id, fields = ['swaggers'])
     swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
     d = {"user_id" : user_id}
     d.update(data)
@@ -2517,9 +2519,9 @@ class Mixin:
                      date: int = 0,
                      no_place_holder: bool = False,
                      ghost_code: str = ''):
-    user = self._user_by_id(id,
-                            ensure_existence = False,
-                            fields = ['small_avatar'])
+    user = self.user_by_id(id,
+                           ensure_existence = False,
+                           fields = ['small_avatar'])
     return self.get_avatar(user = user,
                            date = date,
                            no_place_holder = no_place_holder,
@@ -2927,7 +2929,7 @@ class Mixin:
       version = version)
 
   def change_plan(self, uid, new_plan):
-    return self._change_plan(self._user_by_id(uid, self.__user_self_fields),
+    return self._change_plan(self.user_by_id(uid, self.__user_self_fields),
                              new_plan)
 
   def _change_plan(self, user, new_plan_name):
