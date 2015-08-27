@@ -2212,6 +2212,9 @@ class Mixin:
                                  offset : int = 0):
     return self.__users_by_emails_search(emails, limit, offset)
 
+  def users_from_identifiers(self, identifiers, fields = None):
+    return [self.user_from_identifier(i, fields = fields) for i in identifiers]
+
   def user_from_identifier(self,
                            identifier,
                            country_code = None,
