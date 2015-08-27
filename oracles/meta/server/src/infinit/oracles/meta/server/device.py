@@ -57,7 +57,7 @@ class Mixin:
     else:
       if self.user is None:
         return None
-      user = self._user_by_id(self.user['_id'], fields = ['devices'])
+      user = self.user_by_id(self.user['_id'], fields = ['devices'])
       devices = list(filter(lambda x: x['id'] == device, user['devices']))
       if len(devices):
         device = devices[0]
@@ -203,7 +203,7 @@ class Mixin:
   def devices_users_api(self, user):
     fields = ['devices']
     if isinstance(user, bson.ObjectId):
-      user = self._user_by_id(user, fields = fields)
+      user = self.user_by_id(user, fields = fields)
     else:
       user = self.user_by_id_or_email(user, fields = fields)
     if not self.admin and user['_id'] != self.user['_id']:
@@ -327,7 +327,7 @@ class Mixin:
                       bson.ObjectId)
     if device_id is not None:
       assert isinstance(device_id, uuid.UUID)
-      user = self._user_by_id(user_id)
+      user = self.user_by_id(user_id)
       if str(device_id) not in map(lambda x: x['id'], user['devices']):
         raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
       return self.device(id = str(device_id),
