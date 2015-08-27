@@ -14,7 +14,7 @@ with Stripe() as stripe:
       name = 'infinit', stripe_token = stripe.pay(leader.email))
     team = leader.get('team')
     assertEq(team['name'], 'infinit')
-    assertEq(team['admin']['_id'], leader.id)
+    assertEq(team['admin'], leader.id)
     assertEq(len(team['members']), 1)
     assertEq(team['members'][0]['_id'], leader.id)
 
@@ -79,7 +79,7 @@ with Stripe() as stripe:
     # Get info about the team as non leader.
     team = baptiste.get('team')
     assertEq(len(team['members']), 2)
-    assertEq(team['admin']['_id'], leader.id)
+    assertEq(team['admin'], leader.id)
 
   # Deleting a team should remove all members.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -93,7 +93,7 @@ with Stripe() as stripe:
     baptiste.login()
     team = baptiste.get('team')
     assertEq(len(team['members']), 2)
-    assertEq(team['admin']['_id'], leader.id)
+    assertEq(team['admin'], leader.id)
     leader.delete('team', {'password': leader.password})
     throws(lambda: baptiste.get('team'), 404)
     throws(lambda: leader.get('team'), 404)
@@ -118,3 +118,30 @@ with Stripe() as stripe:
     invitee.post('team/leave', {'password': invitee.password})
     invite_guido(leader)
     assertEq(invitee.get('team')['name'], team_infinit['name'])
+
+  # Team storage.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+
+    def get_a_link(user, size):
+      link = user.getalink(files = [('bite', size)])
+      user.link_update(link, transaction_status.FINISHED)
+      # Meta is updating quota by reading cloud storage file size which is
+      # not realy uploaded here, so insert set the value manually.
+      meta.database.links.update(
+        {'hash': link['hash']},
+        {'$set': {'file_size': size, 'quota_counted': True}})
+
+    leader = User(meta, 'julien@infinit.io')
+    leader.login()
+    team_infinit = leader.create_team(
+      name = 'infinit', stripe_token = stripe.pay(leader.email))
+    jean = User(meta, 'jean@infinit.io')
+    leader.add_team_member(jean.id)
+    jean.login()
+    jean_size = 10
+    link = get_a_link(jean, jean_size)
+    leader_size = 20
+    link = get_a_link(leader, leader_size)
+    res = leader.get('team')
+    assertEq(res['storage_used'], jean_size + leader_size)
+
