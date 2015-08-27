@@ -132,6 +132,9 @@ class Mixin:
       )
       if cus.subscriptions.total_count > 0:
           user['subscription_data'] = cus.subscriptions.data[0]
+    team = self.team_for_user(user)
+    if team:
+      user['team'] = team.view
     self.__plan_and_quotas(user)
     # Remove '_id' key, replaced earlier by 'id'.
     del user['_id']
