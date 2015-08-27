@@ -65,7 +65,7 @@ class Team(dict):
   def storage_used(self):
     res = self.__meta.database.links.aggregate([
       {'$match': {
-        'sender_id': {'$in': [bson.ObjectId(id) for id in self.member_ids]},
+        'sender_id': {'$in': self.member_ids},
         'quota_counted': True}
       },
       {'$group': {
@@ -81,7 +81,7 @@ class Team(dict):
 
   @property
   def admin_user(self):
-    return self.__meta.user_from_identifier(self.admin_id)
+    return self.__meta.user_by_id(self.admin_id)
 
   @property
   def creation_time(self):
@@ -101,11 +101,11 @@ class Team(dict):
 
   @property
   def member_users(self):
-    return self.__meta.users_from_identifiers(self.member_ids)
+    return self.__meta.users_by_ids(self.member_ids)
 
   @property
   def name(self):
-      return self['name']
+    return self['name']
 
   @property
   def view(self):
