@@ -120,6 +120,11 @@ class Team(dict):
     }
 
 class Mixin:
+  # ============================================================================
+  # Search.
+  # ============================================================================
+  def team_for_user(self, user, ensure_existence = False):
+    return Team.find(self, {'members': user['_id']}, ensure_existence)
 
   # ============================================================================
   # Creation.
@@ -142,7 +147,7 @@ class Mixin:
                   name,
                   stripe_token):
     user = self.user
-    team = Team.find(self, {'members': user['_id']})
+    team = self.team_for_user(user)
     if team:
       self.forbidden(
         {
@@ -202,7 +207,7 @@ class Mixin:
   @require_logged_in_fields(['password'])
   def delete_team(self, password):
     user = self.user
-    team = Team.find(self, {'members': user['_id']}, ensure_existence = True)
+    team = self.team_for_user(user, ensure_existence = True)
     self.__require_team_admin(team, user)
     self.__enforce_user_password(user, password)
     return self.__delete_specific_team(team)
@@ -235,8 +240,7 @@ class Mixin:
   @api('/team', method = 'PUT')
   @require_logged_in
   def update_team(self, name):
-    team = Team.find(self, {'members': self.user['_id']},
-                     ensure_existence = True)
+    team = self.team_for_user(self.user, ensure_existence = True)
     return team.edit({'$set': {'name': name}}).view
 
   @api('/team/<id>', method = 'PUT')
@@ -249,8 +253,7 @@ class Mixin:
   # Add member.
   # ============================================================================
   def __add_team_member(self, team, invitee):
-    old_team = Team.find(self, {'members': invitee['_id']},
-                         ensure_existence = False)
+    old_team = self.team_for_user(invitee)
     if old_team:
       return self.forbidden(
         {
@@ -273,7 +276,7 @@ class Mixin:
   def add_team_member(self, identifier : utils.identifier):
     invitee = self.user_from_identifier(identifier)
     user = self.user
-    team = Team.find(self, {'members': user['_id']}, ensure_existence = True)
+    team = self.team_for_user(user, ensure_existence = True)
     self.__require_team_admin(team, user)
     return self.__add_team_member(team, invitee)
 
@@ -301,7 +304,7 @@ class Mixin:
   def remove_team_member(self, identifier : utils.identifier):
     member = self.user_from_identifier(identifier)
     user = self.user
-    team = Team.find(self, {'members': user['_id']}, ensure_existence = True)
+    team = self.team_for_user(user, ensure_existence = True)
     self.__require_team_admin(team, user)
     return self.__remove_team_member(team, member)
 
@@ -321,5 +324,5 @@ class Mixin:
                   password):
     user = self.user
     self.__enforce_user_password(user, password)
-    team = Team.find(self, {'members': user['_id']}, ensure_existence = True)
+    team = self.team_for_user(user, ensure_existence = True)
     return self.__remove_team_member(team, user)
