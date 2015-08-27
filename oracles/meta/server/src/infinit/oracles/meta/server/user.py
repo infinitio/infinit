@@ -2895,7 +2895,11 @@ class Mixin:
     else:
       res.update(self.devices_users_api(user['_id']))
     res.update(self.accounts_users_api(user['_id']))
-    custom_domains = user.get('account', {}).get('custom_domains', [])
+    team = self.team_for_user(user)
+    if team:
+      custom_domains = team.get('shared_settings', {}).get('custom_domains', [])
+    else:
+      custom_domains = user.get('account', {}).get('custom_domains', [])
     quotas = self.__quotas(user)
     res['account'] = {
       'plan': user.get('plan', 'basic') or 'basic',
@@ -3406,6 +3410,8 @@ class Mixin:
   ## -------------- ##
 
   def __user_account_domains_edit(self, name, action):
+    if self.team_for_user(self.user):
+      self.forbidden({'reason': 'User is part of team'})
     domain = {'name': name}
     user = self.database.users.find_and_modify(
       {'_id': self.user['_id']},
