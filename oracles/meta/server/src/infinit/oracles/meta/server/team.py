@@ -62,18 +62,62 @@ class Team(dict):
     return self
 
   @property
-  def view(self):
-    res = self.__meta.database.users.find(
-      {'_id': {'$in': self['members']}},
-      fields = self.__meta.user_view_fields)
-    self['members'] = list(res)
-    self['admin'] = [item for item in self['members']
-                     if item['_id'] == self['admin']][0]
-    return self
+  def storage_used(self):
+    res = self.__meta.database.links.aggregate([
+      {'$match': {
+        'sender_id': {'$in': [bson.ObjectId(id) for id in self.member_ids]},
+        'quota_counted': True}
+      },
+      {'$group': {
+        '_id': None,
+        'total': {'$sum': '$file_size'}}
+      }
+    ])['result']
+    return res[0]['total'] if len(res) else 0
+
+  @property
+  def admin_id(self):
+    return self['admin']
+
+  @property
+  def admin_user(self):
+    return self.__meta.user_from_identifier(self.admin_id)
+
+  @property
+  def creation_time(self):
+    return self['creation_time']
 
   @property
   def id(self):
     return self.__id
+
+  @property
+  def member_ids(self):
+    return self['members']
+
+  @property
+  def modification_time(self):
+    return self['modification_time']
+
+  @property
+  def member_users(self):
+    return self.__meta.users_from_identifiers(self.member_ids)
+
+  @property
+  def name(self):
+      return self['name']
+
+  @property
+  def view(self):
+    return {
+      'admin': self.admin_id,
+      'creation_time' : self.creation_time,
+      'id': self.id,
+      'members': self.member_users,
+      'modification_time' : self.modification_time,
+      'name' : self.name,
+      'storage_used': self.storage_used,
+    }
 
 class Mixin:
 
@@ -134,7 +178,7 @@ class Mixin:
   # Deletion.
   # ============================================================================
   def __require_team_admin(self, team, user):
-    if team['admin'] != user['_id']:
+    if team.admin_id != user['_id']:
       return self.forbidden(
         {
           'error': 'not_the_team_admin',
@@ -146,11 +190,11 @@ class Mixin:
       return self.unauthorized(
         {
           'error': 'wrong_password',
-          'message': 'Password don\' match.'
+          'message': 'Password don\'t match.'
         })
 
   def __delete_specific_team(self, team):
-    res = self.database.teams.remove(team['id'])
+    res = self.database.teams.remove(team.id)
     assert res['n'] == 1
     return {}
 
