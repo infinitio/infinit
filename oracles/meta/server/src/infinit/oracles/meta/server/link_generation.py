@@ -586,12 +586,16 @@ class Mixin:
         fields = ['plan',
                   'account.custom_domains',
                   'account.default_background'])
+      team = self.team_for_user(owner)
       if custom_domain is not None:
-        self.require_premium(owner)
-        account = owner.get('account')
+        if team:
+          settings = team.get('shared_settings')
+        else:
+          self.require_premium(owner)
+          settings = owner.get('account')
         domains = (d['name']
-                   for d in (account.get('custom_domains', ())
-                             if account is not None else ()))
+                   for d in (settings.get('custom_domains', ())
+                             if settings is not None else ()))
         if custom_domain not in domains:
           self.payment_required({
             'reason': 'invalid custom domain: %s' % custom_domain,
@@ -669,8 +673,11 @@ class Mixin:
         message = owner_link,
       )
       if web_link.get('background') is None:
-        web_link['background'] = \
-          owner.get('account', {}).get('default_background')
+        if team:
+          background = team.get('shared_settings', {}).get('default_background')
+        else:
+          background = owner.get('account', {}).get('default_background')
+        web_link['background'] = background
       return web_link
 
   @api('/links')
