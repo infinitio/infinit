@@ -152,6 +152,7 @@ class Meta(bottle.Bottle,
     bottle.Bottle.__init__(self)
     link_generation.Mixin.__init__(self)
     user.Mixin.__init__(self)
+    plans.Mixin.__init__(self)
     self.catchall = debug
     bottle.debug(debug)
     # Plugins.
@@ -223,21 +224,6 @@ class Meta(bottle.Bottle,
     # Show deprecation warnings. How is this not the default ...
     import warnings
     warnings.simplefilter('default', DeprecationWarning)
-    # Plans.
-    if self.database.plans.count() == 0:
-      self.database.plans.insert(plans.basic)
-      self.database.plans.insert(plans.plus)
-      self.database.plans.insert(plans.premium)
-
-  @property
-  def plans(self):
-    # XXX: Could be cached.
-    plans = {}
-    for plan in self.database.plans.find():
-      plans[plan['name']] = plan
-    # XXX: Dirty.
-    plans[None] = plans['basic']
-    return plans
 
   @property
   def gcs(self):
@@ -361,6 +347,8 @@ class Meta(bottle.Bottle,
     # Plans.
     #---------------------------------------------------------------------------
     self.__database.plans.ensure_index([('name', 1)], unique = True)
+    self.__database.plans.ensure_index([('quotas.links.quota', 1)],
+                                       unique = False, sparse = False)
 
     #---------------------------------------------------------------------------
     # Teams.

@@ -9,6 +9,26 @@ import stripe
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Plan'
 
 class Plan(dict):
+
+  # ----------- #
+  # Properties. #
+  # ----------- #
+  @property
+  def name(self):
+    """Return the plan name.
+    """
+    return self.get('name', self['stripe']['name'])
+
+  @property
+  def links_quota(self):
+    """Return the associated plan link quota.
+    All plans *must* have quotas.links.quota.
+    """
+    return int(self['quotas']['links']['quota'])
+
+  # ------------- #
+  # Construction. #
+  # ------------- #
   def __init__(
       self,
       meta,
@@ -22,9 +42,16 @@ class Plan(dict):
     self.__stripe_info = Plan.__fill_missing_stripe_fields(stripe_info)
     self.__stripe_info['name'] = self.__stripe_info['name'].strip()
     self['team'] = True
+    # Default storage.
+    self['quotas'] = {'links': {'quota': int(100e9)}}
     self.update(body)
     self['creation_time'] = meta.now
+    # Check properties.
+    self.links_quota
 
+  # ------- #
+  # Saving. #
+  # ------- #
   def save(self):
     """Int the plan to the database and save it on stripe.
     self['name'] has to be unique.
@@ -54,8 +81,16 @@ class Plan(dict):
     elle.log.debug('result: %s' % res)
     return Plan.from_data(self.__meta, res)
 
+  # -------- #
+  # Finding. #
+  # -------- #
   @staticmethod
   def find(meta, id, ensure_existence = False):
+    elle.log.debug('find %s (ensure_existence: %s)' % (id, ensure_existence))
+    return Plan._find(meta, {'_id': id}, ensure_existence = ensure_existence)
+
+  @staticmethod
+  def _find(meta, query, ensure_existence = False):
     """Return a plan from it's id.
     Raise of 404 if the plan is not present in the database and ensure_existence
     is set.
@@ -64,7 +99,7 @@ class Plan(dict):
     ensure_existence -- Raise a 404 ou return None.
     """
     elle.log.debug('find %s (ensure_existence: %s)' % (id, ensure_existence))
-    plan_db = meta.database.plans.find_one({'_id': id})
+    plan_db = meta.database.plans.find_one(query)
     if plan_db is None:
       if ensure_existence:
         return Plan.not_found(meta)
@@ -86,6 +121,9 @@ class Plan(dict):
     del res['_id']
     return res
 
+  # -------- #
+  # Editing. #
+  # -------- #
   editable_stripe_fields = ['name', 'metadata', 'statement_descriptor']
   @staticmethod
   def edit(meta, id, update):
@@ -145,7 +183,9 @@ class Plan(dict):
       except pymongo.errors.DuplicateKeyError:
         return Plan.conflict(meta, update['name'])
     return Plan.find(meta, id = id, ensure_existence = True)
-
+  # --------- #
+  # Deleting. #
+  # --------- #
   @staticmethod
   def delete(meta, id, force):
     """Delete the specified plan.
@@ -177,6 +217,15 @@ class Plan(dict):
     assert False
 
   @property
+  def view(self):
+    """Return a view of the plan.
+    """
+    import copy
+    res = copy.copy(self)
+    res['name'] = self.name
+    return sort_dict(res)
+
+  @property
   def teams(self):
     """List the team currently using the plan.
     PS: This shouldn't be in plans (teams should have access to plan, plan
@@ -184,18 +233,9 @@ class Plan(dict):
     """
     return self.database.teams.find({'plan': self['id']})
 
-  @property
-  def view(self):
-    """Return a view of the plan.
-    """
-    import copy
-    res = copy.copy(self)
-    res['name'] = res['stripe']['name']
-    return sort_dict(res)
-
-  # --------------------------#
+  # ------------------------- #
   # Stripe fields compliance. #
-  # --------------------------#
+  # ------------------------- #
   @staticmethod
   def __required_fields(meta, info):
     for field in ['name']:
@@ -219,9 +259,9 @@ class Plan(dict):
         stripe_info[field] = required_fields[field]
     return stripe_info
 
-  # -------#
+  # ------ #
   # Errors #
-  # -------#
+  # ------ #
   @staticmethod
   def not_found(meta):
     return meta.not_found(
@@ -247,18 +287,31 @@ class Plan(dict):
       })
 
 class Mixin:
-  ##############################################################################
-  # Create a plan.
-  ##############################################################################
+
+  def __init__(self):
+    self.__check_plans_integrity()
+
+  @property
+  def plans(self):
+    plans = {}
+    for plan in self.database.plans.find():
+      plans[plan['name']] = plan
+    # XXX: Dirty.
+    plans[None] = plans['basic']
+    return plans
+
+  # -------------- #
+  # Create a plan. #
+  # -------------- #
   @api('/plans', method = 'POST')
   @require_admin
   def create_plan(self, body, stripe_info, team_plan : bool = True):
     return Plan(self, stripe_info = stripe_info, body = body,
                 team = team_plan).save().view
 
-  ##############################################################################
-  # Get plans.
-  ##############################################################################
+  # ---------- #
+  # Get plans. #
+  # ---------- #
   def __plans(self, query = {}, fields = {}, team_plans_only = True):
     if team_plans_only:
       query['team'] = True
@@ -277,136 +330,55 @@ class Mixin:
                       in self.__plans(fields = None,
                                       team_plans_only = team_plans_only)]}
 
-  ##############################################################################
-  # Get a plan.
-  ##############################################################################
+  # ----------- #
+  # Get a plan. #
+  # ----------- #
   @api('/plan/<id>', method = 'GET')
   @require_admin
   def view_plan(self, id: bson.ObjectId):
     return Plan.find(self, id, ensure_existence = True).view
 
-  ##############################################################################
-  # Update plan.
-  ##############################################################################
+  # -------------- #
+  # Update a plan. #
+  # -------------- #
   @api('/plan/<id>', method = 'PUT')
   @require_admin
   def update_plan(self, id: bson.ObjectId, update):
     return Plan.edit(self, id = id, update = update).view
 
-  ##############################################################################
-  # Delete plan.
-  ##############################################################################
+  # -------------- #
+  # Delete a plan. #
+  # -------------- #
   @api('/plan/<id>', method = 'DELETE')
   @require_admin
   def delete_plan(self, id: bson.ObjectId, force = False):
     Plan.delete(self, id = id, force = force)
     return {}
 
+  # ------ #
+  # Uitls. #
+  # ------ #
+  def __check_plans_integrity(self):
+    # Explore sub dictionnaries.
+    def explore(input, d = {}):
+      if not '.' in input:
+        assert input in d.keys()
+      else:
+        p = input.split('.')
+        explore('.'.join(p[1:]), d[p[0]])
 
-# Create Plan objects so we can unify the api.
-basic = {
-  "name": "basic",
-  "quotas": {
-    "p2p": {
-      "size_limit": int(1e10),
-    },
-    "links": {
-      "bonuses": {
-        "referrer": int(1e9),
-        "referree": int(5e8),
-        "facebook_linked": int(3e8),
-        "social_post": int(5e8),
-      },
-      "default_storage": int(1e9),
-    },
-    "send_to_self": {
-      "bonuses": {
-        "referrer": 2,
-        "social_post": 1,
-        "facebook_linked": 1
-      },
-      "default_quota": 5
-    }
-  }
-}
+    def check_field_existence(name):
+      for plan in ['basic', 'plus', 'premium']:
+        explore(name, self.plans[plan])
 
-plus = {
-  "name": "plus",
-  "quotas": {
-    "p2p": {
-      "size_limit": None
-    },
-    "links": {
-      "bonuses": {
-        "referrer": int(1e9),
-        "referree": int(5e8),
-        "facebook_linked": int(3e8),
-        "social_post": int(5e8),
-      },
-      "default_storage": int(5e9),
-    },
-    "send_to_self": {
-      "bonuses": {
-        "referrer": 2,
-        "social_post": 1,
-        "facebook_linked": 1
-      },
-      "default_quota": None
-    }
-  }
-}
-
-premium = {
-  "name": "premium",
-  "quotas": {
-    "p2p": {
-      "size_limit": None
-    },
-    "links": {
-      "bonuses": {
-        "referrer": int(1e9),
-        "referree": int(5e8),
-        "facebook_linked": int(3e8),
-        "social_post": int(5e8),
-      },
-      "default_storage": int(1e11),
-    },
-    "send_to_self": {
-      "bonuses": {
-        "referrer": 2,
-        "social_post": 1,
-        "facebook_linked": 1
-      },
-      "default_quota": None
-    }
-  }
-}
-
-
-# Make sure plans a well formatted.
-
-# Explore sub dictionnaries.
-def explore(input, d = {}):
-  if not '.' in input:
-    assert input in d.keys()
-  else:
-    p = input.split('.')
-    explore('.'.join(p[1:]), d[p[0]])
-
-def check_field_existence(name):
-  for plan in [basic, plus, premium]:
-    explore(name, plan)
-
-def check_failure(field):
-  try:
-    check_field_existence(field)
-    raise BaseException('test failed')
-  except AssertionError as e:
-    pass
-
-check_failure('unknown_field')
-check_failure('quotas.links.unknown_field')
-
-check_field_existence('quotas.p2p.size_limit')
-check_field_existence('quotas.links.bonuses.referrer')
-check_field_existence('quotas.send_to_self.bonuses.referrer')
+    def check_failure(field):
+      try:
+        check_field_existence(field)
+        raise BaseException('test failed')
+      except AssertionError as e:
+        pass
+    check_failure('unknown_field')
+    check_failure('quotas.links.unknown_field')
+    check_field_existence('quotas.p2p.size_limit')
+    check_field_existence('quotas.links.bonuses.referrer')
+    check_field_existence('quotas.send_to_self.bonuses.referrer')
