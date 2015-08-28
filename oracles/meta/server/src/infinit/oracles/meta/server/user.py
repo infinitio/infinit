@@ -3409,55 +3409,68 @@ class Mixin:
   ## Custom domains ##
   ## -------------- ##
 
-  def __user_account_domains_edit(self, name, action):
-    if self.team_for_user(self.user):
-      self.forbidden({'reason': 'User is part of team'})
+  def _custom_domain_notify(self, name, team = None):
+    if team:
+      recipients = team.member_ids
+    else:
+      recipients = [self.user['_id']]
+    self.notifier.notify_some(
+      notifier.MODEL_UPDATE,
+      message = {'account': {'custom_domain': name}},
+      recipient_ids = set(recipients),
+      version = (0, 9, 37))
+
+  def _custom_domain_edit(self, name, action, team = None):
+    assert action == 'add' or action == 'remove'
+    if action == 'add':
+      db_action = '$addToSet'
+    else:
+      db_action = '$pull'
+    if team:
+      collection = self.database.teams
+      search_id = team.id
+      setting = 'shared_settings'
+    else:
+      if self.team_for_user(self.user):
+        self.forbidden({'reason': 'User is part of team'})
+      collection = self.database.users
+      search_id = self.user['_id']
+      setting = 'account'
     domain = {'name': name}
-    user = self.database.users.find_and_modify(
-      {'_id': self.user['_id']},
-      {action: {'account.custom_domains': domain}},
+    item = collection.find_and_modify(
+      {'_id': search_id},
+      {db_action: {'%s.custom_domains' % setting: domain}},
       new = False,
     )
-    account = user.get('account')
+    setting = item.get(setting)
     domains = \
-      account.get('custom_domains') if account is not None else ()
-    return next(filter(lambda d: d['name'] == name, domains), None), domain
+      setting.get('custom_domains') if setting is not None else ()
+    old, new = next(filter(lambda d: d['name'] == name, domains), None), domain
+    if action == 'add':
+      name = new.get('name', '')
+    else:
+      name = ''
+    if action == 'add' or old is not None:
+      self._custom_domain_notify(name, team = team)
+    return old, new
 
   @api('/user/account/custom_domains/<name>', method = 'PUT')
   @require_logged_in
   def user_account_domains_post_api(self, name):
-    old, new = self.__user_account_domains_edit(name, '$addToSet')
+    old, new = self._custom_domain_edit(name, 'add')
     if old is None:
       bottle.response.status = 201
-    self.notifier.notify_some(
-      notifier.MODEL_UPDATE,
-      message = {
-        'account': {
-          'custom_domain': new.get('name', ''),
-        }
-      },
-      recipient_ids = {self.user['_id']},
-      version = (0, 9, 37))
     return new
 
   @api('/user/account/custom_domains/<name>', method = 'DELETE')
   @require_logged_in
   def user_account_patch_api(self, name):
-    old, new = self.__user_account_domains_edit(name, '$pull')
+    old, new = self._custom_domain_edit(name, 'remove')
     if old is None:
       self.not_found({
         'reason': 'custom domain %s not found' % name,
         'custom-domain': name,
       })
-    self.notifier.notify_some(
-      notifier.MODEL_UPDATE,
-      message = {
-        'account': {
-          'custom_domain': '',
-        }
-      },
-      recipient_ids = {self.user['_id']},
-      version = (0, 9, 37))
     return new
 
   @api('/user/account', method = 'GET')
