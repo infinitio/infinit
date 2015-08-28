@@ -3290,24 +3290,28 @@ class Mixin:
     return res
 
   ## ------------------ ##
-  ## User images helper ##
+  ## Cloud image helper ##
   ## ------------------ ##
 
-  def __check_gcs(self):
+  def _check_gcs(self):
     if self.gcs is None:
       self.not_implemented({
         'reason': 'GCS support not enabled',
       })
 
-  def __user_image_name(self, name, user):
-    if user:
-      return '%s/%s' % (user['_id'], name)
+  def __cloud_image_name(self, name, id):
+    if name:
+      return '%s/%s' % (id, name)
     else:
-      return str(user['_id'])
+      return str(id)
 
-  def __user_upload_image(self, bucket, name, user):
-    self.__check_gcs()
-    self.require_premium(user)
+  def _cloud_image_upload(self, bucket, name, user = None, team = None):
+    assert (user is None) != (team is None)
+    self._check_gcs()
+    if team:
+      image_id = team.id
+    else:
+      image_id = user['_id']
     t = bottle.request.headers['Content-Type']
     l = bottle.request.headers['Content-Length']
     if t not in ['image/gif', 'image/jpeg', 'image/png']:
@@ -3317,7 +3321,7 @@ class Mixin:
       })
     url = self.gcs.upload_url(
       bucket,
-      self.__user_image_name(name, user),
+      self.__cloud_image_name(name, image_id),
       content_type = t,
       content_length = l,
       expiration = datetime.timedelta(minutes = 3),
@@ -3325,23 +3329,31 @@ class Mixin:
     bottle.response.status = 307
     bottle.response.headers['Location'] = url
 
-  def __user_get_image(self, bucket, name, user):
-    self.__check_gcs()
-    self.require_premium(user)
+  def _cloud_image_get(self, bucket, name, user = None, team = None):
+    assert (user is None) != (team is None)
+    self._check_gcs()
+    if team:
+      image_id = team.id
+    else:
+      image_id = user['_id']
     url = self.gcs.download_url(
       bucket,
-      self.__user_image_name(name, user),
+      self.__cloud_image_name(name, image_id),
       expiration = datetime.timedelta(minutes = 3),
     )
     bottle.response.status = 307
     bottle.response.headers['Location'] = url
 
-  def __user_delete_image(self, bucket, name, user):
-    self.__check_gcs()
-    self.require_premium(user)
+  def _cloud_image_delete(self, bucket, name, user = None, team = None):
+    assert (user is None) != (team is None)
+    self._check_gcs()
+    if team:
+      image_id = team.id
+    else:
+      image_id = user['_id']
     self.gcs.delete(
       bucket,
-      self.__user_image_name(name, user))
+      self.__cloud_image_name(name, image_id))
     self.no_content()
 
   ## ----------- ##
@@ -3351,7 +3363,8 @@ class Mixin:
   @api('/user/backgrounds/<name>', method = 'PUT')
   @require_logged_in
   def user_background_put_api(self, name):
-    return self.__user_upload_image('backgrounds', name, self.user)
+    self.require_premium(self.user)
+    return self._cloud_image_upload('backgrounds', name, user = self.user)
 
   @api('/user/backgrounds/<name>', method = 'GET')
   @require_logged_in
@@ -3364,21 +3377,36 @@ class Mixin:
       self.user_from_identifier(user_id, fields = ['plan']), name)
 
   def user_background_get(self, user, name):
-    return self.__user_get_image('backgrounds', name, user)
+    team = self.team_for_user(user)
+    if team:
+      return self.team_background_get(team, name)
+    else:
+      self.require_premium(user)
+      return self._cloud_image_get('backgrounds', name, user = user)
 
   @api('/user/backgrounds/<name>', method = 'DELETE')
   @require_logged_in
   def user_background_delete_api(self, name):
-    return self.__user_delete_image('backgrounds', name, self.user)
+    user = self.user
+    team = self.team_for_user(user)
+    if team:
+      self.bad_request(
+        {'reason': 'User is part of a team, use /team/backgrounds/<name> instead'})
+    self.require_premium(user)
+    return self._cloud_image_delete('backgrounds', name, user = user)
 
   @api('/user/backgrounds', method = 'GET')
   @require_logged_in
   def user_background_list_api(self):
-    self.__check_gcs()
-    return {
-      'backgrounds': self.gcs.bucket_list('backgrounds',
-                                          prefix = self.user['_id']),
-    }
+    self._check_gcs()
+    team = self.team_for_user(self.user)
+    if team:
+      return self.team_background_list_api()
+    else:
+      return {
+        'backgrounds': self.gcs.bucket_list('backgrounds',
+                                            prefix = self.user['_id']),
+      }
 
   ## ---- ##
   ## Logo ##
@@ -3387,23 +3415,27 @@ class Mixin:
   @api('/user/logo', method = 'PUT')
   @require_logged_in
   def user_logo_put_api(self):
-    return self.__user_upload_image('logo', None, self.user)
+    self.require_premium(self.user)
+    return self._cloud_image_upload('logo', None, user = self.user)
 
   @api('/user/logo', method = 'GET')
   @require_logged_in
   def user_logo_get_api(self, cache_buster = None):
-    return self.__user_get_image('logo', None, self.user)
+    self.require_premium(user)
+    return self._cloud_image_get('logo', None, user = self.user)
 
   @api('/users/<user_id>/logo', method = 'GET')
   def user_logo_get_api(self, user_id, cache_buster = None):
-    return self.__user_get_image(
+    self.require_premium(user)
+    return self._cloud_image_get(
       'logo', None,
-      self.user_from_identifier(user_id, fields = ['plan']))
+      user = self.user_from_identifier(user_id, fields = ['plan']))
 
   @api('/user/logo', method = 'DELETE')
   @require_logged_in
   def user_background_delete_api(self):
-    return self.__user_delete_image('logo', None, self.user)
+    self.require_premium(user)
+    return self._cloud_image_delete('logo', None, user = self.user)
 
   ## -------------- ##
   ## Custom domains ##
@@ -3476,11 +3508,22 @@ class Mixin:
   @api('/user/account', method = 'GET')
   @require_logged_in_fields(['account'])
   def user_account_get_api(self):
-    return self.user.get('account', {})
+    res = self.user.get('account', {})
+    team = self.team_for_user(self.user)
+    if team:
+      team_settings = team.get('shared_settings', {})
+      custom_domains = team_settings.get('custom_domains', [])
+      res['custom_domain'] = next(iter(custom_domains), {'name': ''})['name']
+      background = team_settings.get('default_background', None)
+      res['default_background'] = background
+    return res
 
   @api('/user/account', method = 'POST')
   @require_logged_in
   def user_account_update_api(self, **kwargs):
+    if self.team_for_user(self.user):
+      self.bad_request(
+        {'reason': 'User is part of a team, use /team/shared_settings instead'})
     update = {}
     for field, premium in [
         ('default_background', True)
