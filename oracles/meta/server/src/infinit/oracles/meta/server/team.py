@@ -330,48 +330,26 @@ class Mixin:
   # ============================================================================
   # Shared settings.
   # ============================================================================
-  def __team_custom_domains_edit(self, team, name, action):
-    domain = {'name': name}
-    team = self.database.teams.find_and_modify(
-      {'_id': team.id},
-      {action: {'shared_settings.custom_domains': domain}},
-      new = False,
-    )
-    shared_settings = team.get('shared_settings')
-    domains = shared_settings.get('custom_domains')\
-      if shared_settings is not None else ()
-    return next(filter(lambda d: d['name'] == name, domains), None), domain
-
-  def _team_custom_domain_updated_notification(self, team, name):
-    self.notifier.notify_some(
-      notifier.MODEL_UPDATE,
-      message = { 'account': {
-        'custom_domain': name},
-        },
-      recipient_ids = set(team.member_ids),
-      version = (0, 9, 37))
-
   @api('/team/shared_settings/custom_domains/<name>', method = 'PUT')
   @require_logged_in
   def set_team_domain(self, name):
     team = self.team_for_user(self.user, ensure_existence = True)
     self.__require_team_admin(team, self.user)
-    old, new = self.__team_custom_domains_edit(team, name, '$addToSet')
+    old, new = self._custom_domain_edit(name, 'add', team)
     if old is None:
       bottle.response.status = 201
-    self._team_custom_domain_updated_notification(team, new.get('name', ''))
     return new
 
   @api('/team/shared_settings/custom_domains/<name>', method = 'DELETE')
   @require_logged_in
   def user_account_patch_api(self, name):
     team = self.team_for_user(self.user, ensure_existence = True)
-    self.__require_team_admin(team, self.user)
-    old, new = self.__team_custom_domains_edit(team, name, '$pull')
+    self._require_team_admin(team, self.user)
+    old, new = self._custom_domain_edit(name, 'remove', team)
     if old is None:
       self.not_found({
         'reason': 'custom domain %s not found' % name,
         'custom-domain': name,
       })
-    self._team_custom_domain_updated_notification(team, '')
     return new
+
