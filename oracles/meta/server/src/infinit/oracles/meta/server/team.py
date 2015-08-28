@@ -17,11 +17,11 @@ class Team(dict):
   ):
     self.__meta = meta
     self.__id = None
-    self['name'] = name
     self['admin'] = admin['_id']
-    self['members'] = [admin['_id']]
     self['creation_time'] = meta.now
+    self['members'] = [admin['_id']]
     self['modification_time'] = meta.now
+    self['name'] = name
 
   @staticmethod
   def __build(team_db, meta):
@@ -108,6 +108,10 @@ class Team(dict):
     return self['name']
 
   @property
+  def shared_settings(self):
+    return self.get('shared_settings', {})
+
+  @property
   def view(self):
     return {
       'admin': self.admin_id,
@@ -188,6 +192,14 @@ class Mixin:
         {
           'error': 'not_the_team_admin',
           'reason': 'Only the team admin can edit or delete a team'
+        })
+
+  def __require_team_member(self, team, user):
+    if user['_id'] not in team.member_ids:
+      return self.forbidden(
+        {
+          'error': 'not_team_memeber',
+          'reason': 'Only team members can access team properties'
         })
 
   def __enforce_user_password(self, user, password):
@@ -330,7 +342,73 @@ class Mixin:
   # ============================================================================
   # Shared settings.
   # ============================================================================
-  @api('/team/shared_settings/custom_domains/<name>', method = 'PUT')
+  @api('/team/shared_settings', method = 'GET')
+  @require_logged_in
+  def team_shared_settings_get_api(self):
+    user = self.user
+    team = self.team_for_user(self.user, ensure_existence = True)
+    self.__require_team_member(team, user)
+    return team.shared_settings
+
+  @api('/team/shared_settings', method = 'POST')
+  @require_logged_in
+  def team_shared_settings_post_api(self, **kwargs):
+    user = self.user
+    team = self.team_for_user(self.user, ensure_existence = True)
+    self.__require_team_admin(team, user)
+    update = {}
+    for field in [
+      'default_background',
+    ]:
+      if field in kwargs:
+        update[field] = kwargs[field]
+    team = team.edit({'$set': {
+      'shared_settings.%s' % field: value for field, value in update.items()}})
+    return team.shared_settings
+
+  @api('/team/backgrounds/<name>', method = 'PUT')
+  @require_logged_in
+  def team_background_put_api(self, name):
+    user = self.user
+    team = self.team_for_user(user, ensure_existence = True)
+    self.__require_team_admin(team, user)
+    return self._cloud_image_upload(
+      'team_backgrounds', name, team = team)
+
+  @api('/team/backgrounds/<name>', method = 'GET')
+  @require_logged_in
+  def team_background_get_api(self, name):
+    user = self.user
+    team = self.team_for_user(user, ensure_existence = True)
+    self.__require_team_member(team, user)
+    return self.team_background_get(team, name)
+
+  @api('/team/<team_id>/backgrounds/<name>', method = 'GET')
+  def team_background_get_api(self, team_id: bson.ObjectId, name):
+    team = Team.find(self, {'_id': team_id}, ensure_existence = True)
+    return self.team_background_get(team, name)
+
+  def team_background_get(self, team, name):
+    return self._cloud_image_get('team_backgrounds', name, team = team)
+
+  @api('/team/backgrounds/<name>', method = 'DELETE')
+  @require_logged_in
+  def team_background_delete_api(self, name):
+    user = self.user
+    team = self.team_for_user(user, ensure_existence = True)
+    self.__require_team_admin(team, user)
+    return self._cloud_image_delete('team_backgrounds', name, team = team)
+
+  @api('/team/backgrounds', method = 'GET')
+  @require_logged_in
+  def team_background_list_api(self):
+    team = self.team_for_user(self.user, ensure_existence = True)
+    self._check_gcs()
+    return {
+      'backgrounds': self.gcs.bucket_list('team_backgrounds', prefix = team.id),
+    }
+
+  @api('/team/custom_domains/<name>', method = 'PUT')
   @require_logged_in
   def set_team_domain(self, name):
     team = self.team_for_user(self.user, ensure_existence = True)
@@ -340,9 +418,9 @@ class Mixin:
       bottle.response.status = 201
     return new
 
-  @api('/team/shared_settings/custom_domains/<name>', method = 'DELETE')
+  @api('/team/custom_domains/<name>', method = 'DELETE')
   @require_logged_in
-  def user_account_patch_api(self, name):
+  def team_account_patch_api(self, name):
     team = self.team_for_user(self.user, ensure_existence = True)
     self.__require_team_admin(team, self.user)
     old, new = self._custom_domain_edit(name, 'remove', team)
