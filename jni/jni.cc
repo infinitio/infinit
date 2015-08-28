@@ -1328,6 +1328,15 @@ extern "C" jstring Java_io_infinit_State_gapSessionId(
   return from_string(env, res);
 }
 
+extern "C" jstring Java_io_infinit_State_gapWebLoginToken(
+  JNIEnv* env, jobject thiz, jlong handle)
+{
+  std::string res;
+  gap_web_login_token((gap_State*)handle, res);
+  return from_string(env, res);
+}
+
+
 extern "C" jlong Java_io_infinit_State_gapConnect(
   JNIEnv* env, jobject thiz, jlong handle)
 {
