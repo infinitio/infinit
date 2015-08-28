@@ -344,7 +344,7 @@ class Mixin:
   @require_logged_in
   def user_account_patch_api(self, name):
     team = self.team_for_user(self.user, ensure_existence = True)
-    self._require_team_admin(team, self.user)
+    self.__require_team_admin(team, self.user)
     old, new = self._custom_domain_edit(name, 'remove', team)
     if old is None:
       self.not_found({
