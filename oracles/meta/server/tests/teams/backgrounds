@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+
+from utils import *
+import requests
+
+import infinit.oracles.meta.server.gcs
+gcs_login = '798530033299-s9b7qmrc99trk8uid53giuvus1o74cif@developer.gserviceaccount.com'
+gcs_key = bytes('''-----BEGIN PRIVATE KEY-----
+MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBALCm3D3cHlKYRygk
+vRgesY39WUGeUN/sCBsVaxMuga1bCAZ6fVoh58pQEmeBpkjaVdtB0nz9ZBVoeDtR
+PcfafaUW+UFXjRf2rJ3MoJ/J72mccSD08sjVX3Q9U5iydYhjZEx3uwhUcaHG6+Rq
+f4xhb/49jfFmDJ/9zCopsiPBJQgfAgMBAAECgYEAqxgByrxOdirdCGmE6D6aM+8E
+qwReSnL+atT0zzBFExVPEY9Dp6+dI5soKC4vUvJ9I45+AucdL4ruoG0QTGg3NbjC
+XCD88TL2UdSog/xxHAQ37EvnoPwK6v04FZHdm94eXkJMQzpf9pP8EyVEaXZWb8Uw
+2MDPGluTWgkUKZitkLECQQDjuLBFwtU9rdDZB3G00P3hMXuvomPPEHRvdpvwbxLG
+WX1XNPG1FlBbQhyBgUIVATn9sU28df7kANqhhnEthXY3AkEAxpaoR0rtZzPIt4c4
+3PQm+mclxxEUZozrRnO/t6bDc/wGvI7C69wIu4UI8j4zFtRRuC2qCDaTorXibFRb
+PKEJWQJAY8eNFUQlg30hwbbNT9kzJPU1qOOSsCwZmK1z7on8xAR6MzfzoNFCLHpv
+Wx90ARgkfNCvqyBYqzbklVn/RV7xSQJBAJluCPGb+DPGFIuHU+2STRMl4lAc6BAb
+TCOQhk0T8OqJi4LfIcYsqCqJLFJMsBgxTjnoPfg+gm4x7JAZ1KvRF3ECQFcwSrNV
+cun1SplfUKZQZywA8ueUU/ZuGj/XXwopPR5LgWW7sgkwdCklQUPjcecWEZFy/ODl
+e9FGZj7sEHpPuDE=
+-----END PRIVATE KEY-----
+''', 'UTF-8')
+
+class GCS(infinit.oracles.meta.server.gcs.GCS):
+  pass
+
+gcs = GCS(login = gcs_login, key = gcs_key, bucket_ns = 'test')
+
+with Stripe() as stripe:
+  with Meta(gcs = gcs, stripe_api_key = Stripe.key) as meta:
+    import sys
+    leader = User(meta, 'leader@infinit.io')
+    leader.login()
+    team = leader.create_team(name = 'infinit',
+                              stripe_token = stripe.pay(leader.email))
+    jean = User(meta, 'jean@infinit.io')
+    leader.add_team_member(jean.id)
+    jean.login()
+    body = b'coincoin'
+    content_type = 'image/png'
+    content_length = len(body)
+    def put(user):
+      return user.put('team/backgrounds/bg.jpg',
+                      raw = True,
+                      content_type = content_type,
+                      content_length = content_length,
+                      body = body)
+    # Upload background
+    response = put(jean)
+    assertEq(response.status_code, 403)
+    response = put(leader)
+    assertEq(response.status_code, 307)
+    url = response.headers['location']
+    response = requests.put(url,
+                            headers = {
+                              'Content-Type': content_type,
+                              'Content-Length': content_length,
+                            },
+                            data = body)
+    assertEq(response.status_code / 100, 2)
+    # List backgrounds
+    assertEq(leader.get('team/backgrounds')['backgrounds'], ['bg.jpg'])
+    # Get background
+    for request in [
+        lambda: leader.get('user/backgrounds/bg.jpg', raw = True),
+        lambda: jean.get('user/backgrounds/bg.jpg', raw = True),
+        lambda: meta.get('users/%s/backgrounds/bg.jpg' % jean.id, raw = True),
+        lambda: meta.get('users/%s/backgrounds/bg.jpg' % leader.id, raw = True),
+        lambda: meta.get('users/%s/backgrounds/bg.jpg' % jean.email,
+                         raw = True),
+        lambda: meta.get('team/%s/backgrounds/bg.jpg' % team['id'], raw = True),
+    ]:
+      response = request()
+      assertEq(response.status_code, 307)
+      response = requests.get(response.headers['location'])
+      assertEq(response.status_code, 200)
+      assertEq(response.content, body)
+      assertEq(response.headers['content-type'], content_type)
+      assertEq(int(response.headers['content-length']), content_length)
+    # Erase background
+    throws(lambda: jean.delete('team/backgrounds/bg.jpg'), 403)
+    throws(lambda: jean.delete('user/backgrounds/bg.jpg'), 400)
+    throws(lambda: leader.delete('user/backgrounds/bg.jpg'), 400)
+    leader.delete('team/backgrounds/bg.jpg')
+    assertEq(leader.get('user/backgrounds')['backgrounds'], [])
+    assertEq(jean.get('user/backgrounds')['backgrounds'], [])
+    assertEq(leader.get('team/backgrounds')['backgrounds'], [])
+    # Get background
+    response = jean.get('user/backgrounds/bg.jpg', raw = True)
+    assertEq(response.status_code, 307)
+    response = requests.get(response.headers['location'])
+    assertEq(response.status_code, 404)
+    response = leader.get('user/backgrounds/bg.jpg', raw = True)
+    assertEq(response.status_code, 307)
+    response = requests.get(response.headers['location'])
+    assertEq(response.status_code, 404)
+    # Team shared background
+    link = jean.getalink()
+    assert meta.get('link/%s' % link['hash'])['background'] is None
+    assert jean.get('user/account').get('default_background') is None
+    assert leader.get('user/account').get('default_background') is None
+    assert jean.get('team/shared_settings').get('default_background') is None
+    assert leader.get('team/shared_settings').get('default_background') is None
+    throws(lambda:
+      jean.post('user/account', {'default_background': 'bg.jpg'}), 400)
+    throws(lambda:
+      leader.post('user/account', {'default_background': 'bg.jpg'}), 400)
+    throws(lambda:
+      jean.post('team/shared_settings', {'default_background': 'bg.jpg'}), 403)
+    assertEq(
+      leader.post('team/shared_settings', {'default_background': 'bg.jpg'}),
+                  {'default_background': 'bg.jpg'})
+    assertEq(jean.get('user/account').get('default_background'), 'bg.jpg')
+    assertEq(leader.get('user/account').get('default_background'), 'bg.jpg')
+    assertEq(meta.get('link/%s' % link['hash'])['background'], 'bg.jpg')
+    assertEq(
+      leader.post('team/shared_settings', {'default_background': None}),
+      {'default_background': None})
+    assert meta.get('link/%s' % link['hash'])['background'] is None
+    assert jean.get('user/account').get('default_background') is None
+
