@@ -29,21 +29,21 @@ with Stripe() as stripe:
       leader.add_team_member(jean.id)
 
       # Team member can't change team domain.
-      throws(lambda: jean.put('team/shared_settings/custom_domains/bob'), 403)
+      throws(lambda: jean.put('team/custom_domains/bob'), 403)
 
       # Team member can't set own domain.
       throws(lambda: jean.put('user/account/custom_domains/bob'), 403)
 
       # Set team custom domain.
       team_domain = 'team'
-      leader.put('team/shared_settings/custom_domains/%s' % team_domain)
+      leader.put('team/custom_domains/%s' % team_domain)
       notif = jean.next_notification()
       assertEq(notif['account']['custom_domain'], team_domain)
       res = jean.get('user/synchronize?init=1')
       assertEq(res['account']['custom_domain'], team_domain)
 
       # Delete team domain.
-      leader.delete('team/shared_settings/custom_domains/%s' % team_domain)
+      leader.delete('team/custom_domains/%s' % team_domain)
       notif = jean.next_notification()
       assertEq(notif['account']['custom_domain'], '')
       res = jean.get('user/synchronize?init=1')
