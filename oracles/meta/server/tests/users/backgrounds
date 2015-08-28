@@ -42,7 +42,8 @@ with Meta(gcs = gcs) as meta:
                     content_type = content_type,
                     content_length = content_length,
                     body = body)
-  # throws(put, 402);
+  response = put()
+  assertEq(response.status_code, 402)
   meta.meta.change_plan(bson.ObjectId(user.id), 'premium')
   response = put()
   assertEq(response.status_code, 307)
