@@ -647,6 +647,7 @@ class Stripe():
 
   def __init__(self):
     self.emails = set()
+    self.plans = set()
 
   def __enter__(self):
     return self
@@ -657,6 +658,7 @@ class Stripe():
   def clear(self):
     import stripe
     stripe.api_key = Stripe.key
+    # Remove created users.
     cursor = None
     while True:
       if cursor:
@@ -669,6 +671,20 @@ class Stripe():
           cu = stripe.Customer.retrieve(user['id'])
           cu.delete()
       if not users['has_more']:
+        break
+    # Remove created plans.
+    cursor = None
+    while True:
+      if cursor:
+        plans = stripe.Plan.all(limit = 100, starting_after = cursor)
+      else:
+        plans = stripe.Plan.all(limit = 100)
+      for plan in plans['data']:
+        cursor = plan['id']
+        if plan['name'] in self.plans:
+          p = stripe.Plan.retrieve(plan['id'])
+          p.delete()
+      if not plans['has_more']:
         break
 
   def pay(self, email):
@@ -1028,6 +1044,23 @@ class User(Client):
                 'progress': 1,
                 'status': status,
               })
+
+  # Plans.
+  def create_plan(self,
+                  stripe,
+                  name,
+                  body,
+                  amount = 999):
+    plan = self.post('plans',
+                     {
+                       'body': body,
+                       'stripe_info': {
+                         'amount': amount,
+                         'name': name,
+                       }
+                     })
+    stripe.plans.add(plan['id'])
+    return plan
 
   def create_team(self, name, stripe_token):
     return self.post('teams',

@@ -87,6 +87,7 @@ class Meta(bottle.Bottle,
            team.Mixin,
            apertus.Mixin,
            waterfall.Waterfall,
+           plans.Mixin,
            link_generation.Mixin,
          ):
 
