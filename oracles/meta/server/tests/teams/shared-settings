@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+
+import datetime
+
+from utils import *
+from infinit.oracles.meta import error
+
+with Stripe() as stripe:
+  # Custom domains.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    with Trophonius(meta) as tropho:
+      leader = User(meta, 'julien@infinit.io')
+      leader.login(trophonius = tropho)
+      leader.create_team(name = 'infinit',
+                         stripe_token = stripe.pay(leader.email))
+      jean = User(meta, 'jean@infinit.io')
+      jean.login(trophonius = tropho)
+      res = jean.get('user/synchronize?init=1')
+      assertEq(res['account']['custom_domain'], '')
+
+      # Set user domain.
+      user_domain = 'user'
+      jean.put('user/account/custom_domains/%s' % user_domain)
+      notif = jean.next_notification()
+      assertEq(notif['account']['custom_domain'], user_domain)
+      res = jean.get('user/synchronize?init=1')
+      assertEq(res['account']['custom_domain'], user_domain)
+
+      leader.add_team_member(jean.id)
+
+      # Team member can't change team domain.
+      throws(lambda: jean.put('team/shared_settings/custom_domains/bob'), 403)
+
+      # Team member can't set own domain.
+      throws(lambda: jean.put('user/account/custom_domains/bob'), 403)
+
+      # Set team custom domain.
+      team_domain = 'team'
+      leader.put('team/shared_settings/custom_domains/%s' % team_domain)
+      notif = jean.next_notification()
+      assertEq(notif['account']['custom_domain'], team_domain)
+      res = jean.get('user/synchronize?init=1')
+      assertEq(res['account']['custom_domain'], team_domain)
+
+      # Delete team domain.
+      leader.delete('team/shared_settings/custom_domains/%s' % team_domain)
+      notif = jean.next_notification()
+      assertEq(notif['account']['custom_domain'], '')
+      res = jean.get('user/synchronize?init=1')
+      assertEq(res['account']['custom_domain'], '')
+
+      # User has original domain when removed from the team.
+      leader.delete_team_member(jean.id)
+      # XXX ensure that user receives notification setting custom domain to original value
+
