@@ -10,6 +10,8 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Plan'
 
 class Plan(dict):
 
+  prohibited_names = ['none']
+  builtins = ['team', 'basic', 'plus', 'premium']
   # ----------- #
   # Properties. #
   # ----------- #
@@ -17,14 +19,22 @@ class Plan(dict):
   def name(self):
     """Return the plan name.
     """
-    return self.get('name', self['stripe']['name'])
+    return self['name']
 
   @property
   def links_quota(self):
     """Return the associated plan link quota.
     All plans *must* have quotas.links.quota.
     """
-    return int(self['quotas']['links']['quota'])
+    return int(self['quotas']['links']['default_storage'])
+
+  @property
+  def stripe_id(self):
+    """
+    """
+    if self.name.lower() in Plan.builtins:
+      return self.name.lower()
+    return str(self.__id)
 
   # ------------- #
   # Construction. #
@@ -41,9 +51,17 @@ class Plan(dict):
     self.__id = None
     self.__stripe_info = Plan.__fill_missing_stripe_fields(stripe_info)
     self.__stripe_info['name'] = self.__stripe_info['name'].strip()
+    if self.__stripe_info['name'] in Plan.prohibited_names:
+      return self.conflict(meta, 'none')
     self['team'] = True
     # Default storage.
-    self['quotas'] = {'links': {'quota': int(100e9)}}
+    bonuses = {'social_post': 0, 'facebook_linked': 0, 'referrer': 0,
+               'referree': 0, 'has_avatar': 0}
+    self['quotas'] = {'links': {'default_storage': int(100e9),
+                                'bonuses': bonuses},
+                      'send_to_self': {'default_quota': None,
+                                       'bonuses': bonuses},
+                      'p2p': {'size_limit': None}}
     self.update(body)
     self['creation_time'] = meta.now
     # Check properties.
@@ -85,9 +103,16 @@ class Plan(dict):
   # Finding. #
   # -------- #
   @staticmethod
-  def find(meta, id, ensure_existence = False):
-    elle.log.debug('find %s (ensure_existence: %s)' % (id, ensure_existence))
-    return Plan._find(meta, {'_id': id}, ensure_existence = ensure_existence)
+  def find(meta, identifier, ensure_existence = False):
+    elle.log.debug('find %s (ensure_existence: %s)' % (identifier, ensure_existence))
+    if identifier in Plan.builtins:
+      return Plan.by_name(meta, name = identifier, ensure_existence = ensure_existence)
+    return Plan._find(meta, {'_id': identifier}, ensure_existence = ensure_existence)
+
+  @staticmethod
+  def by_name(meta, name, ensure_existence = False):
+    elle.log.debug('find %s (ensure_existence: %s)' % (name, ensure_existence))
+    return Plan._find(meta, {'name': name.strip().lower()}, ensure_existence = ensure_existence)
 
   @staticmethod
   def _find(meta, query, ensure_existence = False):
@@ -98,7 +123,8 @@ class Plan(dict):
     id -- The plan id.
     ensure_existence -- Raise a 404 ou return None.
     """
-    elle.log.debug('find %s (ensure_existence: %s)' % (id, ensure_existence))
+    elle.log.debug('find %s (ensure_existence: %s)' % (query, ensure_existence))
+    elle.log.dump('plans: %s' % list(meta.database.plans.find()))
     plan_db = meta.database.plans.find_one(query)
     if plan_db is None:
       if ensure_existence:
@@ -126,7 +152,7 @@ class Plan(dict):
   # -------- #
   editable_stripe_fields = ['name', 'metadata', 'statement_descriptor']
   @staticmethod
-  def edit(meta, id, update):
+  def edit(meta, identifier, update):
     """Edit a plan.
     N.B. (from stripe documentation):
       'Updates the name of a plan. Other plan details (price, interval, etc.) are,
@@ -135,17 +161,23 @@ class Plan(dict):
     id -- The team id.
     update -- A list of update to apply on the team.
     """
-    elle.log.trace('edit %s (update: %s)' % (id, update))
+    if id in Plan.builtins:
+      self.forbidden(
+        {
+          'error': 'builtin_plans_not_editable',
+          'message': 'builtin plans (%s) are not editable' % Plan.builtins
+        })
+    elle.log.trace('edit %s (update: %s)' % (identifier, update))
     to_apply = {}
     save_plan = None
     if len(update.get('stripe_info', {})):
       for key in update['stripe_info']:
         if key not in Plan.editable_stripe_fields:
-          return Plan.bad_request(mete, key)
+          return Plan.bad_request(meta, key)
       elle.log.trace('update stripe info')
       stripe_plan = stripe.Plan.retrieve(
         api_key = meta.stripe_api_key,
-        id = str(id),
+        id = str(identifier),
       )
       name_updated = False
       if stripe_plan is None:
@@ -168,7 +200,7 @@ class Plan(dict):
       elle.log.debug('%s' % meta.view_full_plans())
       try:
         res = meta.database.plans.find_and_modify(
-          {'_id': id},
+          {'_id': identifier},
           to_apply,
           new = True,
           upsert = False)
@@ -182,12 +214,13 @@ class Plan(dict):
         return Plan.from_data(meta, res)
       except pymongo.errors.DuplicateKeyError:
         return Plan.conflict(meta, update['name'])
-    return Plan.find(meta, id = id, ensure_existence = True)
+    return Plan.find(meta, id = identifier, ensure_existence = True)
+
   # --------- #
   # Deleting. #
   # --------- #
   @staticmethod
-  def delete(meta, id, force):
+  def delete(meta, identifier, force):
     """Delete the specified plan.
     Start by removing the plan from stripe. If the plan doesn't exist, triggers
     a 404 (except if force is present).
@@ -197,9 +230,9 @@ class Plan(dict):
     id - The id of the plan.
     force - Ignore the stripe result.
     """
-    elle.log.trace('delete plan %s (force: %s)' % (id, force))
+    elle.log.trace('delete plan %s (force: %s)' % (identifier, force))
     stripe_plan = stripe.Plan.retrieve(
-      str(id),
+      str(identifier),
       api_key = meta.stripe_api_key,
     )
     if stripe_plan is None and not force:
@@ -223,6 +256,7 @@ class Plan(dict):
     import copy
     res = copy.copy(self)
     res['name'] = self.name
+    res['id'] == Plan.translate_out(self.__id)
     return sort_dict(res)
 
   @property
@@ -286,6 +320,29 @@ class Plan(dict):
         'reason': 'Key %s is not editable' % name,
       })
 
+  #  Right now, it's just ObjectId reprensation -> ObjectId but if we want to mask
+  #  the id, just add a 2 functions A and A' (with A(A'(x)) == x:
+  #  translate_out: A(reprensation) -> code
+  #  translate_in:  A'(code) -> reprensation -> ObjectId
+  @staticmethod
+  def translate_in(code):
+    """Translate the incoming team code and translate it to the real id.
+    See comment below.
+    """
+    if code in Plan.builtins:
+      return code
+    try:
+      return bson.ObjectId(code)
+    except bson.errors.InvalidId:
+      return None
+
+  @staticmethod
+  def translate_out(identifier):
+    """Translate the team id to a code.
+    See comment below.
+    """
+    return str(identifier)
+
 class Mixin:
 
   def __init__(self):
@@ -295,7 +352,7 @@ class Mixin:
   def plans(self):
     plans = {}
     for plan in self.database.plans.find():
-      plans[plan['name']] = plan
+      plans[plan['name']] = Plan.from_data(self, plan)
     # XXX: Dirty.
     plans[None] = plans['basic']
     return plans
@@ -333,26 +390,26 @@ class Mixin:
   # ----------- #
   # Get a plan. #
   # ----------- #
-  @api('/plan/<id>', method = 'GET')
+  @api('/plan/<identifier>', method = 'GET')
   @require_admin
-  def view_plan(self, id: bson.ObjectId):
-    return Plan.find(self, id, ensure_existence = True).view
+  def view_plan(self, identifier: Plan.translate_in):
+    return Plan.find(self, identifier, ensure_existence = True).view
 
   # -------------- #
   # Update a plan. #
   # -------------- #
-  @api('/plan/<id>', method = 'PUT')
+  @api('/plan/<identifier>', method = 'PUT')
   @require_admin
-  def update_plan(self, id: bson.ObjectId, update):
-    return Plan.edit(self, id = id, update = update).view
+  def update_plan(self, identifier: Plan.translate_in, update):
+    return Plan.edit(self, identifier = identifier, update = update).view
 
   # -------------- #
   # Delete a plan. #
   # -------------- #
-  @api('/plan/<id>', method = 'DELETE')
+  @api('/plan/<identifier>', method = 'DELETE')
   @require_admin
-  def delete_plan(self, id: bson.ObjectId, force = False):
-    Plan.delete(self, id = id, force = force)
+  def delete_plan(self, identifier: Plan.translate_in, force = False):
+    Plan.delete(self, identifier = identifier, force = force)
     return {}
 
   # ------ #
