@@ -52,6 +52,7 @@ from . import team
 from . import waterfall
 from . import facebook
 from . import shortener
+from .stripe import Stripe
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.Meta'
 
@@ -219,6 +220,7 @@ class Meta(bottle.Bottle,
     # Emailing
     self.__emailer = emailer or infinit.oracles.emailer.NoopEmailer()
     self.__stripe_api_key = stripe_api_key
+    self._stripe = Stripe(self)
     self.__metrics = metrics
     self.__gcs = gcs
     # Show deprecation warnings. How is this not the default ...

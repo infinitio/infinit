@@ -81,9 +81,8 @@ class Mixin:
     if self.admin:
       self.__plan_and_quotas(user)
       if 'stripe_id' in user:
-        user['stripe'] = stripe.Customer.retrieve(
-          user['stripe_id'],
-          api_key = self.stripe_api_key).get('subscriptions', {})
+        with self._stripe:
+          user['stripe'] = self._stripe.fetch_customer(user).get('subscriptions', {})
     return user
 
   def __sent_to_self(self, user):
@@ -124,15 +123,10 @@ class Mixin:
     user = self.__user(user)
     if 'favorites' not in user:
       user['favorites'] = []
-    if self.stripe_api_key is not None and 'stripe_id' in user:
-      cus = stripe.Customer.retrieve(
-        user['stripe_id'],
-        expand = ['subscriptions'],
-        api_key = self.stripe_api_key,
-      )
-      if cus.subscriptions.total_count > 0:
-          user['subscription_data'] = cus.subscriptions.data[0]
-    team = self.team_for_user(user)
+    if 'stripe_id' in user:
+      with self._stripe:
+        user['stripe'] = self._stripe.fetch_customer(user).get('subscriptions', {})
+    team = Team.team_for_user(self, user)
     if team:
       user['team'] = team.view
     self.__plan_and_quotas(user)
@@ -1743,45 +1737,12 @@ class Mixin:
         'reason': 'Only ghost accounts can be merged'
       })
 
-    # Fail early if stripe customer could not be deleted
-    try:
-      if 'stripe_id' in user:
-        cus = stripe.Customer.retrieve(user['stripe_id'],
-                api_key = self.stripe_api_key)
-        cus.delete()
-    # Handle each exception case separately, even though the behaviour is the
-    # same for now. Explicit is better than implicit.
-    except stripe.error.InvalidRequestError as e:
-      # Invalid parameters were supplied to Stripe's API
-      elle.log.warn('Unable to delete Stripe customer for user {0}:'
-              '{1}'.format(user['email'], e.args))
-      return self.unavailable({
-        'reason': e.args[0]
-      })
-    except stripe.error.AuthenticationError as e:
-      # Authentication with Stripe's API failed
-      # (maybe you changed API keys recently)
-      elle.log.warn('Unable to delete Stripe customer for user {0}:'
-              '{1}'.format(user['email'], e.args))
-      return self.unavailable({
-        'reason': e.args[0]
-      })
-    except stripe.error.APIConnectionError as e:
-      # Network communication with Stripe failed
-      elle.log.warn('Unable to delete Stripe customer for user {0}:'
-              '{1}'.format(user['email'], e.args))
-      return self.unavailable({
-        'reason': e.args[0]
-      })
-    except stripe.error.StripeError as e:
-      # Display a very generic error to the user, and maybe send
-      # yourself an email
-      elle.log.warn('Unable to delete Stripe customer for user {0}:'
-              '{1}'.format(user['email'], e.args))
-      return self.unavailable({
-        'reason': e.args[0]
-      })
-
+    # Fail early if stripe customer could not be deleted.
+    if 'stripe_id' in user:
+      with self._stripe:
+        cus = self._stripe.fetch_customer(user)
+        if cus:
+          cus.delete()
     # Invalidate credentials.
     self.remove_session(user)
     # Kick them out of the app.
@@ -2972,113 +2933,49 @@ class Mixin:
                   stripe_token = None,
                   stripe_coupon = None,
                 ):
-    try:
-      if plan not in self.plans.keys():
-        return self.bad_request({
-          'error': 'invalid_plan',
-          'reason': 'invalid plan: %s' % plan,
-          'plan': plan,
-        })
-      user = self.user
-      customer = self.__fetch_or_create_stripe_customer(user)
-      res = {
-        'plan': plan or user['plan']
-      }
-      eligible_for_plus = self.eligible_for_plus(user['_id'])
-      # Subscribing to a paying plan without source raises an error
-      # Update user's payment source, represented by a token
+    return self._user_update(self.user, plan = plan,
+                             stripe_token = stripe_token,
+                             stripe_coupon = stripe_coupon)
+  def _user_update(self,
+                  user,
+                  plan = None,
+                  stripe_token = None,
+                  stripe_coupon = None):
+    elle.log.trace('update user %s (plan: %s, token: %s)' % (
+      user, plan, stripe_token))
+    if plan is not None:
+      if not isinstance(plan, Plan):
+        plan = Plan.by_name(self, plan, ensure_existence = True)
+    elle.log.debug('plan: %s' % plan)
+    eligible_for_plus = self.eligible_for_plus(user['_id'])
+    free_plans = ['basic']
+    if eligible_for_plus:
+      free_plans.append('plus')
+    with self._stripe:
+      customer = self._stripe.fetch_or_create_stripe_customer(user)
       if stripe_token is not None:
         customer.source = stripe_token
         customer.save()
+      res = {
+        'plan': plan or user['plan']
+      }
       if plan is not None or stripe_coupon is not None:
-        # We do not want multiple plans to be active at the same
-        # time, so a customer can only have at most one subscription
-        # (ideally, exactly one subscription, which would be 'basic'
-        # for non paying customers)
-        def _build_response(sub):
-          discount = sub.discount
-          off = discount.coupon.percent_off / 100 if sub.discount else 0
-          return {
-            'amount': sub.plan['amount'] * (1 - off),
-            'currency': sub.plan['currency'],
-          }
-        if customer.subscriptions.total_count > 0:
-          sub = customer.subscriptions.data[0]
-        else:
-          sub = None
-        if plan is not None:
-          free_plans = ['basic']
-          if eligible_for_plus:
-            free_plans.append('plus')
-          if plan not in free_plans:
-            if sub is None:
-              sub = customer.subscriptions.create(
-                plan = plan, coupon = stripe_coupon)
-              stripe_coupon = None
-            else:
-              sub.plan = plan
-          else:
-            if sub is not None:
-              sub.delete(at_period_end = True)
-              sub = None
-        if stripe_coupon is not None:
-          if sub is None:
-            self.bad_request({
-              'error': 'invalid_plan_coupon',
-              'reason': 'cannot use a coupon on basic plan',
-            })
-          sub.coupon = stripe_coupon
-        if sub:
-          sub = sub.save()
-          res.update(_build_response(sub))
-        if plan is not None and user.get('plan', 'basic') != plan:
-          res.update(self._change_plan(user, plan))
-    except stripe.error.CardError as e:
-      warn(
-        '%s: stripe error: customer %s card has been declined' % \
-        (self, user['_id'], e.args[0]))
-      return self.bad_request({
-        'reason': e.args[0],
-      })
-    except stripe.error.InvalidRequestError as e:
-      warn(
-        '%s: invalid stripe request: cannot update customer: %s' % \
-        (self, e.args[0]))
-      return self.bad_request({
-        'reason': e.args[0],
-      })
-    except stripe.error.AuthenticationError as e:
-      warn('%s: stripe auth failed: %s' % (self, e.args[0]))
-      return self.bad_request({
-        'reason': e.args[0],
-      })
-    except stripe.error.APIConnectionError as e:
-      warn(
-        '%s: connection to stripe failed: %s' % (self, e.args[0]))
-      return self.unavailable({
-        'reason': e.args[0],
-      })
+        if plan not in free_plans:
+          def _build_response(sub):
+            discount = sub.discount
+            off = discount.coupon.percent_off / 100 if sub.discount else 0
+            return {
+              'amount': sub.plan['amount'] * (1 - off),
+              'currency': sub.plan['currency'],
+            }
+          sub = self._stripe.update_subscription(
+            customer, plan.stripe_id if plan is not None else None,
+            coupon = stripe_coupon)
+          if sub:
+            res.update(_build_response(sub))
+    if plan is not None and user.get('plan', 'basic') != plan:
+      res.update(self._change_plan(user, plan.name))
     return res
-
-  def __fetch_or_create_stripe_customer(self, user):
-    if self.stripe_api_key is None:
-      return None
-    if 'stripe_id' in user:
-      return stripe.Customer.retrieve(
-        user['stripe_id'],
-        expand = ['subscriptions'],
-        api_key = self.stripe_api_key,
-      )
-    else:
-      customer = stripe.Customer.create(
-        email = user['email'],
-        api_key = self.stripe_api_key,
-      )
-      self.database.users.update(
-        {'_id': user['_id']},
-        {'$set': {'stripe_id': customer.id}})
-      return customer
-
 
   @api('/user/contacts', method='PUT')
   @require_logged_in
