@@ -20,6 +20,8 @@ from .utils import api, require_logged_in, require_logged_in_fields, require_adm
 from .utils import sort_dict
 from . import utils
 from . import error, notifier, regexp, conf, invitation, mail, transaction_status
+from .plans import Plan
+from .team import Team
 
 import pymongo
 import pymongo.errors
@@ -2856,7 +2858,7 @@ class Mixin:
     else:
       res.update(self.devices_users_api(user['_id']))
     res.update(self.accounts_users_api(user['_id']))
-    team = self.team_for_user(user)
+    team = Team.team_for_user(self, user)
     if team:
       custom_domains = team.get('shared_settings', {}).get('custom_domains', [])
     else:
@@ -2901,10 +2903,11 @@ class Mixin:
                              new_plan)
 
   def _change_plan(self, user, new_plan_name):
-    current_plan = self.plans[user.get('plan', 'basic')]
+    current_plan = Plan.by_name(self, user.get('plan', 'basic') or 'basic',
+                                ensure_existence = True)
     if new_plan_name == 'basic' and self.eligible_for_plus(user['_id']):
       new_plan_name = 'plus'
-    new_plan = self.plans[new_plan_name]
+    new_plan = Plan.by_name(self, name = new_plan_name, ensure_existence = True)
     fset = dict()
     funset = dict()
     for (k, v) in new_plan.get('features', {}).items():
@@ -3360,7 +3363,7 @@ class Mixin:
       search_id = team.id
       setting = 'shared_settings'
     else:
-      if self.team_for_user(self.user):
+      if Team.team_for_user(self, self.user):
         self.forbidden({'reason': 'User is part of team'})
       collection = self.database.users
       search_id = self.user['_id']

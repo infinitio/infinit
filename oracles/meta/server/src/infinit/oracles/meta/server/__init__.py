@@ -355,8 +355,9 @@ class Meta(bottle.Bottle,
     #---------------------------------------------------------------------------
     # Teams.
     #---------------------------------------------------------------------------
-    self.__database.teams.ensure_index([('name', 1)], unique = True)
-    self.__database.teams.ensure_index([('members', 1)], unique = True)
+    self.__database.teams.ensure_index([('lower_name', 1)], unique = True)
+    self.__database.teams.ensure_index([('members.id', 1)], unique = True)
+
 
   @property
   def mailer(self):

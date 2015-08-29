@@ -30,7 +30,7 @@ with Meta(stripe_api_key = Stripe.key) as meta:
 with Meta(stripe_api_key = Stripe.key) as meta:
   user = User(meta, email)
   user.login()
-  throws(lambda: user.put('users/%s' % user.id, {'plan': 'Q'}), 400)
+  throws(lambda: user.put('users/%s' % user.id, {'plan': 'Q'}), 404)
   throws(lambda: user.put('users/%s' % user.id, {'plan': 'premium'}), 400)
 
 def create_user(meta):

@@ -404,7 +404,8 @@ def make_plan(name,
               send_to_self_quota,
               send_to_self_bonus,
               file_size_limit,
-              features = {}):
+              features = {},
+              team = False):
   return {
     'name': name,
     'quotas': {
@@ -430,6 +431,7 @@ def make_plan(name,
       }
     },
     'features': features,
+    'team': team,
   }
 
 class Meta:
@@ -498,6 +500,16 @@ class Meta:
                 file_size_limit = None,
                 features = {'turbo': True}
     ))
+    self.__database.plans.insert(
+      make_plan(name = 'team',
+                default_storage = int(1e12),
+                storage_bonuses = (0, 0, 0, 0),
+                send_to_self_quota = None,
+                send_to_self_bonus = (0, 0, 0),
+                file_size_limit = None,
+                features = {'turbo': True},
+                team = True,
+    ))
     def run():
       try:
         self.__meta = InstrumentedMeta(
@@ -545,6 +557,10 @@ class Meta:
   def mailer(self, mailer):
     assert self.__meta is not None
     self.__meta.mailer = mailer
+
+  @property
+  def plans(self):
+    return {p: self.inner.plans[p].view for p in self.inner.plans}
 
   @property
   def invitation(self):
@@ -606,6 +622,26 @@ class Meta:
       return password, email.variables['confirm_token']
     else:
       return password
+
+  def create_plan(self,
+                  stripe,
+                  name,
+                  body,
+                  amount = 999):
+    previous_admin_state = self.inner._force_admin
+    self.inner._force_admin = True
+    plan = self.post('plans',
+                     {
+                       'body': body,
+                       'stripe_info': {
+                         'amount': amount,
+                         'name': name,
+                       }
+                     })
+    stripe.plans.add(plan['id'])
+    self.inner._force_admin = previous_admin_state
+    return plan
+
 
   @property
   def database(self):
@@ -681,7 +717,7 @@ class Stripe():
         plans = stripe.Plan.all(limit = 100)
       for plan in plans['data']:
         cursor = plan['id']
-        if plan['name'] in self.plans:
+        if plan['id'] in self.plans:
           p = stripe.Plan.retrieve(plan['id'])
           p.delete()
       if not plans['has_more']:
@@ -709,7 +745,7 @@ class User(Client):
                version = None,
                **kwargs):
     super().__init__(meta, version)
-    self.plans = meta.inner.plans
+    self.__meta = meta
     if not facebook:
       self.email = email is not None and email or random_email() + '@infinit.io'
       self.password, self.email_confirmation_token = \
@@ -1062,11 +1098,15 @@ class User(Client):
     stripe.plans.add(plan['id'])
     return plan
 
-  def create_team(self, name, stripe_token):
+  def create_team(self,
+                  name,
+                  stripe_token,
+                  plan = 'team'):
     return self.post('teams',
                      {
                        'name': name,
-                       'stripe_token': stripe_token
+                       'stripe_token': stripe_token,
+                       'plan': plan,
                     })
 
   def add_team_member(self, user_id):
@@ -1074,6 +1114,9 @@ class User(Client):
 
   def delete_team_member(self, user_id):
     return self.delete('team/members/%s' % user_id)
+
+def user_in_team(team, user):
+  return bool(len([m for m in team['members'] if m['_id'] == user.id]))
 
 # Fake facebook.
 class Facebook:

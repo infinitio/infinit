@@ -8,10 +8,12 @@ from infinit.oracles.meta import error
 with Stripe() as stripe:
   # Creating and deleting.
   with Meta(stripe_api_key = Stripe.key) as meta:
+    plan = meta.create_plan(stripe, 'plan_name_0129', {})
     leader = User(meta, 'boss@infinit.io')
     leader.login()
     team = leader.create_team(
-      name = 'infinit', stripe_token = stripe.pay(leader.email))
+      name = 'infinit', stripe_token = stripe.pay(leader.email),
+      plan = plan['id'])
     team = leader.get('team')
     assertEq(team['name'], 'infinit')
     assertEq(team['admin'], leader.id)
@@ -27,7 +29,8 @@ with Stripe() as stripe:
     leader = User(meta, 'boss@infinit.io')
     leader.login()
     team = leader.create_team(
-      name = 'infinit', stripe_token = stripe.pay(leader.email))
+      name = 'infinit', stripe_token = stripe.pay(leader.email),
+      )
     # Leader already has a team.
     throws(lambda: leader.create_team(
       name = 'bombarde', stripe_token = stripe.pay(leader.email)),

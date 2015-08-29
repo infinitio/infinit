@@ -4,6 +4,7 @@ import elle.log
 from elle.log import log, trace, debug, dump
 from . import notifier, utils
 from .utils import *
+from .plans import Plan
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Team'
 
@@ -14,17 +15,26 @@ class Team(dict):
       meta,
       admin,
       name,
+      plan,
   ):
+    name = name.strip()
     self.__meta = meta
     self.__id = None
-    self['admin'] = admin['_id']
-    self['creation_time'] = meta.now
-    self['members'] = [admin['_id']]
-    self['modification_time'] = meta.now
     self['name'] = name
+    self['lower_name'] = name.lower()
+    self['plan'] = plan
+    self['admin'] = admin['_id']
+    self['members'] = [{'id': admin['_id'], 'status': 'ok'}]
+    self['creation_time'] = meta.now
+    self['modification_time'] = meta.now
 
   @staticmethod
-  def __build(team_db, meta):
+  def from_data(meta, team_db):
+    """Cronstruct a Team object from database data.
+
+    meta -- The meta instance.
+    team_db -- The document.
+    """
     res = Team.__new__(Team)
     res.__meta = meta
     res.__id = team_db['_id']
@@ -35,6 +45,8 @@ class Team(dict):
 
   @staticmethod
   def find(meta, query, ensure_existence = False):
+    elle.log.debug('find %s (ensure_existence: %s)' % (
+      query, ensure_existence))
     team = meta.database.teams.find_one(
       query,
     )
@@ -47,19 +59,75 @@ class Team(dict):
           })
       else:
         return None
-    return Team.__build(team_db = team, meta = meta)
+    return Team.from_data(team_db = team, meta = meta)
+
+  def team_for_user(meta, user, ensure_existence = False, pending = None):
+    query = {'members.id': user['_id']}
+    if pending is not None:
+      query['status'] = 'pending' if pending else 'ok'
+    return Team.find(meta, query, ensure_existence)
 
   def edit(self, update):
+    elle.log.trace('%s: edit (update: %s)' % (self, update))
     res = self.__meta.database.teams.find_and_modify(
       {'_id': self['id']},
       update,
       new = True)
-    return Team.__build(team_db = res, meta = self.__meta)
+    elle.log.debug('result: %s' % res)
+    return Team.from_data(team_db = res, meta = self.__meta)
 
   def db_insert(self):
     self.__id = self.__meta.database.teams.insert(dict(self))
     self['id'] = self.__id
     return self
+
+  def register_to_stripe(self, stripe_token, stripe_coupon = None):
+    """Stripe needs a email address so the admin will be used as the
+    subscription"""
+    elle.log.trace('register to stripe %s (coupon: %s)' % (
+      stripe_token, stripe_coupon))
+    admin = self.__meta.user_from_identifier(self['admin'])
+    elle.log.debug('plan: %s' % self['plan'])
+    return self.__meta._user_update(
+      admin, plan = self['plan'], stripe_token = stripe_token,
+      stripe_coupon = stripe_coupon)
+
+  def __update_stripe_quantity(self, quantity):
+    elle.log.trace('update subscrition quantity to %s' % quantity)
+    admin = self.__meta.user_from_identifier(self['admin'])
+    with self.__meta._stripe:
+      subscription = self.__meta._stripe.subscription(
+        self.__meta._stripe.fetch_customer(admin))
+      if quantity != subscription.quantity:
+        subscription.quantity = quantity
+        subscription.save()
+
+  def __manages_users(self, operation, user_id):
+    res = self.__meta.database.teams.find_and_modify(
+      {'_id': self['id']},
+      {operation: {'members': {'id': user_id, 'status': 'ok'}}},
+      new = True,
+      upsert = False)
+    self.__update_stripe_quantity(len(res['members']))
+    return res
+
+  def add_user(self, invitee):
+    elle.log.trace('add user %s' % invitee['_id'])
+    old_team = Team.team_for_user(self.__meta, invitee)
+    if old_team:
+      return self.__meta.forbidden(
+        {
+          'error': 'user_already_in_a_team',
+          'message': 'The user %s is already in a team'
+        })
+    res = self.__manages_users('$addToSet', invitee['_id'])
+    return Team.from_data(self.__meta, res)
+
+  def remove_user(self, user):
+    elle.log.trace('remove user %s' % user['_id'])
+    old_team = Team.team_for_user(self.__meta, user, pending = False)
+    res = self.__manages_users('$pull', user['_id'])
+    return Team.from_data(self.__meta, res)
 
   @property
   def storage_used(self):
@@ -93,7 +161,8 @@ class Team(dict):
 
   @property
   def member_ids(self):
-    return self['members']
+    print(self['members'])
+    return [m['id'] for m in self['members']]
 
   @property
   def modification_time(self):
@@ -112,6 +181,10 @@ class Team(dict):
     return self.get('shared_settings', {})
 
   @property
+  def plan(self):
+    return self['plan']
+
+  @property
   def view(self):
     return {
       'admin': self.admin_id,
@@ -125,18 +198,19 @@ class Team(dict):
 
 class Mixin:
   # ============================================================================
-  # Search.
-  # ============================================================================
-  def team_for_user(self, user, ensure_existence = False):
-    return Team.find(self, {'members': user['_id']}, ensure_existence)
-
-  # ============================================================================
   # Creation.
   # ============================================================================
-  def __create_team(self, owner, name):
+  def __create_team(self, owner, name,
+                    stripe_token,
+                    plan,
+                    stripe_coupon = None):
+    elle.log.trace('create team %s (plan: %s)' % (name, plan))
+    plan = Plan.find(self, plan, ensure_existence = True)
     try:
-      team = Team(self, owner, name).db_insert()
+      team = Team(self, owner, name, plan).db_insert()
+      team.register_to_stripe(stripe_token, stripe_coupon)
     except pymongo.errors.DuplicateKeyError:
+      elle.log.dump('teams: %s' % list(self.database.teams.find()))
       return self.conflict(
         {
           'error': 'team_name_already_taken',
@@ -149,16 +223,18 @@ class Mixin:
   @require_logged_in
   def create_team(self,
                   name,
-                  stripe_token):
+                  stripe_token,
+                  plan : Plan.translate_in):
     user = self.user
-    team = self.team_for_user(user)
+    team = Team.team_for_user(self, user)
     if team:
       self.forbidden(
         {
           'error': 'already_in_a_team',
-          'reason': 'You already are in team %s' % team['name'],
+          'reason': 'You already are in team %s.' % team['name'],
         })
-    return self.__create_team(user, name)
+    return self.__create_team(user, name, stripe_token = stripe_token,
+                              plan = plan)
 
   # @api('/team/<name>', method = 'PUT')
   # def create_team(self,
@@ -191,7 +267,7 @@ class Mixin:
       return self.forbidden(
         {
           'error': 'not_the_team_admin',
-          'reason': 'Only the team admin can edit or delete a team'
+          'reason': 'Only the team administrator can edit or delete a team.'
         })
 
   def __require_team_member(self, team, user):
@@ -219,15 +295,15 @@ class Mixin:
   @require_logged_in_fields(['password'])
   def delete_team(self, password):
     user = self.user
-    team = self.team_for_user(user, ensure_existence = True)
+    team = Team.team_for_user(self, user, ensure_existence = True)
     self.__require_team_admin(team, user)
     self.__enforce_user_password(user, password)
     return self.__delete_specific_team(team)
 
-  @api('/team/<id>', method = 'DELETE')
+  @api('/team/<identifier>', method = 'DELETE')
   @require_admin
-  def delete_specific_team(self, id):
-    team = Team.find(self, id = id)
+  def delete_specific_team(self, identifier):
+    team = Team.find(self, identifier = identifier)
     return self.__delete_specific_team(self, team)
 
   # ============================================================================
@@ -237,13 +313,13 @@ class Mixin:
   @require_logged_in
   def team_view(self):
     user = self.user
-    team = Team.find(self, {'members': user['_id']}, ensure_existence = True)
+    team = Team.find(self, {'members.id': user['_id']}, ensure_existence = True)
     return team.view
 
-  @api('/team/<id>', method = 'GET')
+  @api('/team/<identifier>', method = 'GET')
   @require_admin
-  def team_view_admin(self, id: bson.ObjectId):
-    team = Team.find(self, {'_id': id}, ensure_existence = True)
+  def team_view_admin(self, identifier: bson.ObjectId):
+    team = Team.find(self, {'_id': identifier}, ensure_existence = True)
     return team.view
 
   # ============================================================================
@@ -252,27 +328,20 @@ class Mixin:
   @api('/team', method = 'PUT')
   @require_logged_in
   def update_team(self, name):
-    team = self.team_for_user(self.user, ensure_existence = True)
-    return team.edit({'$set': {'name': name}}).view
+    team = Team.team_for_user(self, self.user, ensure_existence = True)
+    return team.edit({'$set': {'name': name, 'lower_name': name.lower()}}).view
 
-  @api('/team/<id>', method = 'PUT')
+  @api('/team/<identifier>', method = 'PUT')
   @require_admin
-  def update_team_admin(self, id, name):
-    team = Team.find(self, {'_id': id}, ensure_existence = True)
-    return Team.edit({'$set': {'name': name}}).view
+  def update_team_admin(self, identifier : bson.ObjectId, name):
+    team = Team.find(self, {'_id': identifier}, ensure_existence = True)
+    return team.edit({'$set': {'name': name, 'lower_name': name.lower()}}).view
 
   # ============================================================================
   # Add member.
   # ============================================================================
   def __add_team_member(self, team, invitee):
-    old_team = self.team_for_user(invitee)
-    if old_team:
-      return self.forbidden(
-        {
-          'error': 'user_already_in_a_team',
-          'message': 'The user %s is already in a team'
-        })
-    return team.edit({'$addToSet': {'members': invitee['_id']}}).view
+    return team.add_user(invitee).view
     # XXX: I wish I could make that work.
     # try:
     #   team = team.edit({'$addToSet': {'members': invitee['_id']}})
@@ -288,40 +357,42 @@ class Mixin:
   def add_team_member(self, identifier : utils.identifier):
     invitee = self.user_from_identifier(identifier)
     user = self.user
-    team = self.team_for_user(user, ensure_existence = True)
+    team = Team.team_for_user(self, user, ensure_existence = True)
     self.__require_team_admin(team, user)
     return self.__add_team_member(team, invitee)
 
   @api('/team/<team_id>/members/<user_identifier>', method = 'PUT')
   @require_admin
-  def add_team_member_admin(self, team_id, user_identifier : utils.identifier):
-    team = Team.find(self, {'_id': bson.ObjectId(team_id)})
-    invitee = self.user_from_identifier(identifier)
-    return self.__add_team_member(team, invitee)
+  def add_team_member_admin(self,
+                            team_id : bson.ObjectId,
+                            user_identifier : utils.identifier):
+    team = Team.find(self, {'_id': team_id}, ensure_existence = True)
+    invitee = self.user_from_identifier(user_identifier)
+    return team.__add_team_member(team, invitee['_id'])
 
   # ============================================================================
   # Remove member.
   # ============================================================================
   def __remove_team_member(self, team, member):
-    if member['_id'] not in team['members']:
+    if member['_id'] not in team.member_ids:
       return self.not_found(
         {
-          'error': 'unknown user',
-          'message': 'The user %s is not in the team' % identifier
+          'error': 'unknown_user',
+          'message': 'The user %s is not in the team' % member['_id'],
         })
-    return team.edit({'$pull': {'members': member['_id']}}).view
+    return team.remove_user(member)
 
   @api('/team/members/<identifier>', method = 'DELETE')
   @require_logged_in
   def remove_team_member(self, identifier : utils.identifier):
     member = self.user_from_identifier(identifier)
     user = self.user
-    team = self.team_for_user(user, ensure_existence = True)
+    team = Team.team_for_user(self, member, ensure_existence = True)
     self.__require_team_admin(team, user)
     return self.__remove_team_member(team, member)
 
   @api('/team/<team_id>/members/<user_identifier>', method = 'DELETE')
-  @require_logged_in
+  @require_admin
   def remove_team_member(self,
                          team_id : bson.ObjectId,
                          user_identifier : utils.identifier):
@@ -336,7 +407,7 @@ class Mixin:
                   password):
     user = self.user
     self.__enforce_user_password(user, password)
-    team = self.team_for_user(user, ensure_existence = True)
+    team = Team.team_for_user(self, user, ensure_existence = True)
     return self.__remove_team_member(team, user)
 
   # ============================================================================
@@ -411,7 +482,7 @@ class Mixin:
   @api('/team/custom_domains/<name>', method = 'PUT')
   @require_logged_in
   def set_team_domain(self, name):
-    team = self.team_for_user(self.user, ensure_existence = True)
+    team = Team.team_for_user(self, self.user, ensure_existence = True)
     self.__require_team_admin(team, self.user)
     old, new = self._custom_domain_edit(name, 'add', team)
     if old is None:
@@ -420,8 +491,8 @@ class Mixin:
 
   @api('/team/custom_domains/<name>', method = 'DELETE')
   @require_logged_in
-  def team_account_patch_api(self, name):
-    team = self.team_for_user(self.user, ensure_existence = True)
+  def user_account_patch_api(self, name):
+    team = Team.team_for_user(self, self.user, ensure_existence = True)
     self.__require_team_admin(team, self.user)
     old, new = self._custom_domain_edit(name, 'remove', team)
     if old is None:
@@ -430,4 +501,3 @@ class Mixin:
         'custom-domain': name,
       })
     return new
-
