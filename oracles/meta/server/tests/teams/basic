@@ -148,3 +148,37 @@ with Stripe() as stripe:
     res = leader.get('team')
     assertEq(res['storage_used'], jean_size + leader_size)
 
+  # Infinit administartion.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    leader = User(meta, 'julien@infinit.io')
+    leader.login()
+    team_infinit = leader.create_team(
+      name = 'infinit', stripe_token = stripe.pay(leader.email))
+    # XXX: Make the user admin (find a way).
+    admin = User(meta, 'antony.mechin@infinit.io')
+    admin.login()
+    # View.
+    admin_view = admin.get('team/%s' % team['id'])
+    # XXX: Do the correct checks.
+    # Rename.
+    renamed_team = admin.put('team/%s' % team['id'], {'name': 'Bombarde'})
+    assertEq(renamed_team['name'], 'Bombarde')
+    # Add user.
+    baptiste = User(meta, 'baptiste@infinit.io')
+    leader.add_team_member(baptiste.id)
+    # Get info about the team as non leader.
+    baptiste.login()
+    team = baptiste.get('team')
+    assertEq(len(team['members']), 2)
+    assertEq(team['admin'], leader.id)
+    leader.delete('team', {'password': leader.password})
+    throws(lambda: baptiste.get('team'), 404)
+    throws(lambda: leader.get('team'), 404)
+    updated_team = admin.put('team/%s/members/%s' % (team['id'], baptiste.id))
+    assert user_in_team(updated_team, baptiste)
+    assert user_in_team(leader.get('team'), baptiste)
+    # Remove user.
+    updated_team = admin.delete('team/%s/members/%s' %
+                                (team['id'], baptiste.id))
+    assert not user_in_team(updated_team, baptiste)
+    assert not user_in_team(leader.get('team'), baptiste)
