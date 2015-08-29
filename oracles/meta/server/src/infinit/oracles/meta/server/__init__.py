@@ -125,8 +125,8 @@ class Meta(bottle.Bottle,
     system_logger = os.getenv("META_LOG_SYSTEM")
     if system_logger is not None:
       elle.log.set_logger(elle.log.SysLogger(system_logger))
-    self.__force_admin = force_admin
-    if self.__force_admin:
+    self._force_admin = force_admin
+    if self._force_admin:
       elle.log.warn('%s: running in force admin mode' % self)
     if mongo_replica_set is not None:
       with elle.log.log(
@@ -454,8 +454,8 @@ class Meta(bottle.Bottle,
   @property
   def admin(self):
     source = bottle.request.environ.get('REMOTE_ADDR')
-    force = self.__force_admin or \
-      (self.__force_admin is not False and source == '127.0.0.1')
+    force = self._force_admin or \
+      (self._force_admin is not False and source == '127.0.0.1')
     return force or (hasattr(bottle.request, 'certificate') and bottle.request.certificate in [
       'antony.mechin@infinit.io',
       'baptiste.fradin@infinit.io',
