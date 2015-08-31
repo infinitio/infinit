@@ -11,6 +11,7 @@ import requests
 from pymongo import errors, DESCENDING
 from .utils import api, require_logged_in, require_logged_in_fields, require_admin, json_value, date_time
 from . import cloud_buffer_token, cloud_buffer_token_gcs, error, notifier, regexp, conf, invitation, mail, transaction_status
+from .team import Team
 
 #
 # Link Generation
@@ -586,7 +587,7 @@ class Mixin:
         fields = ['plan',
                   'account.custom_domains',
                   'account.default_background'])
-      team = self.team_for_user(owner)
+      team = Team.team_for_user(self, owner)
       if custom_domain is not None:
         if team:
           settings = team.get('shared_settings')
