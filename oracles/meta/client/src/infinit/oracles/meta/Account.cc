@@ -20,9 +20,11 @@ namespace infinit
             return "plus";
           case AccountPlanType::AccountPlanType_Premium:
             return "premium";
+          case AccountPlanType::AccountPlanType_Team:
+            return "team";
           // Fallback.
           default:
-            return "basic";
+            return "plus";
         }
       }
 
@@ -180,6 +182,8 @@ namespace elle
         return AccountPlanType::AccountPlanType_Plus;
       else if (repr == "premium")
         return AccountPlanType::AccountPlanType_Premium;
+      else if (repr == "team")
+        return AccountPlanType::AccountPlanType_Team;
       // Fallback to Plus.
       return AccountPlanType::AccountPlanType_Plus;
     }

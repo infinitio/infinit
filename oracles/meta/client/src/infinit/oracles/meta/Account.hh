@@ -18,6 +18,7 @@ namespace infinit
         AccountPlanType_Basic = 0,
         AccountPlanType_Plus,
         AccountPlanType_Premium,
+        AccountPlanType_Team,
       } AccountPlanType;
 
       struct Account
