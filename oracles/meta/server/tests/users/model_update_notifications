@@ -20,11 +20,11 @@ with Meta() as meta, Trophonius(meta) as trophonius:
 
   quotas = notif['account']['quotas']
   assertGT(quotas['send_to_self']['quota'],
-           alice.plan['quotas']['send_to_self']['default_quota'])
+           plans['basic']['quotas']['send_to_self']['default_quota'])
   assertEq(quotas['send_to_self']['quota'],
            alice.synchronize()['account']['quotas']['send_to_self']['quota'])
   assertGT(quotas['links']['quota'],
-           alice.plan['quotas']['links']['default_storage'])
+           plans['basic']['quotas']['links']['default_storage'])
   assertEq(quotas['links']['quota'],
            alice.synchronize()['account']['quotas']['links']['quota'])
   User(meta, 'bob2@infinit.io', referral_code = alice.referral_code).login()
@@ -125,4 +125,4 @@ with Meta() as meta, Trophonius(meta) as trophonius:
     notif = alice.next_notification()
     assertEq(notif.type, 42)
     assertEq(notif['account']['quotas']['send_to_self']['bonus'],
-             alice.plan['quotas']['send_to_self']['bonuses']['social_post'] * i)
+             plans['basic']['quotas']['send_to_self']['bonuses']['social_post'] * i)
