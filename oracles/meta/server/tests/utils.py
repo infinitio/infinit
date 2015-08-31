@@ -233,6 +233,10 @@ class Trophonius(Client):
     assert res['success']
     self.__users[user.id].remove(user.device_id)
 
+  @property
+  def id(self):
+    return self.__uuid
+
 class NoOpMailer(Mailer):
 
   def __init__(self, op = None):

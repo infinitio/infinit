@@ -1702,7 +1702,7 @@ class Mixin:
   @require_admin
   def user_delete_specific(self, user: str):
     self.user_delete(
-      self.user_by_id_or_email(user, fields = ['email', 'swaggers']))
+      self.user_by_id_or_email(user, fields = ['fullname', 'email', 'swaggers']))
 
   def user_delete(self, user, merge_with = None):
     """The idea is to just keep the user's id and fullname so that transactions
@@ -2653,10 +2653,22 @@ class Mixin:
       previous = self.database.users.find_and_modify(
         match,
         action,
-        fields = ['devices.id', 'devices.trophonius'],
+        fields = [
+          'register_status',
+          'devices.id',
+          'devices.trophonius'
+        ],
         new = False,
       )
       if status:
+        if not previous:
+          self.forbidden({
+            'error': 'device/not_found',
+            'reason':
+              'user %r has no device %r' % (user_id, device_id),
+            'user_id': user_id,
+            'device_id': device_id,
+          })
         try:
           device = next(d for d in previous['devices']
                         if d['id'] == str(device_id))

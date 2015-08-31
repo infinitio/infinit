@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+
+from utils import *
+from uuid import uuid4
+from infinit.oracles.meta.server.notifier import Notifier
+
+with Meta(force_admin = True) as meta, Trophonius(meta) as t:
+  bob = User(meta, 'bob@infinit.io')
+  bob.login()
+  device = bob.device
+  bob.delete('users/%s' % bob.id)
+  url = 'trophonius/%s/users/%s/%s' % (t.id, bob.id, device['id'])
+  throws(lambda: bob.put(url), 403)
