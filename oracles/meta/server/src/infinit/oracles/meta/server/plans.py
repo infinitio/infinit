@@ -57,11 +57,14 @@ class Plan(dict):
     # Default storage.
     bonuses = {'social_post': 0, 'facebook_linked': 0, 'referrer': 0,
                'referree': 0, 'has_avatar': 0}
-    self['quotas'] = {'links': {'default_storage': int(100e9),
-                                'bonuses': bonuses},
-                      'send_to_self': {'default_quota': None,
-                                       'bonuses': bonuses},
-                      'p2p': {'size_limit': None}}
+    self['quotas'] = {
+      'links': {
+        'default_storage': int(100e9),
+        'bonuses': bonuses},
+      'send_to_self': {
+        'default_quota': None,
+        'bonuses': bonuses},
+      'p2p': {'size_limit': None}}
     self.update(body)
     self['creation_time'] = meta.now
     # Check properties.
@@ -104,15 +107,22 @@ class Plan(dict):
   # -------- #
   @staticmethod
   def find(meta, identifier, ensure_existence = False):
-    elle.log.debug('find %s (ensure_existence: %s)' % (identifier, ensure_existence))
+    elle.log.debug('find %s (ensure_existence: %s)' % \
+                   (identifier, ensure_existence))
     if identifier in Plan.builtins:
-      return Plan.by_name(meta, name = identifier, ensure_existence = ensure_existence)
-    return Plan._find(meta, {'_id': identifier}, ensure_existence = ensure_existence)
+      return Plan.by_name(meta,
+                          name = identifier,
+                          ensure_existence = ensure_existence)
+    return Plan._find(meta,
+                      {'_id': identifier},
+                      ensure_existence = ensure_existence)
 
   @staticmethod
   def by_name(meta, name, ensure_existence = False):
     elle.log.debug('find %s (ensure_existence: %s)' % (name, ensure_existence))
-    return Plan._find(meta, {'name': name.strip().lower()}, ensure_existence = ensure_existence)
+    return Plan._find(meta,
+                      {'name': name.strip().lower()},
+                      ensure_existence = ensure_existence)
 
   @staticmethod
   def _find(meta, query, ensure_existence = False):
@@ -214,7 +224,7 @@ class Plan(dict):
         return Plan.from_data(meta, res)
       except pymongo.errors.DuplicateKeyError:
         return Plan.conflict(meta, update['name'])
-    return Plan.find(meta, id = identifier, ensure_existence = True)
+    return Plan.find(meta, identifier = identifier, ensure_existence = True)
 
   # --------- #
   # Deleting. #
@@ -227,7 +237,7 @@ class Plan(dict):
     Then remove the plan from the database. If the plan wasn't present, triggers
     a 404.
 
-    id - The id of the plan.
+    identifier - The id of the plan.
     force - Ignore the stripe result.
     """
     elle.log.trace('delete plan %s (force: %s)' % (identifier, force))
@@ -241,7 +251,7 @@ class Plan(dict):
       elle.log.trace('remove plan from stripe')
       stripe_plan.delete()
     elle.log.trace('remove plan from database')
-    res = meta.database.plans.remove({'_id': id})
+    res = meta.database.plans.remove({'_id': identifier})
     if res['n'] == 1:
       return
     if res['n'] == 0:
@@ -320,8 +330,8 @@ class Plan(dict):
         'reason': 'Key %s is not editable' % name,
       })
 
-  #  Right now, it's just ObjectId reprensation -> ObjectId but if we want to mask
-  #  the id, just add a 2 functions A and A' (with A(A'(x)) == x:
+  #  Right now, it's just ObjectId reprensation -> ObjectId but if we want to
+  #  mask the id, just add a 2 functions A and A' (with A(A'(x)) == x:
   #  translate_out: A(reprensation) -> code
   #  translate_in:  A'(code) -> reprensation -> ObjectId
   @staticmethod
