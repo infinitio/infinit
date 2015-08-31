@@ -3277,7 +3277,7 @@ class Mixin:
       self.user_from_identifier(user_id, fields = ['plan']), name)
 
   def user_background_get(self, user, name):
-    team = self.team_for_user(user)
+    team = Team.team_for_user(self, user)
     if team:
       return self.team_background_get(team, name)
     else:
@@ -3288,7 +3288,7 @@ class Mixin:
   @require_logged_in
   def user_background_delete_api(self, name):
     user = self.user
-    team = self.team_for_user(user)
+    team = Team.team_for_user(self, user)
     if team:
       self.bad_request(
         {'reason': 'User is part of a team, use /team/backgrounds/<name> instead'})
@@ -3299,7 +3299,7 @@ class Mixin:
   @require_logged_in
   def user_background_list_api(self):
     self._check_gcs()
-    team = self.team_for_user(self.user)
+    team = Team.team_for_user(self, self.user)
     if team:
       return self.team_background_list_api()
     else:
@@ -3409,7 +3409,7 @@ class Mixin:
   @require_logged_in_fields(['account'])
   def user_account_get_api(self):
     res = self.user.get('account', {})
-    team = self.team_for_user(self.user)
+    team = Team.team_for_user(self, self.user)
     if team:
       team_settings = team.get('shared_settings', {})
       custom_domains = team_settings.get('custom_domains', [])
@@ -3421,7 +3421,7 @@ class Mixin:
   @api('/user/account', method = 'POST')
   @require_logged_in
   def user_account_update_api(self, **kwargs):
-    if self.team_for_user(self.user):
+    if Team.team_for_user(self, self.user):
       self.bad_request(
         {'reason': 'User is part of a team, use /team/shared_settings instead'})
     update = {}
