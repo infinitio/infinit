@@ -82,7 +82,7 @@ class Team(dict):
     return self
 
   def register_to_stripe(self, stripe_token, stripe_coupon = None):
-    """Stripe needs a email address so the admin will be used as the
+    """Stripe needs an email address so the admin will be used as the
     subscription"""
     elle.log.trace('register to stripe %s (coupon: %s)' % (
       stripe_token, stripe_coupon))
@@ -161,7 +161,6 @@ class Team(dict):
 
   @property
   def member_ids(self):
-    print(self['members'])
     return [m['id'] for m in self['members']]
 
   @property
@@ -312,8 +311,9 @@ class Mixin:
   @api('/team', method = 'GET')
   @require_logged_in
   def team_view(self):
-    user = self.user
-    team = Team.find(self, {'members.id': user['_id']}, ensure_existence = True)
+    team = Team.find(self,
+                     {'members.id': self.user['_id']},
+                     ensure_existence = True)
     return team.view
 
   @api('/team/<identifier>', method = 'GET')
@@ -417,7 +417,7 @@ class Mixin:
   @require_logged_in
   def team_shared_settings_get_api(self):
     user = self.user
-    team = self.team_for_user(self.user, ensure_existence = True)
+    team = Team.team_for_user(self, user, ensure_existence = True)
     self.__require_team_member(team, user)
     return team.shared_settings
 
@@ -425,7 +425,7 @@ class Mixin:
   @require_logged_in
   def team_shared_settings_post_api(self, **kwargs):
     user = self.user
-    team = self.team_for_user(self.user, ensure_existence = True)
+    team = Team.team_for_user(self, user, ensure_existence = True)
     self.__require_team_admin(team, user)
     update = {}
     for field in [
@@ -441,7 +441,7 @@ class Mixin:
   @require_logged_in
   def team_background_put_api(self, name):
     user = self.user
-    team = self.team_for_user(user, ensure_existence = True)
+    team = Team.team_for_user(self, user, ensure_existence = True)
     self.__require_team_admin(team, user)
     return self._cloud_image_upload(
       'team_backgrounds', name, team = team)
@@ -450,7 +450,7 @@ class Mixin:
   @require_logged_in
   def team_background_get_api(self, name):
     user = self.user
-    team = self.team_for_user(user, ensure_existence = True)
+    team = Team.team_for_user(self, user, ensure_existence = True)
     self.__require_team_member(team, user)
     return self.team_background_get(team, name)
 
@@ -466,14 +466,14 @@ class Mixin:
   @require_logged_in
   def team_background_delete_api(self, name):
     user = self.user
-    team = self.team_for_user(user, ensure_existence = True)
+    team = Team.team_for_user(self, user, ensure_existence = True)
     self.__require_team_admin(team, user)
     return self._cloud_image_delete('team_backgrounds', name, team = team)
 
   @api('/team/backgrounds', method = 'GET')
   @require_logged_in
   def team_background_list_api(self):
-    team = self.team_for_user(self.user, ensure_existence = True)
+    team = Team.team_for_user(self, self.user, ensure_existence = True)
     self._check_gcs()
     return {
       'backgrounds': self.gcs.bucket_list('team_backgrounds', prefix = team.id),
