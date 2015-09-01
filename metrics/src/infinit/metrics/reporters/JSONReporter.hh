@@ -32,6 +32,7 @@ namespace infinit
       http_status,
       how_ended,
       initialization_time,
+      language,
       limit,
       message,
       message_length,

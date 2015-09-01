@@ -491,6 +491,9 @@ namespace infinit
         std::string plan = Reporter::metric_sender_plan().empty()
                          ? "unknown" : Reporter::metric_sender_plan();
         data[this->_key_str(JSONKey::plan)] = plan;
+        std::string language = Reporter::metric_sender_language();
+        if (!language.empty())
+          data[this->_key_str(JSONKey::language)] = language;
         elle::json::Object feats;
         auto features = Reporter::metric_features();
         for (auto const& elem : Reporter::metric_features())
@@ -576,6 +579,8 @@ namespace infinit
           return "how_ended";
         case JSONKey::initialization_time:
           return "initialization_time";
+        case JSONKey::language:
+          return "language";
         case JSONKey::limit:
           return "limit";
         case JSONKey::message:

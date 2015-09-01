@@ -587,6 +587,12 @@ namespace surface
       this->_email = email;
       this->_password = password;
 
+      if (device_language)
+      {
+        infinit::metrics::Reporter::metric_sender_language(
+          device_language.get());
+      }
+
       std::string lower_email = email;
       std::transform(lower_email.begin(),
                      lower_email.end(),

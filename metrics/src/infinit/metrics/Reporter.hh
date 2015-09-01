@@ -90,7 +90,12 @@ namespace infinit
 
       static
       void
-      metric_features(std::unordered_map<std::string, std::string> const& features);
+      metric_sender_language(std::string const& language);
+
+      static
+      void
+      metric_features(
+        std::unordered_map<std::string, std::string> const& features);
 
     /// Transaction metrics.
     public:
@@ -440,6 +445,10 @@ namespace infinit
 
       static
       std::string
+      metric_sender_language();
+
+      static
+      std::string
       user_agent();
 
     /// Static class attributes.
@@ -455,6 +464,9 @@ namespace infinit
 
       static
       std::string _metric_sender_plan;
+
+      static
+      std::string _metric_sender_language;
 
       static
       std::unordered_map<std::string, std::string>

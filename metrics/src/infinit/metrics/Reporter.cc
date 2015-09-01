@@ -41,6 +41,7 @@ namespace infinit
     std::string Reporter::_metric_sender_id = "";
     std::string Reporter::_metric_device_id = "";
     std::string Reporter::_metric_sender_plan = "";
+    std::string Reporter::_metric_sender_language = "";
     std::unordered_map<std::string,std::string> Reporter::_metric_features;
 
     void
@@ -59,6 +60,12 @@ namespace infinit
     Reporter::metric_sender_plan(std::string const& plan)
     {
       Reporter::_metric_sender_plan = plan;
+    }
+
+    void
+    Reporter::metric_sender_language(std::string const& language)
+    {
+      Reporter::_metric_sender_language = language;
     }
 
     void
@@ -491,6 +498,13 @@ namespace infinit
     Reporter::metric_features()
     {
       return Reporter::_metric_features;
+    }
+
+
+    std::string
+    Reporter::metric_sender_language()
+    {
+      return Reporter::_metric_sender_language;
     }
 
     std::string
