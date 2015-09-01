@@ -745,7 +745,6 @@ class User(Client):
                version = None,
                **kwargs):
     super().__init__(meta, version)
-    self.__meta = meta
     if not facebook:
       self.email = email is not None and email or random_email() + '@infinit.io'
       self.password, self.email_confirmation_token = \
@@ -872,6 +871,16 @@ class User(Client):
 
   def synchronize(self, init = False):
     return self.get('user/synchronize?init=%s' % (init and '1' or '0'))
+
+  def upgrade_plan(self, plan, stripe_token, stripe_coupon = None):
+    body = {
+      'plan': plan,
+      'stripe_token': stripe_token,
+    }
+    if stripe_coupon:
+      body.update({'stripe_coupon': stripe_coupon})
+    return self.put('users/%s' % self.id, body)
+
 
   @property
   def device(self):
@@ -1109,11 +1118,23 @@ class User(Client):
                        'plan': plan,
                     })
 
-  def add_team_member(self, user_id):
-    return self.put('team/members/%s' % user_id)
+  def invite_team_member(self, user_id):
+    return self.put('team/invitees/%s' % user_id)
+
+  def uninvite_team_member(self, user_id):
+    return self.delete('team/invitees/%s' % user_id)
 
   def delete_team_member(self, user_id):
     return self.delete('team/members/%s' % user_id)
+
+  def reject_invitation(self, team_id):
+    return self.post('team/%s/reject' % team_id)
+
+  def join_team(self, team_id):
+    return self.post('team/%s/join' % team_id)
+
+  def leave_team(self, team_id, password):
+    return self.post('team/leave', {'password': password})
 
 def user_in_team(team, user):
   return bool(len([m for m in team['members'] if m['_id'] == user.id]))
