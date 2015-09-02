@@ -88,12 +88,12 @@ class Stripe:
       subscription.plan = plan
     return subscription
 
-  def remove_plan(self, subscription):
-    subscription.delete(at_period_end = True)
+  def remove_plan(self, subscription, at_period_end = True):
+    subscription.delete(at_period_end = at_period_end)
     subscription = None
     return subscription
 
-  def update_subscription(self, customer, plan, coupon):
+  def update_subscription(self, customer, plan, coupon, at_period_end = False):
     elle.log.trace('update subscription (customer: %s, plan: %s, coupon: %s)'
                    % (customer, plan, coupon))
     subscription = self.subscription(customer)
@@ -102,7 +102,7 @@ class Stripe:
     else:
       if coupon is None:
         if subscription is not None:
-          subscription = stripe.remove_plan(subscription)
+          subscription = self.remove_plan(subscription, at_period_end)
     if coupon is not None:
       if subscription is None:
         self.__meta.bad_request({
