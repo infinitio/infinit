@@ -69,6 +69,24 @@ class Team(dict):
       query = {'members': user['_id']}
     return Team.find(meta, query, ensure_existence)
 
+  def user_deleted(meta, user):
+    user_id = user['_id']
+    elle.log.trace('delete user from all teams: %s' % user_id)
+    # Remove user from team.
+    member_team = Team.team_for_user(meta, user)
+    if member_team and user_id == member_team.admin_id:
+      meta.forbidden(
+        {
+          'error': 'cant_delete_team_admin_user',
+          'reason': 'User is admin of a team, delete the team first'
+        })
+    elif member_team:
+      member_team.remove_member(user)
+    # Remove user from invitees of all teams.
+    meta.database.teams.update(
+      {'invitees': user_id},
+      {'$pull': {'invitees': user_id}})
+
   def edit(self, update):
     elle.log.trace('%s: edit (update: %s)' % (self, update))
     res = self.__meta.database.teams.find_and_modify(
@@ -103,6 +121,8 @@ class Team(dict):
       if quantity != subscription.quantity:
         subscription.quantity = quantity
         subscription.save()
+  def __update_member_account(self, user):
+    self.__meta._user_update(user, 'basic', force_prorata = True)
 
   def __cancel_stripe_subscription(self):
     elle.log.trace('cancel subscription for team: %s' % self.id)
@@ -166,6 +186,7 @@ class Team(dict):
             'error': 'user_in_team_or_not_invited',
             'message': 'User %s not invited or already member' % user_id
           })
+      self.__update_member_account(user)
       self.__update_stripe_quantity(len(res['members']))
       return Team.from_data(self.__meta, res)
     except pymongo.errors.DuplicateKeyError as e:
