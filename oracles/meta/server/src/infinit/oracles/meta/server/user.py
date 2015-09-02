@@ -1742,9 +1742,14 @@ class Mixin:
     # Fail early if stripe customer could not be deleted.
     if 'stripe_id' in user:
       with self._stripe:
-        cus = self._stripe.fetch_customer(user)
-        if cus:
-          cus.delete()
+        customer = self._stripe.fetch_customer(user)
+        if customer:
+          subscription = self._stripe.subscription(customer)
+          if subscription:
+            self._stripe.remove_plan(subscription, at_period_end = True)
+    # Ensure user is deleted from all teams. Also checks if user is team admin
+    # in which case the delete is blocked with a forbidden.
+    Team.user_deleted(self, user)
     # Invalidate credentials.
     self.remove_session(user)
     # Kick them out of the app.
@@ -2940,10 +2945,11 @@ class Mixin:
                              stripe_token = stripe_token,
                              stripe_coupon = stripe_coupon)
   def _user_update(self,
-                  user,
-                  plan = None,
-                  stripe_token = None,
-                  stripe_coupon = None):
+                   user,
+                   plan = None,
+                   stripe_token = None,
+                   stripe_coupon = None,
+                   force_prorata = False):
     elle.log.trace('update user %s (plan: %s, token: %s)' % (
       user, plan, stripe_token))
     if plan is not None:
@@ -2963,19 +2969,23 @@ class Mixin:
         'plan': plan or user['plan']
       }
       if plan is not None or stripe_coupon is not None:
-        if plan not in free_plans:
-          def _build_response(sub):
-            discount = sub.discount
-            off = discount.coupon.percent_off / 100 if sub.discount else 0
-            return {
-              'amount': sub.plan['amount'] * (1 - off),
-              'currency': sub.plan['currency'],
-            }
-          sub = self._stripe.update_subscription(
-            customer, plan.stripe_id if plan is not None else None,
-            coupon = stripe_coupon)
-          if sub:
-            res.update(_build_response(sub))
+        def _build_response(sub):
+          discount = sub.discount
+          off = discount.coupon.percent_off / 100 if sub.discount else 0
+          return {
+            'amount': sub.plan['amount'] * (1 - off),
+            'currency': sub.plan['currency'],
+          }
+        if plan is None:
+          stripe_plan = None
+        elif plan['name'] in free_plans:
+          stripe_plan = None # Cancel the current subscription.
+        else:
+          stripe_plan = plan.stripe_id if plan is not None else None
+        sub = self._stripe.update_subscription(customer, stripe_plan,
+          coupon = stripe_coupon, at_period_end = not force_prorata)
+        if sub:
+          res.update(_build_response(sub))
     if plan is not None and user.get('plan', 'basic') != plan:
       res.update(self._change_plan(user, plan.name))
     return res
