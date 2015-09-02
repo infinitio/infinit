@@ -6,31 +6,42 @@ from utils import *
 from infinit.oracles.meta import error
 
 with Stripe() as stripe:
+  # Ensure uniqueness for stripe.
+  def __suffix():
+    from random import randint
+    return str(randint(1e9, 9e9))
+
   # Creating and deleting.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    plan = meta.create_plan(stripe, 'plan_name_0129', {})
-    leader = User(meta, 'boss@infinit.io')
+    test_suffix = __suffix()
+    plan = meta.create_plan(stripe, 'plan_name_%s' % test_suffix, {})
+    leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
+    team_name = 'infinit_%s' % test_suffix
     team = leader.create_team(
-      name = 'infinit', stripe_token = stripe.pay(leader.email),
+      name = team_name, stripe_token = stripe.pay(leader.email),
       plan = plan['id'])
+    throws(lambda: leader.create_team(
+           name = 'fail', stripe_token = stripe.pay(leader.email)), 403)
     team = leader.get('team')
-    assertEq(team['name'], 'infinit')
+    assertEq(team['name'], team_name)
     assertEq(team['admin'], leader.id)
     assertEq(len(team['members']), 1)
-    assertEq(team['members'][0]['_id'], leader.id)
-
+    assertEq(team['members'][0], leader.id)
+    stripe.check_plan(leader.email, plan['id'], quantity = 1)
     throws(lambda: leader.delete('team'), 403)
     leader.delete('team', {'password': leader.password})
     throws(lambda: leader.get('team'), 404)
+    stripe.check_plan(leader.email, plan['id'], canceled = True)
 
   # Team uniqueness.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    leader = User(meta, 'boss@infinit.io')
+    test_suffix = __suffix()
+    leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
     team = leader.create_team(
-      name = 'infinit', stripe_token = stripe.pay(leader.email),
-      )
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(leader.email))
     # Leader already has a team.
     throws(lambda: leader.create_team(
       name = 'bombarde', stripe_token = stripe.pay(leader.email)),
@@ -38,47 +49,99 @@ with Stripe() as stripe:
 
   # Team name uniqueness.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    leader = User(meta, 'boss@infinit.io')
+    test_suffix = __suffix()
+    leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
+    original_name = 'infinit_%s' % test_suffix
     team = leader.create_team(
-      name = 'infinit', stripe_token = stripe.pay(leader.email))
-    bob = User(meta, 'bob@infinit.io')
+      name = original_name, stripe_token = stripe.pay(leader.email))
+    bob = User(meta, 'bob_%s@infinit.io' % test_suffix)
     bob.login()
     throws(lambda: bob.create_team(
-      name = 'infinit', stripe_token = stripe.pay(leader.email)),
+      name = original_name,
+      stripe_token = stripe.pay(leader.email)),
            409)
-    leader.put('team', {'name': 'bombarde'})
-    # 'infinit' is now available.
+    leader.put('team', {'name': 'bombarde_%s' % test_suffix})
+    # original name is now available.
     bob.create_team(
-      name = 'infinit', stripe_token = stripe.pay(leader.email))
+      name = original_name, stripe_token = stripe.pay(bob.email))
 
   # Adding and removing users.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    leader = User(meta, 'boss@infinit.io')
+    test_suffix = __suffix()
+    plan = meta.create_plan(stripe, 'plan_name_%s' % test_suffix, {})
+    leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
     team = leader.create_team(
-      name = 'infinit', stripe_token = stripe.pay(leader.email))
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(leader.email),
+      plan = plan['id'])
+    stripe.check_plan(leader.email, plan['id'], quantity = 1)
     # Invite an existing user.
     baptiste = User(meta, 'baptiste@infinit.io')
-    leader.add_team_member(baptiste.id)
-    assertEq(len(leader.get('team')['members']), 2)
-    # Invite
+    leader.invite_team_member(baptiste.id)
+    res = leader.get('team')
+    assertEq(len(res['members']), 1)
+    assertEq(len(res['invitees']), 1)
+    stripe.check_plan(leader.email, plan['id'], quantity = 1)
+    baptiste.login()
+    baptiste.join_team(team['id'])
+    res = leader.get('team')
+    assertEq(len(res['members']), 2)
+    assertEq(len(res['invitees']), 0)
+    stripe.check_plan(leader.email, plan['id'], quantity = 2)
     raph = User(meta, 'raph@infinit.io')
-    leader.add_team_member(raph.id)
-    assertEq(len(leader.get('team')['members']), 3)
+    raph.login()
+    # Join without invitation.
+    throws(lambda: raph.join_team(team['id']), 403)
+    # Invite.
+    leader.invite_team_member(raph.id)
+    res = leader.get('team')
+    assertEq(len(res['members']), 2)
+    assertEq(len(res['invitees']), 1)
+    stripe.check_plan(leader.email, plan['id'], quantity = 2)
+    raph.join_team(team['id'])
+    res = leader.get('team')
+    assertEq(len(res['members']), 3)
+    assertEq(len(res['invitees']), 0)
+    stripe.check_plan(leader.email, plan['id'], quantity = 3)
     # Delete a user.
     leader.delete_team_member(raph.id)
     assertEq(len(leader.get('team')['members']), 2)
+    stripe.check_plan(leader.email, plan['id'], quantity = 2)
+    # Reject invitation.
+    jean = User(meta, 'jean@infinit.io')
+    leader.invite_team_member(jean.id)
+    res = leader.get('team')
+    assertEq(len(res['members']), 2)
+    assertEq(len(res['invitees']), 1)
+    jean.login()
+    jean.reject_invitation(team['id'])
+    res = leader.get('team')
+    assertEq(len(res['members']), 2)
+    assertEq(len(res['invitees']), 0)
+    # Uninvite.
+    pierre = User(meta, 'pierre@infinit.io')
+    leader.invite_team_member(pierre.id)
+    res = leader.get('team')
+    assertEq(len(res['members']), 2)
+    assertEq(len(res['invitees']), 1)
+    leader.uninvite_team_member(pierre.id)
+    res = leader.get('team')
+    assertEq(len(res['members']), 2)
+    assertEq(len(res['invitees']), 0)
 
   # Team view as member.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    leader = User(meta, 'boss@infinit.io')
+    test_suffix = __suffix()
+    leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
     team = leader.create_team(
       name = 'infinit', stripe_token = stripe.pay(leader.email))
-    baptiste = User(meta, 'baptiste@infinit.io')
-    leader.add_team_member(baptiste.id)
+    baptiste = User(meta, 'baptiste_%s@infinit.io' % test_suffix)
+    leader.invite_team_member(baptiste.id)
     baptiste.login()
+    baptiste.join_team(team['id'])
     # Get info about the team as non leader.
     team = baptiste.get('team')
     assertEq(len(team['members']), 2)
@@ -86,44 +149,84 @@ with Stripe() as stripe:
 
   # Deleting a team should remove all members.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    leader = User(meta, 'boss@infinit.io')
+    test_suffix = __suffix()
+    plan = meta.create_plan(stripe, 'plan_name_%s' % test_suffix, {})
+    leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
-    leader.create_team(
-      name = 'infinit', stripe_token = stripe.pay(leader.email))
-    baptiste = User(meta, 'baptiste@infinit.io')
-    leader.add_team_member(baptiste.id)
-    # Get info about the team as non leader.
+    team = leader.create_team(
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(leader.email),
+      plan = plan['id'])
+    baptiste = User(meta, 'baptiste_%s@infinit.io' % test_suffix)
+    leader.invite_team_member(baptiste.id)
     baptiste.login()
-    team = baptiste.get('team')
+    baptiste.join_team(team['id'])
+    team = leader.get('team')
     assertEq(len(team['members']), 2)
+    stripe.check_plan(leader.email, plan['id'], quantity = 2)
     assertEq(team['admin'], leader.id)
     leader.delete('team', {'password': leader.password})
+    stripe.check_plan(leader.email, plan['id'], canceled = True)
     throws(lambda: baptiste.get('team'), 404)
     throws(lambda: leader.get('team'), 404)
 
   # Invite user who already has a team (and get out of a team).
   with Meta(stripe_api_key = Stripe.key) as meta:
-    leader = User(meta, 'boss@infinit.io')
+    test_suffix = __suffix()
+    leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
+    plan_infinit = \
+      meta.create_plan(stripe, 'plan_infinit_name_%s' % test_suffix, {})
     team_infinit = leader.create_team(
-      name = 'infinit', stripe_token = stripe.pay(leader.email))
-    dropbox = User(meta, 'boss@dropbox.com')
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(leader.email),
+      plan = plan_infinit['id'])
+    dropbox = User(meta, 'boss_%s@dropbox.com' % test_suffix)
     dropbox.login()
+    plan_dropbox = \
+      meta.create_plan(stripe, 'plan_dropbox_name_%s' % test_suffix, {})
     team_dropbox = dropbox.create_team(
-      name = 'dropbox', stripe_token = stripe.pay(dropbox.email))
-    invitee = User(meta, 'invitee@infinit.io')
-    invite_guido = lambda x: x.add_team_member(invitee.id)
+      name = 'dropbox_%s' % test_suffix,
+      stripe_token = stripe.pay(dropbox.email),
+      plan = plan_dropbox['id'])
+    invitee = User(meta, 'invitee_%s@infinit.io' % test_suffix)
+    invite_guido = lambda x: x.invite_team_member(invitee.id)
+    # Invite to first team.
     invite_guido(dropbox)
-    throws(lambda: invite_guido(leader), 403)
-    invitee.login()
-    assertEq(invitee.get('team')['name'], team_dropbox['name'])
-    throws(lambda: invitee.delete('team/leave'), 401)
-    invitee.post('team/leave', {'password': invitee.password})
+    res = dropbox.get('team')
+    assertEq(len(res['members']), 1)
+    assertEq(len(res['invitees']), 1)
+    # Invite to second team.
     invite_guido(leader)
+    res = leader.get('team')
+    assertEq(len(res['members']), 1)
+    assertEq(len(res['invitees']), 1)
+    invitee.login()
+    # Join first team.
+    invitee.join_team(team_dropbox['id'])
+    res = dropbox.get('team')
+    assertEq(len(res['members']), 2)
+    assertEq(len(res['invitees']), 0)
+    res = leader.get('team')
+    assertEq(len(res['members']), 1)
+    assertEq(len(res['invitees']), 1)
+    assertEq(invitee.get('team')['name'], team_dropbox['name'])
+    # Try to join second team.
+    throws(lambda: invitee.join_team(team_infinit['id']), 409)
+    throws(lambda: invitee.post('team/leave'), 401)
+    invitee.post('team/leave', {'password': invitee.password})
+    assertEq(len(dropbox.get('team')['members']), 1)
+    stripe.check_plan(dropbox.email, plan_dropbox['id'], quantity = 1)
+    invitee.join_team(team_infinit['id'])
     assertEq(invitee.get('team')['name'], team_infinit['name'])
+    res = leader.get('team')
+    assertEq(len(res['members']), 2)
+    assertEq(len(res['invitees']), 0)
+    stripe.check_plan(leader.email, plan_infinit['id'], quantity = 2)
 
   # Team storage.
   with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = __suffix()
 
     def get_a_link(user, size):
       link = user.getalink(files = [('bite', size)])
@@ -134,51 +237,156 @@ with Stripe() as stripe:
         {'hash': link['hash']},
         {'$set': {'file_size': size, 'quota_counted': True}})
 
-    leader = User(meta, 'julien@infinit.io')
+    leader = User(meta, 'leader_%s@infinit.io' % test_suffix)
     leader.login()
-    team_infinit = leader.create_team(
-      name = 'infinit', stripe_token = stripe.pay(leader.email))
-    jean = User(meta, 'jean@infinit.io')
-    leader.add_team_member(jean.id)
+    team = leader.create_team(
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(leader.email))
+    jean = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    leader.invite_team_member(jean.id)
     jean.login()
+    jean.join_team(team['id'])
     jean_size = 10
     link = get_a_link(jean, jean_size)
     leader_size = 20
     link = get_a_link(leader, leader_size)
     res = leader.get('team')
     assertEq(res['storage_used'], jean_size + leader_size)
+    jean.post('team/leave', {'password': jean.password})
+    res = leader.get('team')
+    assertEq(res['storage_used'], leader_size)
 
-  # Infinit administartion.
+  # Admin exiting plan.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    leader = User(meta, 'julien@infinit.io')
+    test_suffix = __suffix()
+    plan = meta.create_plan(
+      stripe,
+      'plan_name_%s' % test_suffix,
+      {},
+      amount = 10)
+    leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
-    team_infinit = leader.create_team(
-      name = 'infinit', stripe_token = stripe.pay(leader.email))
-    # XXX: Make the user admin (find a way).
-    admin = User(meta, 'antony.mechin@infinit.io')
-    admin.login()
-    # View.
-    admin_view = admin.get('team/%s' % team['id'])
-    # XXX: Do the correct checks.
-    # Rename.
-    renamed_team = admin.put('team/%s' % team['id'], {'name': 'Bombarde'})
-    assertEq(renamed_team['name'], 'Bombarde')
-    # Add user.
-    baptiste = User(meta, 'baptiste@infinit.io')
-    leader.add_team_member(baptiste.id)
-    # Get info about the team as non leader.
-    baptiste.login()
-    team = baptiste.get('team')
-    assertEq(len(team['members']), 2)
-    assertEq(team['admin'], leader.id)
+    leader.update_plan('premium', stripe_token = stripe.pay(leader.email))
+    assertEq(leader.me['plan'], 'premium')
+    stripe.check_plan(leader.email, 'premium', 999)
+    leader.create_team(
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(leader.email),
+      plan = plan['id'])
+    stripe.check_plan(leader.email, plan['id'], 10, quantity = 1)
+
+  # User existing plan.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = __suffix()
+    plan = meta.create_plan(
+      stripe,
+      'plan_name_%s' % test_suffix,
+      {},
+      amount = 10)
+    leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
+    leader.login()
+    team = leader.create_team(
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(leader.email),
+      plan = plan['id'])
+    stripe.check_plan(leader.email, plan['id'], 10, quantity = 1)
+    member = User(meta, 'bob_%s@infinit.io' % test_suffix)
+    member.login()
+    member.update_plan('premium', stripe_token = stripe.pay(member.email))
+    stripe.check_plan(member.email, 'premium', 999)
+    leader.invite_team_member(member.email)
+    member.join_team(team['id'])
+    stripe.check_plan(leader.email, plan['id'], 10, quantity = 2)
+    # Member plan should be canceled prorata.
+    stripe.check_no_plan(member.email)
+
+  # Delete user who is part of team.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = __suffix()
+    plan = meta.create_plan(
+      stripe,
+      'plan_name_%s' % test_suffix,
+      {},
+      amount = 10)
+    leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
+    leader.login()
+    team = leader.create_team(
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(leader.email),
+      plan = plan['id'])
+    stripe.check_plan(leader.email, plan['id'], 10, quantity = 1)
+    another_leader = User(meta, 'bob_%s@infinit.io' % test_suffix)
+    another_leader.login()
+    another_leader.create_team(
+      name = 'another_%s' % test_suffix,
+      stripe_token = stripe.pay(another_leader),
+      plan = plan['id'])
+    stripe.check_plan(another_leader.email, plan['id'], 10, quantity = 1)
+    member = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    member.login()
+    leader.invite_team_member(member.email)
+    another_leader.invite_team_member(member.email)
+    assertEq(len(another_leader.get('team')['invitees']), 1)
+    member.join_team(team['id'])
+    assertEq(len(leader.get('team')['members']), 2)
+    stripe.check_plan(leader.email, plan['id'], 10, quantity = 2)
+    member.delete('user')
+    assertEq(len(leader.get('team')['members']), 1)
+    stripe.check_plan(leader.email, plan['id'], 10, quantity = 1)
+    assertEq(len(another_leader.get('team')['invitees']), 0)
+
+  # Delete user admin of team.g
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = __suffix()
+    plan = meta.create_plan(
+      stripe,
+      'plan_name_%s' % test_suffix,
+      {},
+      amount = 10)
+    leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
+    leader.login()
+    team = leader.create_team(
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(leader.email),
+      plan = plan['id'])
+    throws(lambda: leader.delete('user'), 403)
     leader.delete('team', {'password': leader.password})
-    throws(lambda: baptiste.get('team'), 404)
-    throws(lambda: leader.get('team'), 404)
-    updated_team = admin.put('team/%s/members/%s' % (team['id'], baptiste.id))
-    assert user_in_team(updated_team, baptiste)
-    assert user_in_team(leader.get('team'), baptiste)
-    # Remove user.
-    updated_team = admin.delete('team/%s/members/%s' %
-                                (team['id'], baptiste.id))
-    assert not user_in_team(updated_team, baptiste)
-    assert not user_in_team(leader.get('team'), baptiste)
+    leader.delete('user')
+
+  # XXX: Add tests for all admin functions calls.
+
+  # # Infinit administration.
+  # with Meta(stripe_api_key = Stripe.key) as meta:
+  #   test_suffix = __suffix()
+  #   leader = User(meta, 'leader_%s@infinit.io' % test_suffix)
+  #   leader.login()
+  #   plan = meta.create_plan(stripe, 'plan_name_%s' % test_suffix, {})
+  #   team = leader.create_team(
+  #     name = 'infinit_%s' % test_suffix,
+  #     stripe_token = stripe.pay(leader.email),
+  #     plan = plan['id'])
+  #   # View.
+  #   admin_view = admin.get('team/%s' % team['id'])
+  #   # XXX: Do the correct checks.
+  #   # Rename.
+  #   renamed_team = admin.put('team/%s' % team['id'], {'name': 'Bombarde'})
+  #   assertEq(renamed_team['name'], 'Bombarde')
+  #   # Add user.
+  #   baptiste = User(meta, 'baptiste@infinit.io')
+  #   leader.add_team_member(baptiste.id)
+  #   # Get info about the team as non leader.
+  #   baptiste.login()
+  #   team = baptiste.get('team')
+  #   assertEq(len(team['members']), 2)
+  #   assertEq(team['admin'], leader.id)
+  #   leader.delete('team', {'password': leader.password})
+  #   throws(lambda: baptiste.get('team'), 404)
+  #   throws(lambda: leader.get('team'), 404)
+  #   updated_team = admin.put('team/%s/members/%s' % (team['id'], baptiste.id))
+  #   assert user_in_team(updated_team, baptiste)
+  #   assert user_in_team(leader.get('team'), baptiste)
+  #   # Remove user.
+  #   updated_team = admin.delete('team/%s/members/%s' %
+  #                               (team['id'], baptiste.id))
+  #   assert not user_in_team(updated_team, baptiste)
+  #   assert not user_in_team(leader.get('team'), baptiste)
