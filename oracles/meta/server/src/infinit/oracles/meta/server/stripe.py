@@ -25,10 +25,9 @@ class Stripe:
               stripe.error.AuthenticationError,
               stripe.error.APIConnectionError,
               stripe.error.StripeError) as e:
-        print(tb)
         # Invalid parameters were supplied to Stripe's API
         import traceback
-        elle.log.warn('Unable to perform action %s: %s' % (repr(traceback.extract_tb(tb)), e.args))
+        elle.log.warn('Unable to perform action (%s): %s' % (e.args[0], ''.join(traceback.format_tb(tb))))
         return self.__meta.unavailable({
           'error': 'stripe_issue',
           'reason': e.args[0]
