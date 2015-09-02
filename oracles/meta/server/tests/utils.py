@@ -678,6 +678,9 @@ def random_email(N = 10):
   import string
   return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(N))
 
+class StripeTestException(Exception):
+  pass
+
 class Stripe():
   key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI'
 
@@ -734,6 +737,52 @@ class Stripe():
                       'card[cvc]=123',
                       auth = (Stripe.key, ''))
     return r.json()['id']
+
+  def customer_with_email(self, email):
+    import stripe
+    stripe.api_key = Stripe.key
+    cursor = None
+    while True:
+      if cursor:
+        users = stripe.Customer.all(limit = 100, starting_after = cursor)
+      else:
+        users = stripe.Customer.all(limit = 100)
+      if len(users['data']) == 0:
+        break
+      for user in users['data']:
+        cursor = user['id']
+        if user['email'] == email:
+          return user
+    raise StripeTestException('stripe user not found: %s' % email)
+
+  def check_plan(self,
+                 email,
+                 plan_id,
+                 amount = None,
+                 percent_off = None,
+                 canceled = False,
+                 quantity = None):
+    customer = self.customer_with_email(email)
+    data = customer['subscriptions']['data']
+    assertNeq(len(data), 0)
+    for sub in data:
+      if sub['plan']['id'] == plan_id:
+        if amount is not None:
+          assertEq(sub['plan']['amount'], amount)
+        if percent_off is not None:
+          assertEq(sub['discount']['coupon']['percent_off'], percent_off)
+        if canceled is True:
+          assertEq(sub['cancel_at_period_end'], True)
+        if quantity is not None:
+          assertEq(sub['quantity'], quantity)
+        return
+    raise StripeTestException(
+      'unable to find subscription with plan (%s) for %s' % (plan, email))
+
+  def check_no_plan(self, email):
+    customer = self.customer_with_email(email)
+    data = customer['subscriptions']['data']
+    assertEq(len(data), 0)
 
 class User(Client):
 
@@ -872,11 +921,12 @@ class User(Client):
   def synchronize(self, init = False):
     return self.get('user/synchronize?init=%s' % (init and '1' or '0'))
 
-  def upgrade_plan(self, plan, stripe_token, stripe_coupon = None):
+  def update_plan(self, plan, stripe_token = None, stripe_coupon = None):
     body = {
       'plan': plan,
-      'stripe_token': stripe_token,
     }
+    if stripe_token:
+      body.update({'stripe_token': stripe_token})
     if stripe_coupon:
       body.update({'stripe_coupon': stripe_coupon})
     return self.put('users/%s' % self.id, body)
