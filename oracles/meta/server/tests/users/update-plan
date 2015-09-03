@@ -244,4 +244,5 @@ with Stripe() as stripe:
     stripe.check_plan(new_email, 'premium', 999)
     # Add email address to stripe list for cleanup.
     stripe.emails.add(new_email)
+    throws(lambda: stripe.customer_with_email(original_email), StripeTestException)
 
