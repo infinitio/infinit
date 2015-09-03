@@ -158,6 +158,7 @@ with Stripe() as stripe:
         meta.database.links.update(
           {'hash': link['hash']},
           {'$set': {'file_size': size, 'quota_counted': True}})
+        return link
 
       test_suffix = __suffix()
       plan_id = 'team'
@@ -188,6 +189,12 @@ with Stripe() as stripe:
         check_user(user, plan_id, per_user * 3)
       # Use some storage
       get_a_link(jean, 10)
+      for user in members:
+        check_user(user, plan_id, per_user * 3, 10)
+      link = get_a_link(leader, 25)
+      for user in members:
+        check_user(user, plan_id, per_user * 3, 35)
+      leader.link_update(link, transaction_status.DELETED)
       for user in members:
         check_user(user, plan_id, per_user * 3, 10)
       get_a_link(bob, 20)
@@ -227,6 +234,7 @@ with Stripe() as stripe:
         meta.database.links.update(
           {'hash': link['hash']},
           {'$set': {'file_size': size, 'quota_counted': True}})
+        return link
 
       test_suffix = __suffix()
       plan = meta.create_plan(stripe, 'plan_name_%s' % test_suffix, {})
@@ -257,6 +265,12 @@ with Stripe() as stripe:
         check_user(user, 'team', link_limit)
       # Use some storage
       get_a_link(jean, 10)
+      for user in members:
+        check_user(user, 'team', link_limit, 10)
+      link = get_a_link(leader, 25)
+      for user in members:
+        check_user(user, 'team', link_limit, 35)
+      leader.link_update(link, transaction_status.DELETED)
       for user in members:
         check_user(user, 'team', link_limit, 10)
       get_a_link(bob, 20)
