@@ -2973,14 +2973,16 @@ class Mixin:
                    team_member = False):
     elle.log.trace('update user %s (plan: %s, token: %s)' % (
       user, plan, stripe_token))
-    if plan is not None:
-      if not isinstance(plan, Plan):
-        plan = Plan.find(self, plan, ensure_existence = True)
-    elle.log.debug('plan: %s' % plan)
     eligible_for_plus = self.eligible_for_plus(user['_id'])
     free_plans = ['basic']
     if eligible_for_plus:
       free_plans.append('plus')
+      if plan == 'basic':
+        plan = 'plus'
+    if plan is not None:
+      if not isinstance(plan, Plan):
+        plan = Plan.find(self, plan, ensure_existence = True)
+    elle.log.debug('plan: %s' % plan)
     with self._stripe:
       customer = self._stripe.fetch_or_create_stripe_customer(user)
       if stripe_token is not None:
