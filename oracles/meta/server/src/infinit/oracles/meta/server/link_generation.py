@@ -217,7 +217,8 @@ class Mixin:
         self.require_premium()
       link_size = __link_size_from_file_list(files)
       self._link_check_quota(user, link_size)
-      self._quota_updated_notification(user, extra_link_size = link_size)
+      team = Team.team_for_user(self, user)
+      self._quota_updated_notify(user, team = team, extra_link_size = link_size)
       creation_time = self.now
       # Maintain a list of all elements in document here.
       # Do not add a None hash as this causes problems with concurrency.
@@ -478,8 +479,9 @@ class Mixin:
         {'$set': update},
         new = True,
       )
-      if 'status' in update and user is not None:
-        self._quota_updated_notification(user)
+      # Only update the user's quota when the quota has been counted
+      if user and link.get('quota_counted', False):
+        self._quota_updated_notify(user, team = Team.team_for_user(self, user))
       self.notifier.notify_some(
         notifier.LINK_TRANSACTION,
         recipient_ids = {link['sender_id']},
@@ -765,19 +767,23 @@ class Mixin:
       multi = True)
 
   def __link_usage(self, user):
-    res = self.database.links.aggregate([
-      {
-        '$match': {
-          'sender_id': user['_id'],
-          'status': transaction_status.FINISHED,
-          'quota_counted': True,
-        }
-      },
-      {
-        '$group': {'_id': None, 'total':{'$sum': '$file_size'}}
-      }])['result']
-    total = res[0]['total'] if len(res) else 0
-    return int(total)
+    team = Team.team_for_user(self, user)
+    if team:
+      return team.storage_used
+    else:
+      res = self.database.links.aggregate([
+        {
+          '$match': {
+            'sender_id': user['_id'],
+            'status': transaction_status.FINISHED,
+            'quota_counted': True,
+          }
+        },
+        {
+          '$group': {'_id': None, 'total':{'$sum': '$file_size'}}
+        }])['result']
+      total = res[0]['total'] if len(res) else 0
+      return int(total)
 
   # Generate url on storage for given HTTP operation
   def _generate_op_url(self, link, op):
