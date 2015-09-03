@@ -349,8 +349,6 @@ class Meta(bottle.Bottle,
     # Plans.
     #---------------------------------------------------------------------------
     self.__database.plans.ensure_index([('name', 1)], unique = True)
-    self.__database.plans.ensure_index([('quotas.links.quota', 1)],
-                                       unique = False, sparse = False)
 
     #---------------------------------------------------------------------------
     # Teams.
