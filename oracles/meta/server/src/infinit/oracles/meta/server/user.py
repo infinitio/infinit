@@ -118,8 +118,7 @@ class Mixin:
       social_post['medium']: social_post['date']
       for social_post in user.get('social_posts', {})
     }
-    # If you has no plan or 'None', return basic.
-    user['plan'] = user.get('plan', 'basic') or 'basic'
+    user['plan'] = self._user_plan_name(user)
 
   def __user_self(self, user):
     user = self.__user(user)
@@ -1618,6 +1617,12 @@ class Mixin:
           'accounts': sort_dict({'type': 'email', 'id': new_email})
         },
       })
+    # Update the user's email on stripe if they have an account.
+    if user.get('stripe_id'):
+      with self._stripe:
+        customer = self._stripe.fetch_customer(user)
+        if customer:
+          self._stripe.update_customer_email(customer, new_email)
     return {}
 
   @api('/user/change_password', method = 'POST')
@@ -2579,7 +2584,7 @@ class Mixin:
     )
     if 'small_avatar' not in res:
       user.update({'has_avatar': True})
-      self._quota_updated_notification(user)
+      self._quota_updated_notify(users)
     return self.success()
 
   ## ----------------- ##
@@ -2863,32 +2868,46 @@ class Mixin:
     else:
       res.update(self.devices_users_api(user['_id']))
     res.update(self.accounts_users_api(user['_id']))
-    team = Team.team_for_user(self, user)
-    if team:
-      custom_domains = team.get('shared_settings', {}).get('custom_domains', [])
-    else:
-      custom_domains = user.get('account', {}).get('custom_domains', [])
+    res['account'] = self._account_synchronize(user)
+    return self.success(res)
+
+  def _account_synchronize(self, user):
     quotas = self.__quotas(user)
-    res['account'] = {
-      'plan': user.get('plan', 'basic') or 'basic',
+    custom_domains = self._user_custom_domain(user)
+    res = {
+      'plan': self._user_plan_name(user),
       'custom_domain': next(iter(custom_domains), {'name': ''})['name'],
       'link_format': user.get('account', {}).get('link_format', 'http://%s/_/%s'),
       # 0.9.40.
       'link_size_quota': quotas['links']['quota'],
       'link_size_used': quotas['links']['used'],
     }
-    res['account'].update({'quotas': quotas})
-    return self.success(res)
+    res.update({'quotas': quotas})
+    return res
 
-  def _quota_updated_notification(self, user, version = (0, 9, 37),
-                                  extra_link_size = 0):
+  def _user_plan_name(self, user):
+    return user.get('plan', 'basic') or 'basic'
+
+  def _user_custom_domain(self, user):
+    team = Team.team_for_user(self, user)
+    if team:
+      return team.get('shared_settings', {}).get('custom_domains', [])
+    else:
+      return user.get('account', {}).get('custom_domains', [])
+
+  def _quota_updated_notify(self, user, team = None, version = (0, 9, 37),
+                            extra_link_size = 0):
     # extra_link_size is a way to 'fake' the local storage usage. It's
     # conceptually broken because it's stored nowhere so /synchronize won't be
     # able to provide the same state.
+    if team:
+      recipients = team.member_ids
+    else:
+      recipients = [user['_id']]
     quotas = self.__quotas(user)
     message = {
       'account': {
-        'plan': user.get('plan', 'basic') or 'basic',
+        'plan': self._user_plan_name(user),
         # 0.9.40.
         'link_size_used': quotas['links']['used'] + extra_link_size,
         'link_size_quota': quotas['links']['quota'],
@@ -2896,23 +2915,24 @@ class Mixin:
     }
     message['account'].update({'quotas': quotas})
     message['account']['quotas']['links']['used'] += extra_link_size
-
     self.notifier.notify_some(
       notifier.MODEL_UPDATE,
       message = message,
-      recipient_ids = {user['_id']},
+      recipient_ids = set(recipients),
       version = version)
 
-  def change_plan(self, uid, new_plan):
-    return self._change_plan(self.user_by_id(uid, self.__user_self_fields),
-                             new_plan)
-
-  def _change_plan(self, user, new_plan_name):
-    current_plan = Plan.by_name(self, user.get('plan', 'basic') or 'basic',
-                                ensure_existence = True)
-    if new_plan_name == 'basic' and self.eligible_for_plus(user['_id']):
-      new_plan_name = 'plus'
-    new_plan = Plan.by_name(self, name = new_plan_name, ensure_existence = True)
+  def _change_plan(self, user, new_plan_id):
+    current_plan = \
+      Plan.find(self, user.get('plan_id', 'basic'), ensure_existence = True)
+    if new_plan_id == 'basic' and self.eligible_for_plus(user['_id']):
+      new_plan_id = 'plus'
+    new_plan = Plan.find(self, new_plan_id, ensure_existence = True)
+    new_plan_name = new_plan['name']
+    new_plan_id = new_plan['id']
+    if new_plan.is_team_plan:
+      # Ensure that the user's plan name is one that is compatible with the
+      # client backened. The real plan id is kept in plan_id.
+      new_plan_name = 'team'
     fset = dict()
     funset = dict()
     for (k, v) in new_plan.get('features', {}).items():
@@ -2920,7 +2940,7 @@ class Mixin:
     for (k, v) in current_plan.get('features', {}).items():
       if k not in new_plan.get('features', {}):
         funset.update({'features.' + k: 1})
-    fset.update({'plan': new_plan_name})
+    fset.update({'plan': new_plan_name, 'plan_id': new_plan_id})
     update = {'$set': fset}
     if len(funset):
       update.update({'$unset': funset})
@@ -2928,7 +2948,7 @@ class Mixin:
                                                update,
                                                fields = self.__referral_fields,
                                                new = True)
-    self._quota_updated_notification(user)
+    self._quota_updated_notify(user)
     return {
       'plan': new_plan_name or 'basic'
     }
@@ -2949,12 +2969,13 @@ class Mixin:
                    plan = None,
                    stripe_token = None,
                    stripe_coupon = None,
-                   force_prorata = False):
+                   force_prorata = False,
+                   team_member = False):
     elle.log.trace('update user %s (plan: %s, token: %s)' % (
       user, plan, stripe_token))
     if plan is not None:
       if not isinstance(plan, Plan):
-        plan = Plan.by_name(self, plan, ensure_existence = True)
+        plan = Plan.find(self, plan, ensure_existence = True)
     elle.log.debug('plan: %s' % plan)
     eligible_for_plus = self.eligible_for_plus(user['_id'])
     free_plans = ['basic']
@@ -2976,18 +2997,16 @@ class Mixin:
             'amount': sub.plan['amount'] * (1 - off),
             'currency': sub.plan['currency'],
           }
-        if plan is None:
+        if team_member or (plan is None) or (plan['name'] in free_plans):
           stripe_plan = None
-        elif plan['name'] in free_plans:
-          stripe_plan = None # Cancel the current subscription.
         else:
           stripe_plan = plan.stripe_id if plan is not None else None
         sub = self._stripe.update_subscription(customer, stripe_plan,
           coupon = stripe_coupon, at_period_end = not force_prorata)
         if sub:
           res.update(_build_response(sub))
-    if plan is not None and user.get('plan', 'basic') != plan:
-      res.update(self._change_plan(user, plan.name))
+    if plan is not None and user.get('plan_id') != plan.id:
+      res.update(self._change_plan(user, plan.id))
     return res
 
   @api('/user/contacts', method='PUT')
@@ -3424,8 +3443,7 @@ class Mixin:
       team_settings = team.get('shared_settings', {})
       custom_domains = team_settings.get('custom_domains', [])
       res['custom_domain'] = next(iter(custom_domains), {'name': ''})['name']
-      background = team_settings.get('default_background', None)
-      res['default_background'] = background
+      res['default_background'] = team_settings.get('default_background', None)
     return res
 
   @api('/user/account', method = 'POST')
@@ -3782,7 +3800,7 @@ class Mixin:
       new = True,
       fields = self.__referral_fields
     )
-    self._quota_updated_notification(user)
+    self._quota_updated_notify(user)
     return {}
 
   ## -------- ##
@@ -3881,7 +3899,7 @@ class Mixin:
       x, fields = self.__referral_fields),
                          referrals))
     for user in referrers + [new_user]:
-      self._quota_updated_notification(user)
+      self._quota_updated_notify(user)
 
   def __update_to_plus_if_needed(self, user):
     if self.eligible_for_plus(user):
@@ -3903,10 +3921,14 @@ class Mixin:
   ## Quotas ##
   ## ------ ##
 
-  def __quotas(self,
-               user):
+  def __quotas(self, user):
     # Get the user quota according to his plan or his custom account
     # limitations.
+    team = Team.team_for_user(self, user)
+    if team:
+      team_quotas = team.quotas
+    else:
+      team_quotas = None
     user_quotas = user.get('quotas', {})
     number_of_referred = self.__referred_by(user['_id'],
                                             registered_user = True).count()
@@ -3919,46 +3941,59 @@ class Mixin:
     facebook_linked = 'facebook' in set((account['type']
                                          for account in user['accounts']))
     def _send_to_self_quota(user):
-      send_to_self = user_plan['send_to_self']
-      bonuses = send_to_self['bonuses']
-      bonus = int(number_of_referred * bonuses['referrer'] + \
-                  int(user.get('has_avatar', False)) + \
-                  len(social_posts) * bonuses['social_post'] + \
-                  facebook_linked * bonuses['facebook_linked'])
-      if send_to_self['default_quota'] == None:
-        return None, bonus
-      quota = user_quotas.get('send_to_self', {}).get(
-        'quota',
-        send_to_self['default_quota'])
-      elle.log.debug('send to self quota before bonuses: %s' % quota)
-      if quota is None:
-        return quota, bonus
-      quota = int(quota)
-      elle.log.debug('send to self quota after bonuses: %s' % quota)
-      return quota + bonus, bonus
+      if team_quotas:
+        return team_quotas.get('send_to_self', {}).get('default_quota'), 0
+      else:
+        send_to_self = user_plan['send_to_self']
+        bonuses = send_to_self['bonuses']
+        bonus = int(number_of_referred * bonuses['referrer'] + \
+                    int(user.get('has_avatar', False)) + \
+                    len(social_posts) * bonuses['social_post'] + \
+                    facebook_linked * bonuses['facebook_linked'])
+        if send_to_self['default_quota'] == None:
+          return None, bonus
+        quota = user_quotas.get('send_to_self', {}).get(
+          'quota',
+          send_to_self['default_quota'])
+        elle.log.debug('send to self quota before bonuses: %s' % quota)
+        if quota is None:
+          return quota, bonus
+        quota = int(quota)
+        elle.log.debug('send to self quota after bonuses: %s' % quota)
+        return quota + bonus, bonus
 
     def _file_size_limit(user):
-      return user_quotas.get('p2p', {}).get(
-        'size_limit',
-        user_plan['p2p']['size_limit'])
+      if team_quotas:
+        return team_quotas.get('p2p', {}).get('size_limit')
+      else:
+        return user_quotas.get('p2p', {}).get(
+          'size_limit',
+          user_plan['p2p']['size_limit'])
 
     def _link_storage(user):
-      links = user_plan['links']
-      bonuses = links['bonuses']
-      # Plan default storage
-      # + (number of referred) * bonus
-      # + referred bonus if referred by someone
-      # + other bonuses.
-      storage = int(user_quotas.get('links', {}).get(
-        'storage',
-        links['default_storage']))
-      elle.log.debug('link storage before bonuses: %s' % storage)
-      bonus = int(number_of_referred * bonuses['referrer'] + \
-                  bonuses['referree'] * bool(len(user.get('referred_by', []))) + \
-                  len(social_posts) * bonuses['social_post'] + \
-                  facebook_linked * bonuses['facebook_linked'])
-      elle.log.debug('link storage after bonuses: %s' % storage)
-      return storage + bonus, bonus
+      if team_quotas:
+        links = team_quotas['links']
+        if links.get('default_storage'):
+          return links.get('default_storage'), 0
+        else:
+          return links.get('shared_storage'), 0
+      else:
+        links = user_plan['links']
+        bonuses = links['bonuses']
+        # Plan default storage
+        # + (number of referred) * bonus
+        # + referred bonus if referred by someone
+        # + other bonuses.
+        storage = int(user_quotas.get('links', {}).get(
+          'storage',
+          links['default_storage']))
+        elle.log.debug('link storage before bonuses: %s' % storage)
+        bonus = int(number_of_referred * bonuses['referrer'] + \
+                    bonuses['referree'] * bool(len(user.get('referred_by', []))) + \
+                    len(social_posts) * bonuses['social_post'] + \
+                    facebook_linked * bonuses['facebook_linked'])
+        elle.log.debug('link storage after bonuses: %s' % storage)
+        return storage + bonus, bonus
 
     link_storage = _link_storage(user)
     assert isinstance(link_storage[0], (int, type(None)))
