@@ -11,11 +11,11 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Team'
 class Team(dict):
 
   def __init__(
-      self,
-      meta,
-      admin,
-      name,
-      plan,
+    self,
+    meta,
+    admin,
+    name,
+    plan,
   ):
     name = name.strip()
     self.__meta = meta
@@ -62,13 +62,7 @@ class Team(dict):
         return None
     return Team.from_data(team_db = team, meta = meta)
 
-  def team_for_user(meta, user, pending = None, ensure_existence = False):
-    if pending:
-      query = {'_id': pending, 'invitees': user['_id']}
-    else:
-      query = {'members': user['_id']}
-    return Team.find(meta, query, ensure_existence)
-
+  @staticmethod
   def user_deleted(meta, user):
     user_id = user['_id']
     elle.log.trace('delete user from all teams: %s' % user_id)
@@ -86,6 +80,31 @@ class Team(dict):
     meta.database.teams.update(
       {'invitees': user_id},
       {'$pull': {'invitees': user_id}})
+
+  def team_for_user(meta, user, pending = None, ensure_existence = False):
+
+    def __find_team_for_user(meta, user, pending, ensure_existence):
+      if pending:
+        query = {'_id': pending, 'invitees': user['_id']}
+      else:
+        query = {'members': user['_id']}
+      return Team.find(meta, query, ensure_existence)
+
+    if hasattr(bottle.request, 'user'):
+      if bottle.request.user['_id'] != user['_id']:
+        return __find_team_for_user(meta, user, pending, ensure_existence)
+    if hasattr(bottle.request, 'team') and bottle.request.team is not False:
+      return bottle.request.team
+    team = __find_team_for_user(meta, user, pending, ensure_existence)
+    if hasattr(bottle.request, 'session'):
+      bottle.request.team = team
+    return team
+
+  def __clear_cached_team(self, user):
+    if hasattr(bottle.request, 'user'):
+      if bottle.request.user['_id'] == user['_id']:
+        if hasattr(bottle.request, 'team'):
+          bottle.request.team = False
 
   def edit(self, update):
     elle.log.trace('%s: edit (update: %s)' % (self, update))
@@ -106,10 +125,11 @@ class Team(dict):
     subscription"""
     elle.log.trace('register to stripe %s (coupon: %s)' % (
       stripe_token, stripe_coupon))
-    admin = self.__meta.user_from_identifier(self['admin'])
-    elle.log.debug('plan: %s' % self['plan'])
+    admin = self.__meta.user_from_identifier(self.admin_id)
+    self.__clear_cached_team(admin)
+    elle.log.debug('plan: %s' % self.plan_id)
     return self.__meta._user_update(
-      admin, plan = self['plan'], stripe_token = stripe_token,
+      admin, plan = self.plan_id, stripe_token = stripe_token,
       stripe_coupon = stripe_coupon)
 
   def __update_stripe_quantity(self, quantity):
@@ -121,8 +141,6 @@ class Team(dict):
       if quantity != subscription.quantity:
         subscription.quantity = quantity
         subscription.save()
-  def __update_member_account(self, user):
-    self.__meta._user_update(user, 'basic', force_prorata = True)
 
   def __cancel_stripe_subscription(self):
     elle.log.trace('cancel subscription for team: %s' % self.id)
@@ -163,6 +181,9 @@ class Team(dict):
       new = True)
     return Team.from_data(self.__meta, res)
 
+  def __notify_quota_change(self):
+    self.__meta._quota_updated_notify(self.admin_user, team = self)
+
   def add_member(self, user):
     user_id = user['_id']
     elle.log.trace('add member %s to team %s' % (user_id, self.id))
@@ -186,8 +207,11 @@ class Team(dict):
             'error': 'user_in_team_or_not_invited',
             'message': 'User %s not invited or already member' % user_id
           })
-      self.__update_member_account(user)
+      self.__clear_cached_team(user)
       self.__update_stripe_quantity(len(res['members']))
+      self.__meta._user_update(
+        user, self.plan_id, force_prorata = True, team_member = True)
+      self.__notify_quota_change()
       return Team.from_data(self.__meta, res)
     except pymongo.errors.DuplicateKeyError as e:
       elle.log.warn(
@@ -208,8 +232,18 @@ class Team(dict):
       new = True)
     if res is None:
       elle.log.warn('unable to remove member %s' % user_id)
-      self.__meta.bad_request
+      self.__meta.bad_request(
+        {
+          'error': 'not_team_member',
+          'message': 'The user %s is not part of team %s' % (user_id, self.id)
+        })
+    self.__clear_cached_team(user)
     self.__update_stripe_quantity(len(res['members']))
+    self.__meta._user_update(
+      user, 'basic', force_prorata = True, team_member = True)
+    # Ensure removed user is not updated as part of the team.
+    self['members'].remove(user_id)
+    self.__notify_quota_change()
     return Team.from_data(self.__meta, res)
 
   def remove(self):
@@ -224,7 +258,7 @@ class Team(dict):
 
   @property
   def admin_user(self):
-    return self.__meta.user_by_id(self.admin_id)
+    return self.__meta.user_from_identifier(self.admin_id)
 
   @property
   def creation_time(self):
@@ -239,16 +273,20 @@ class Team(dict):
     return self['invitees']
 
   @property
+  def member_count(self):
+    return len(self.member_ids)
+
+  @property
   def member_ids(self):
     return self['members']
 
   @property
-  def modification_time(self):
-    return self['modification_time']
-
-  @property
   def member_users(self):
     return self.__meta.users_by_ids(self.member_ids)
+
+  @property
+  def modification_time(self):
+    return self['modification_time']
 
   @property
   def name(self):
@@ -256,7 +294,20 @@ class Team(dict):
 
   @property
   def plan(self):
+    return Plan.find(self.__meta, self.plan_id)
+
+  @property
+  def plan_id(self):
     return self['plan']
+
+  @property
+  def quotas(self):
+    res = self.plan['quotas']
+    if res['links'].get('per_user_storage'):
+      res['links'].update({
+        'shared_storage':
+          int(res['links']['per_user_storage'] * self.member_count)})
+    return res
 
   @property
   def shared_settings(self):
@@ -274,7 +325,7 @@ class Team(dict):
         'total': {'$sum': '$file_size'}}
       }
     ])['result']
-    return res[0]['total'] if len(res) else 0
+    return int(res[0]['total']) if len(res) else 0
 
   @property
   def view(self):
@@ -298,10 +349,12 @@ class Mixin:
                     plan,
                     stripe_coupon = None):
     elle.log.trace('create team %s (plan: %s)' % (name, plan))
-    plan = Plan.find(self, plan, ensure_existence = True)
+    Plan.find(self, plan, ensure_existence = True)
     try:
       team = Team(self, owner, name, plan).db_insert()
+      assert team is not None
       team.register_to_stripe(stripe_token, stripe_coupon)
+      return team
     except pymongo.errors.DuplicateKeyError:
       elle.log.warn('unable to create team %s' % name)
       return self.conflict(
@@ -309,8 +362,6 @@ class Mixin:
           'error': 'team_name_already_taken',
           'reason': 'A team named %s already exists' % name
         })
-    assert team is not None
-    return team
 
   @api('/teams', method = 'POST')
   @require_logged_in
