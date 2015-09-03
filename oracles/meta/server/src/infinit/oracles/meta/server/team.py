@@ -2,7 +2,7 @@
 
 import elle.log
 from elle.log import log, trace, debug, dump
-from . import notifier, utils
+from . import notifier, transaction_status, utils
 from .utils import *
 from .plans import Plan
 
@@ -318,6 +318,7 @@ class Team(dict):
     res = self.__meta.database.links.aggregate([
       {'$match': {
         'sender_id': {'$in': self.member_ids},
+        'status': transaction_status.FINISHED,
         'quota_counted': True}
       },
       {'$group': {
