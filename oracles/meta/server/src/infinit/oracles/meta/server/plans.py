@@ -2,7 +2,7 @@
 
 import elle.log
 from elle.log import log, trace, debug, dump
-from . import utils
+from .plans_builtin import BuiltInPlans
 from .utils import *
 import stripe
 
@@ -15,6 +15,14 @@ class Plan(dict):
   # ----------- #
   # Properties. #
   # ----------- #
+  @property
+  def id(self):
+    return self.__id
+
+  @property
+  def is_team_plan(self):
+    return self.get('team', False)
+
   @property
   def name(self):
     """Return the plan name.
@@ -356,6 +364,7 @@ class Plan(dict):
 class Mixin:
 
   def __init__(self):
+    self.__generate_builtin_plans()
     self.__check_plans_integrity()
 
   @property
@@ -425,6 +434,18 @@ class Mixin:
   # ------ #
   # Uitls. #
   # ------ #
+  def __generate_builtin_plans(self):
+    if self.production:
+      return
+    if self.database.plans.find().count():
+      return
+    elle.log.log('[DEBUG] no plans found, inserting defaults into plans collection')
+    self.database.plans.save(BuiltInPlans.basic())
+    self.database.plans.save(BuiltInPlans.plus())
+    self.database.plans.save(BuiltInPlans.premium())
+    self.database.plans.save(BuiltInPlans.team())
+
+
   def __check_plans_integrity(self):
     # Explore sub dictionnaries.
     def explore(input, d = {}):
