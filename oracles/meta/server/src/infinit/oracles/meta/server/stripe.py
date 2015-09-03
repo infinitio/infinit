@@ -61,6 +61,14 @@ class Stripe:
       api_key = self.__meta.stripe_api_key,
     )
 
+  def update_customer_email(self, customer, email):
+    if self.__meta.stripe_api_key is None:
+      return
+    assert self.__in_with >= 0
+    customer.email = email
+    customer.save()
+
+
   def subscription(self, customer):
     # We do not want multiple plans to be active at the same
     # time, so a customer can only have at most one subscription
