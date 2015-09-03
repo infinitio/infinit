@@ -480,7 +480,7 @@ class Mixin:
         new = True,
       )
       # Only update the user's quota when the quota has been counted
-      if user and link.get('quota_counted', False):
+      if user and status and link.get('quota_counted', False):
         self._quota_updated_notify(user, team = Team.team_for_user(self, user))
       self.notifier.notify_some(
         notifier.LINK_TRANSACTION,
