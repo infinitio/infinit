@@ -7,21 +7,23 @@ from utils import *
 from bson.objectid import ObjectId
 import infinit.oracles.meta.server.transaction_status as transaction_status
 
-with Meta() as meta:
-  alice = User(meta, 'alice@infinit.io')
-  alice.login()
-  def create_link():
-    return alice.getalink(
-      expiration_date = meta.meta.now + datetime.timedelta(days = 2))
-  throws(create_link, 402)
-  meta.meta.change_plan(bson.ObjectId(alice.id), 'premium')
-  link = create_link()
-  meta.get('links/%s' % link['hash'])
-  meta.meta.link_cleanup_expired()
-  meta.get('links/%s' % link['hash'])
-  meta.meta.forward(datetime.timedelta(days = 1))
-  meta.meta.link_cleanup_expired()
-  meta.get('links/%s' % link['hash'])
-  meta.meta.forward(datetime.timedelta(days = 2))
-  meta.meta.link_cleanup_expired()
-  throws(lambda: meta.get('links/%s' % link['hash']), 410)
+with Stripe() as stripe:
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    alice = User(meta, 'alice_%s@infinit.io' % test_suffix)
+    alice.login()
+    def create_link():
+      return alice.getalink(
+        expiration_date = meta.meta.now + datetime.timedelta(days = 2))
+    throws(create_link, 402)
+    alice.update_plan('premium', stripe_token = stripe.pay(alice.email))
+    link = create_link()
+    meta.get('links/%s' % link['hash'])
+    meta.meta.link_cleanup_expired()
+    meta.get('links/%s' % link['hash'])
+    meta.meta.forward(datetime.timedelta(days = 1))
+    meta.meta.link_cleanup_expired()
+    meta.get('links/%s' % link['hash'])
+    meta.meta.forward(datetime.timedelta(days = 2))
+    meta.meta.link_cleanup_expired()
+    throws(lambda: meta.get('links/%s' % link['hash']), 410)

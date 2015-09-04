@@ -3,12 +3,14 @@
 from utils import *
 import bson
 
-with Meta() as meta:
-  jean = User(meta, 'jeantest@infinit.io')
-  jean.login()
-  def create():
-    return jean.getalink(background = 'bg.jpg')
-  throws(create, 402)
-  meta.meta.change_plan(bson.ObjectId(jean.id), 'premium')
-  link = create()
-  assertEq(meta.get('link/%s' % link['hash'])['background'], 'bg.jpg')
+with Stripe() as stripe:
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    jean = User(meta, 'jeantest_%s@infinit.io' % test_suffix)
+    jean.login()
+    def create():
+      return jean.getalink(background = 'bg.jpg')
+    throws(create, 402)
+    jean.update_plan('premium', stripe_token = stripe.pay(jean.email))
+    link = create()
+    assertEq(meta.get('link/%s' % link['hash'])['background'], 'bg.jpg')
