@@ -74,7 +74,7 @@ with Stripe() as stripe:
         lambda: meta.get('users/%s/backgrounds/bg.jpg' % leader.id, raw = True),
         lambda: meta.get('users/%s/backgrounds/bg.jpg' % jean.email,
                          raw = True),
-        lambda: meta.get('team/%s/backgrounds/bg.jpg' % team['id'], raw = True),
+        lambda: meta.get('teams/%s/backgrounds/bg.jpg' % team['id'], raw = True),
     ]:
       response = request()
       assertEq(response.status_code, 307)
@@ -124,4 +124,3 @@ with Stripe() as stripe:
       {'default_background': None})
     assert meta.get('link/%s' % link['hash'])['background'] is None
     assert jean.get('user/account').get('default_background') is None
-
