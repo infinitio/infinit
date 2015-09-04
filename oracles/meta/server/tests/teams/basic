@@ -27,7 +27,7 @@ with Stripe() as stripe:
     assertEq(team['name'], team_name)
     assertEq(team['admin'], leader.id)
     assertEq(len(team['members']), 1)
-    assertEq(team['members'][0], leader.id)
+    assertEq(team['members'][0]['id'], leader.id)
     stripe.check_plan(leader.email, plan_id, quantity = 1)
     throws(lambda: leader.delete('team'), 403)
     leader.delete('team', {'password': leader.password})
@@ -521,7 +521,6 @@ with Stripe() as stripe:
     # Add email address to stripe list for cleanup.
     stripe.emails.add(new_email)
     throws(lambda: stripe.customer_with_email(original_email), StripeTestException)
-
 
   # XXX: Add tests for all admin functions calls.
 
