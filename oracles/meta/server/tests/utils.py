@@ -474,42 +474,6 @@ class Meta:
     self.__mongo.__enter__()
     client = pymongo.MongoClient(port = self.__mongo.port)
     self.__database = client.meta
-    self.__database.plans.insert(
-      make_plan(name = 'basic',
-                default_storage = int(1e9),
-                storage_bonuses = (int(1e9), int(5e8), int(3e8), int(5e8)),
-                send_to_self_quota = 5,
-                send_to_self_bonus = (2, 1, 1),
-                file_size_limit = int(10e9),
-                features = {'nag': True}
-    ))
-    self.__database.plans.insert(
-      make_plan(name = 'plus',
-                default_storage = int(5e9),
-                storage_bonuses = (int(1e9), int(5e8), int(3e8), int(5e8)),
-                send_to_self_quota = None,
-                send_to_self_bonus = (2, 1, 1),
-                file_size_limit = None,
-    ))
-    self.__database.plans.insert(
-      make_plan(name = 'premium',
-                default_storage = int(1e11),
-                storage_bonuses = (int(1e9), int(5e8), int(3e8), int(5e8)),
-                send_to_self_quota = None,
-                send_to_self_bonus = (2, 1, 1),
-                file_size_limit = None,
-                features = {'turbo': True}
-    ))
-    self.__database.plans.insert(
-      make_plan(name = 'team',
-                default_storage = int(1e12),
-                storage_bonuses = (0, 0, 0, 0),
-                send_to_self_quota = None,
-                send_to_self_bonus = (0, 0, 0),
-                file_size_limit = None,
-                features = {'turbo': True},
-                team = True,
-    ))
     def run():
       try:
         self.__meta = InstrumentedMeta(
@@ -693,6 +657,11 @@ class Stripe():
 
   def __exit__(self, *args, **kwargs):
     self.clear()
+
+  # Ensure uniqueness for stripe.
+  def suffix(self):
+    from random import randint
+    return str(randint(1e9, 9e9))
 
   def clear(self):
     import stripe
