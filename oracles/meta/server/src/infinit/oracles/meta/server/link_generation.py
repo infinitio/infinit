@@ -447,7 +447,7 @@ class Mixin:
                                 ( r.status_code, link['_id'], r.content))
                 # The delete can fail if on aws and there was a partial
                 # upload, or if on gcs if nothing was uploaded at all.
-            else: #status = FINISHED
+            elif not link.get('quota_counted', False): #status = FINISHED but quota not yet counted
               # Get effective size
               head = self._generate_op_url(link, 'HEAD')
               r = requests.head(head)
