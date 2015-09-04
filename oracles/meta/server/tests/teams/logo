@@ -68,3 +68,36 @@ with Stripe() as stripe:
                             },
                             data = body)
     assertEq(response.status_code / 100, 2)
+    # Get logo
+    for request in [
+        lambda: leader.get('user/logo', raw = True),
+        lambda: jean.get('user/logo', raw = True),
+        lambda: meta.get('users/%s/logo' % jean.id, raw = True),
+        lambda: meta.get('users/%s/logo' % leader.id, raw = True),
+        lambda: meta.get('users/%s/logo' % jean.email, raw = True),
+        lambda: meta.get('teams/%s/logo' % team['id'], raw = True),
+    ]:
+      response = request()
+      assertEq(response.status_code, 307)
+      response = requests.get(response.headers['location'])
+      assertEq(response.status_code, 200)
+      assertEq(response.content, body)
+      assertEq(response.headers['content-type'], content_type)
+      assertEq(int(response.headers['content-length']), content_length)
+    # Erase logo
+    throws(lambda: jean.delete('team/logo'), 403)
+    throws(lambda: jean.delete('user/logo'), 400)
+    throws(lambda: leader.delete('user/logo'), 400)
+    leader.delete('team/logo')
+    assertEq(leader.get('user/logo'), b'')
+    assertEq(jean.get('user/logo'), b'')
+    assertEq(leader.get('team/logo'), b'')
+    # Get logo
+    response = jean.get('user/logo', raw = True)
+    assertEq(response.status_code, 307)
+    response = requests.get(response.headers['location'])
+    assertEq(response.status_code, 404)
+    response = leader.get('user/logo', raw = True)
+    assertEq(response.status_code, 307)
+    response = requests.get(response.headers['location'])
+    assertEq(response.status_code, 404)
