@@ -3354,20 +3354,19 @@ class Mixin:
   @api('/user/logo', method = 'GET')
   @require_logged_in
   def user_logo_get_api(self, cache_buster = None):
-    self.require_premium(user)
     return self.user_logo_get(self.user, cache_buster)
 
-  @api('/users/<user_id>/logo', method = 'GET')
-  def user_logo_get_api(self, user_id, cache_buster = None):
-    user = self.user_from_identifier(user_id, fields = ['plan'])
-    self.require_premium(user)
+  @api('/users/<identifier>/logo', method = 'GET')
+  def user_logo_get_api(self, identifier, cache_buster = None):
+    user = self.user_from_identifier(identifier, fields = ['plan'])
     self.user_logo_get(user, cache_buster)
 
   def user_logo_get(self, user, cache_buster = None):
-    team = Team.team_for_user(user)
+    team = Team.team_for_user(self, user)
     if team:
       return self.team_logo_get(team, cache_buster)
     else:
+      self.require_premium(user)
       return self._cloud_image_get('logo', None, user = user)
 
   @api('/user/logo', method = 'DELETE')
@@ -3376,7 +3375,7 @@ class Mixin:
     if Team.team_for_user(self, self.user):
       return self.bad_request(
         {'reason': 'User is part of a team, use /team/logo instead'})
-    self.require_premium(user)
+    self.require_premium(self.user)
     return self._cloud_image_delete('logo', None, user = self.user)
 
   ## -------------- ##
