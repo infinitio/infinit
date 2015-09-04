@@ -638,6 +638,10 @@ class Mixin:
       'shared_settings.%s' % field: value for field, value in update.items()}})
     return team.shared_settings
 
+  ## ----------- ##
+  ## Backgrounds ##
+  ## ----------- ##
+
   @api('/team/backgrounds/<name>', method = 'PUT')
   @require_logged_in
   def team_background_put_api(self, name):
@@ -680,6 +684,10 @@ class Mixin:
       'backgrounds': self.gcs.bucket_list('team_backgrounds', prefix = team.id),
     }
 
+  ## -------------- ##
+  ## Custom Domains ##
+  ## -------------- ##
+
   @api('/team/custom_domains/<name>', method = 'PUT')
   @require_logged_in
   def set_team_domain(self, name):
@@ -702,3 +710,39 @@ class Mixin:
         'custom-domain': name,
       })
     return new
+
+  ## ---- ##
+  ## Logo ##
+  ## ---- ##
+
+  @api('/team/logo', method = 'PUT')
+  @require_logged_in
+  def team_logo_put_api(self):
+    user = self.user
+    team = Team.team_for_user(self, user, ensure_existence = True)
+    self.__require_team_admin(team, user)
+    return self._cloud_image_upload('team_logo', None, team = team)
+
+  @api('/team/logo', method = 'GET')
+  @require_logged_in
+  def team_logo_get_api(self, cache_buster = None):
+    user = self.user
+    team = Team.team_for_user(self, user, ensure_existence = True)
+    self.__require_team_member(team, user)
+    return self.team_logo_get(team, cache_buster)
+
+  @api('/team/<team_id>/logo', method = 'GET')
+  def team_logo_get_api(self, team_id, cache_buster = None):
+    team = Team.find(self, {'_id': team_id}, ensure_existence = True)
+    self.team_logo_get(team, cache_buster)
+
+  def team_logo_get(self, team, cache_buster = None):
+    return self._cloud_image_get('team_logo', None, team = team)
+
+  @api('/team/logo', method = 'DELETE')
+  @require_logged_in
+  def team_logo_delete_api(self):
+    user = self.user
+    team = Team.team_for_user(self, user, ensure_existence = True)
+    self.__require_team_admin(team, user)
+    return self._cloud_image_delete('team_logo', None, user = self.user)
