@@ -34,24 +34,25 @@ with Stripe() as stripe:
     admin = User(meta, 'admin@infinit.io')
     admin.login()
     plan_creation_query = {
-      'name': 'name with typo' + post_fix,
+      'name': 'name with typo' + suffix,
       'amount': 1200,
       'body': {
         'quotas': {
           'links': {
-            'quota': int(100e9)
+            'default_storage': int(100e9)
           }
         }
       }
     }
     plan = admin.create_plan(stripe = stripe, **plan_creation_query)
     check_view(plan)
-    assert plan['id'] in admin.get('plans')['plans']
-    assert plan['id'] in [p['id'] for p in admin.get('plans/full')['plans']]
+    assertIn(plan['id'], admin.get('plans')['plans'])
+    assertIn(plan['id'], [p['id'] for p in admin.get('plans/full')['plans']])
     assertEq(plan, admin.get('plan/%s' % plan['id']))
     throws(lambda: admin.create_plan(stripe = stripe, **plan_creation_query),
            409)
-    plan_update_query = {'stripe_info': {'name': 'name without typo' + post_fix}}
+    plan_update_query = \
+      {'stripe_info': {'name': 'name without typo' + suffix}}
     updated_plan = admin.put('plan/%s' % plan['id'],
                              {'update': plan_update_query})
     assertEq(updated_plan['stripe']['name'],
@@ -68,12 +69,12 @@ with Stripe() as stripe:
     admin = User(meta, 'admin@infinit.io')
     admin.login()
     plan = admin.create_plan(
-      stripe = stripe, name = 'name' + post_fix, body = {})
+      stripe = stripe, name = 'name' + suffix, body = {})
     assertIn(plan['id'], admin.get('plans')['plans'])
     throws(lambda: admin.create_plan(
-      stripe = stripe, name = 'name' + post_fix, body = {}),
+      stripe = stripe, name = 'name' + suffix, body = {}),
            409)
-    new_name = 'bombarde' + post_fix
+    new_name = 'bombarde' + suffix
     new_plan = admin.create_plan(
       stripe = stripe, name = new_name, body = {})
     assertIn(new_plan['id'], admin.get('plans')['plans'])
@@ -99,13 +100,13 @@ with Stripe() as stripe:
                             ),
            404)
     plan = admin.create_plan(
-      stripe = stripe, name = 'name' + post_fix, body = {})
-    assert 'castor' not in plan
+      stripe = stripe, name = 'name' + suffix, body = {})
+    assertNin('castor', plan)
     updated_plan = admin.put('plan/%s' % plan['id'],
                              {
                                'update': {'castor': 'polux'}
                              })
-    assert 'castor' in updated_plan
+    assertIn('castor', updated_plan)
     # Editing non editable data from stripe.
     throws(lambda: admin.put('plan/unknown_plan',
                              {
@@ -119,7 +120,7 @@ with Stripe() as stripe:
     plan = admin.put('plan/%s' % plan['id'],
                      {
                        'update': {
-                         'quotas': {'links': {'quota': int(1e12)}}
+                         'quotas': {'links': {'default_storage': int(1e12)}}
                        }
                      })
-    assertEq(plan['quotas']['links']['quota'], int(1e12))
+    assertEq(plan['quotas']['links']['default_storage'], int(1e12))
