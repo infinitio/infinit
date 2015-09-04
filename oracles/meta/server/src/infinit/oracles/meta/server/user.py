@@ -2584,7 +2584,7 @@ class Mixin:
     )
     if 'small_avatar' not in res:
       user.update({'has_avatar': True})
-      self._quota_updated_notify(users)
+      self._quota_updated_notify(user)
     return self.success()
 
   ## ----------------- ##
@@ -3231,10 +3231,8 @@ class Mixin:
       })
 
   def __cloud_image_name(self, name, id):
-    if name:
-      return '%s/%s' % (id, name)
-    else:
-      return str(id)
+    # XXX FIXME: Add check for name and update GCS when this is done.
+    return '%s/%s' % (id, name)
 
   def _cloud_image_upload(self, bucket, name, user = None, team = None):
     assert (user is None) != (team is None)
@@ -3294,6 +3292,9 @@ class Mixin:
   @api('/user/backgrounds/<name>', method = 'PUT')
   @require_logged_in
   def user_background_put_api(self, name):
+    if Team.team_for_user(self, self.user):
+      return self.bad_request(
+        {'reason': 'User is part of a team, use /team/backgrounds/<name> instead'})
     self.require_premium(self.user)
     return self._cloud_image_upload('backgrounds', name, user = self.user)
 
@@ -3319,8 +3320,7 @@ class Mixin:
   @require_logged_in
   def user_background_delete_api(self, name):
     user = self.user
-    team = Team.team_for_user(self, user)
-    if team:
+    if Team.team_for_user(self, user):
       self.bad_request(
         {'reason': 'User is part of a team, use /team/backgrounds/<name> instead'})
     self.require_premium(user)
@@ -3330,8 +3330,7 @@ class Mixin:
   @require_logged_in
   def user_background_list_api(self):
     self._check_gcs()
-    team = Team.team_for_user(self, self.user)
-    if team:
+    if Team.team_for_user(self, self.user):
       return self.team_background_list_api()
     else:
       return {
@@ -3346,6 +3345,9 @@ class Mixin:
   @api('/user/logo', method = 'PUT')
   @require_logged_in
   def user_logo_put_api(self):
+    if Team.team_for_user(self, self.user):
+      return self.bad_request(
+        {'reason': 'User is part of a team, use /team/logo instead'})
     self.require_premium(self.user)
     return self._cloud_image_upload('logo', None, user = self.user)
 
@@ -3353,18 +3355,27 @@ class Mixin:
   @require_logged_in
   def user_logo_get_api(self, cache_buster = None):
     self.require_premium(user)
-    return self._cloud_image_get('logo', None, user = self.user)
+    return self.user_logo_get(self.user, cache_buster)
 
   @api('/users/<user_id>/logo', method = 'GET')
   def user_logo_get_api(self, user_id, cache_buster = None):
+    user = self.user_from_identifier(user_id, fields = ['plan'])
     self.require_premium(user)
-    return self._cloud_image_get(
-      'logo', None,
-      user = self.user_from_identifier(user_id, fields = ['plan']))
+    self.user_logo_get(user, cache_buster)
+
+  def user_logo_get(self, user, cache_buster = None):
+    team = Team.team_for_user(user)
+    if team:
+      return self.team_logo_get(team, cache_buster)
+    else:
+      return self._cloud_image_get('logo', None, user = user)
 
   @api('/user/logo', method = 'DELETE')
   @require_logged_in
-  def user_background_delete_api(self):
+  def user_logo_delete_api(self):
+    if Team.team_for_user(self, self.user):
+      return self.bad_request(
+        {'reason': 'User is part of a team, use /team/logo instead'})
     self.require_premium(user)
     return self._cloud_image_delete('logo', None, user = self.user)
 
@@ -3984,8 +3995,13 @@ class Mixin:
           'storage',
           links['default_storage']))
         elle.log.debug('link storage before bonuses: %s' % storage)
+        referree_bonus = bool(len())
+        # Don't give referree bonus if there was cheating.
+        referrers = user.get('referred_by', [])
+        if user.get('blocked_referrer'):
+          referrers = []
         bonus = int(number_of_referred * bonuses['referrer'] + \
-                    bonuses['referree'] * bool(len(user.get('referred_by', []))) + \
+                    bonuses['referree'] * bool(len(referrers)) + \
                     len(social_posts) * bonuses['social_post'] + \
                     facebook_linked * bonuses['facebook_linked'])
         elle.log.debug('link storage after bonuses: %s' % storage)
