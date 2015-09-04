@@ -6,14 +6,10 @@ from utils import *
 from infinit.oracles.meta import error
 
 with Stripe() as stripe:
-  # Ensure uniqueness for stripe.
-  def __suffix():
-    from random import randint
-    return str(randint(1e9, 9e9))
 
   # Creating and deleting.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    test_suffix = __suffix()
+    test_suffix = stripe.suffix()
     plan_id = 'team'
     leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
@@ -36,7 +32,7 @@ with Stripe() as stripe:
 
   # Team uniqueness.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    test_suffix = __suffix()
+    test_suffix = stripe.suffix()
     leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
     team = leader.create_team(
@@ -49,7 +45,7 @@ with Stripe() as stripe:
 
   # Team name uniqueness.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    test_suffix = __suffix()
+    test_suffix = stripe.suffix()
     leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
     original_name = 'infinit_%s' % test_suffix
@@ -68,7 +64,7 @@ with Stripe() as stripe:
 
   # Adding and removing users.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    test_suffix = __suffix()
+    test_suffix = stripe.suffix()
     plan = meta.create_plan(stripe, 'plan_name_%s' % test_suffix, {})
     leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
@@ -152,15 +148,15 @@ with Stripe() as stripe:
 
       def get_a_link(user, size):
         link = user.getalink(files = [('bite', size)])
-        user.link_update(link, transaction_status.FINISHED)
         # Meta is updating quota by reading cloud storage file size which is
         # not realy uploaded here, so insert set the value manually.
         meta.database.links.update(
           {'hash': link['hash']},
           {'$set': {'file_size': size, 'quota_counted': True}})
+        user.link_update(link, transaction_status.FINISHED)
         return link
 
-      test_suffix = __suffix()
+      test_suffix = stripe.suffix()
       plan_id = 'team'
       per_user = int(15e10)
       leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
@@ -228,15 +224,15 @@ with Stripe() as stripe:
 
       def get_a_link(user, size):
         link = user.getalink(files = [('bite', size)])
-        user.link_update(link, transaction_status.FINISHED)
         # Meta is updating quota by reading cloud storage file size which is
         # not realy uploaded here, so insert set the value manually.
         meta.database.links.update(
           {'hash': link['hash']},
           {'$set': {'file_size': size, 'quota_counted': True}})
+        user.link_update(link, transaction_status.FINISHED)
         return link
 
-      test_suffix = __suffix()
+      test_suffix = stripe.suffix()
       plan = meta.create_plan(stripe, 'plan_name_%s' % test_suffix, {})
       link_limit = int(1e11)
       leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
@@ -285,7 +281,7 @@ with Stripe() as stripe:
 
   # Team view as member.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    test_suffix = __suffix()
+    test_suffix = stripe.suffix()
     leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
     team = leader.create_team(
@@ -301,7 +297,7 @@ with Stripe() as stripe:
 
   # Deleting a team should remove all members.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    test_suffix = __suffix()
+    test_suffix = stripe.suffix()
     plan = meta.create_plan(stripe, 'plan_name_%s' % test_suffix, {})
     leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
@@ -324,7 +320,7 @@ with Stripe() as stripe:
 
   # Invite user who already has a team (and get out of a team).
   with Meta(stripe_api_key = Stripe.key) as meta:
-    test_suffix = __suffix()
+    test_suffix = stripe.suffix()
     leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
     leader.login()
     plan_infinit = \
@@ -378,7 +374,7 @@ with Stripe() as stripe:
 
   # Admin exiting plan.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    test_suffix = __suffix()
+    test_suffix = stripe.suffix()
     plan = meta.create_plan(
       stripe,
       'plan_name_%s' % test_suffix,
@@ -397,7 +393,7 @@ with Stripe() as stripe:
 
   # User existing plan.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    test_suffix = __suffix()
+    test_suffix = stripe.suffix()
     plan = meta.create_plan(
       stripe,
       'plan_name_%s' % test_suffix,
@@ -422,7 +418,7 @@ with Stripe() as stripe:
 
   # Delete user who is part of team.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    test_suffix = __suffix()
+    test_suffix = stripe.suffix()
     plan = meta.create_plan(
       stripe,
       'plan_name_%s' % test_suffix,
@@ -457,7 +453,7 @@ with Stripe() as stripe:
 
   # Delete user admin of team.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    test_suffix = __suffix()
+    test_suffix = stripe.suffix()
     plan = meta.create_plan(
       stripe,
       'plan_name_%s' % test_suffix,
@@ -499,7 +495,7 @@ with Stripe() as stripe:
         keys[email.variables['email']] = email.variables['confirm_token']
       return keys
 
-    test_suffix = __suffix()
+    test_suffix = stripe.suffix()
     original_email = 'first_email_%s@infinit.io' % test_suffix
     leader = User(meta, original_email)
     leader.login()
@@ -526,7 +522,7 @@ with Stripe() as stripe:
 
   # # Infinit administration.
   # with Meta(stripe_api_key = Stripe.key) as meta:
-  #   test_suffix = __suffix()
+  #   test_suffix = stripe.suffix()
   #   leader = User(meta, 'leader_%s@infinit.io' % test_suffix)
   #   leader.login()
   #   plan = meta.create_plan(stripe, 'plan_name_%s' % test_suffix, {})
