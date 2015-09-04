@@ -3995,7 +3995,6 @@ class Mixin:
           'storage',
           links['default_storage']))
         elle.log.debug('link storage before bonuses: %s' % storage)
-        referree_bonus = bool(len())
         # Don't give referree bonus if there was cheating.
         referrers = user.get('referred_by', [])
         if user.get('blocked_referrer'):
