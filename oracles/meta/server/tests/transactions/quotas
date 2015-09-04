@@ -7,148 +7,184 @@ import infinit.oracles.meta.server.transaction_status as transaction_status
 
 import bson
 
-def get_a_link(user, size):
-  link = user.getalink(files = [('bite', size)])
-  user.link_update(link, transaction_status.FINISHED)
-  # Meta is updating quota by reading cloud storage file size which is
-  # not realy uploaded here, so insert set the value manually.
-  user.meta.database.links.update({'hash': link['hash']},
-                                  {'$set': {'file_size': size, 'quota_counted': True}})
+with Stripe() as stripe:
 
-# Test features.
-with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
-  alice = User(meta, "alice@infinit.io")
-  alice.login()
-  assert 'nag' in alice.me['features']
-  assert 'turbo' not in alice.me['features']
-  # By pass the api.
-  meta.meta.change_plan(bson.ObjectId(alice.id), 'premium')
-  assertEq(alice.me['plan'], 'premium')
-  assert 'nag' not in alice.me['features']
-  assert 'turbo' in alice.me['features']
-
-# Retro compatibility .
-with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
-  plans = {plan['name']: plan for plan in meta.database.plans.find()}
-  alice = User(meta, "alice@infinit.io")
-  alice.login()
-  usage = 0
-  value = 1000
-  while usage < (value * 10):
-    link = alice.getalink()
-    account = alice.get('user/synchronize')['account']
-    assertEq(account['link_size_quota'],
-             plans['basic']['quotas']['links']['default_storage'])
-    assertEq(account['quotas']['links']['quota'],
-             plans['basic']['quotas']['links']['default_storage'])
-    assertEq(account['link_size_used'], usage)
-    assertEq(account['quotas']['links']['used'], usage)
-    alice.link_update(link, transaction_status.FINISHED)
+  def get_a_link(user, size):
+    link = user.getalink(files = [('bite', size)])
+    user.link_update(link, transaction_status.FINISHED)
     # Meta is updating quota by reading cloud storage file size which is
     # not realy uploaded here, so insert set the value manually.
-    meta.database.links.update({'hash': link['hash']},
-      {'$set': {'file_size': value, 'quota_counted': True}})
-    account = alice.get('user/synchronize')['account']
-    assertEq(account['link_size_quota'],
-             plans['basic']['quotas']['links']['default_storage'])
-    assertEq(account['quotas']['links']['quota'],
-             plans['basic']['quotas']['links']['default_storage'])
-    usage = usage + value
-    assertEq(account['link_size_used'], usage)
-    assertEq(account['quotas']['links']['used'], usage)
+    user.meta.database.links.update({'hash': link['hash']},
+                                    {'$set': {'file_size': size, 'quota_counted': True}})
 
-# Exceed quota.
-with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
-  plans = {plan['name']: plan for plan in meta.database.plans.find()}
-  alice = User(meta, "alice@infinit.io")
-  alice.login()
-  alice.meta = meta
-  storage = alice.me['quotas']['links']['quota']
-  get_a_link(alice, storage - 1)
-  assertEq(alice.me['quotas']['links']['used'], storage - 1)
-  get_a_link(alice, 1)
-  assertEq(alice.me['quotas']['links']['used'], storage)
-  throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
+  # Test features.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    meta.inner.database.plans.update(
+      {'name': 'basic'},
+      {
+        '$set': {'features': {'nag': True}}
+      })
+    turbo_plan = meta.create_plan(stripe, 'turbo_%s' % test_suffix,
+      {
+        'features': {'turbo': True},
+        'team': False,
+        'quotas': {
+          'p2p': {
+            'size_limit': None,
+          },
+          'links': {
+            'bonuses': {
+              'referrer': int(1e9),
+              'referree': int(5e8),
+              'facebook_linked': int(3e8),
+              'social_post': int(5e8),
+            },
+            'default_storage': int(1e11),
+          },
+          'send_to_self': {
+            'bonuses': {
+              'referrer': 2,
+              'social_post': 2,
+              'facebook_linked': 2,
+            },
+          'default_quota': None,
+          },
+        },
+      })
+    alice = User(meta, 'alice_%s@infinit.io' % test_suffix)
+    alice.login()
+    assert 'nag' in alice.me['features']
+    assert 'turbo' not in alice.me['features']
+    # By pass the api.
+    alice.update_plan(turbo_plan['id'], stripe_token = stripe.pay(alice.email))
+    assertEq(alice.me['plan'], turbo_plan['name'])
+    assert 'nag' not in alice.me['features']
+    assert 'turbo' in alice.me['features']
 
-  # Delete all links.
-  for link in alice.get('links')['links']:
-    alice.link_update(link, transaction_status.DELETED)
-  assertEq(alice.me['quotas']['links']['used'], 0)
-
-  # Create a link already to big.
-  throws(lambda: alice.getalink(files = [('bite', storage + 1)]), 402)
-  assertEq(alice.me['quotas']['links']['used'], 0)
-
-  link = None
-  # Create two links (with the sum bigger than the quota) and finish them  at
-  # the same time.
-  half_storage_plus = storage / 2 + 1
-  link1 = alice.getalink(files = [('bite', half_storage_plus)])
-  link2 = alice.getalink(files = [('bite', half_storage_plus)])
-  alice.link_update(link1, transaction_status.FINISHED)
-  alice.link_update(link2, transaction_status.FINISHED)
-  res = meta.database.links.update(
-    {'hash': {'$in': [link1['hash'], link2['hash']]}},
-    {'$set': {'file_size': half_storage_plus, 'quota_counted': True}},
-    multi = True)
-  assertEq(res['n'], 2)
-  # Right now, storage can be over quota.
-  assertGT(alice.me['quotas']['links']['used'],
-           alice.me['quotas']['links']['quota'])
-  throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
-  alice.link_update(link1, transaction_status.DELETED)
-  assertEq(alice.me['quotas']['links']['used'],
-           half_storage_plus)
-
-# Referral.
-with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
-  plans = {plan['name']: plan for plan in meta.database.plans.find()}
-  alice = User(meta, "alice@infinit.io")
-  alice.meta = meta
-  alice.login()
-  storage = alice.me['quotas']['links']['quota']
-  get_a_link(alice, storage)
-  throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
-  User(meta, 'bob@infinit.io', referral_code = alice.referral_code).login()
-  bonus = plans['basic']['quotas']['links']['bonuses']['referrer']
-  assertEq(alice.me['quotas']['links']['quota'],
-           storage + bonus)
-  get_a_link(alice, bonus)
-  throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
-  assertEq(alice.me['plan'], 'basic')
-  assertEq(alice.get('user/synchronize')['account']['plan'], 'basic')
-  User(meta, 'bob2@infinit.io', referral_code = alice.referral_code).login()
-  assertEq(alice.me['plan'], 'plus')
-  assertEq(alice.get('user/synchronize')['account']['plan'], 'plus')
-  storage = plans['plus']['quotas']['links']['default_storage']
-  bonus = plans['plus']['quotas']['links']['bonuses']['referrer'] * 2
-  assertEq(plans['plus']['quotas']['links']['default_storage'] + bonus,
-           alice.me['quotas']['links']['quota'])
-  size = alice.me['quotas']['links']['quota'] - \
-         alice.me['quotas']['links']['used']
-  get_a_link(alice, size)
-  throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
-
-# Upgrade plan.
-def upgrade_plan(plan_name):
-  with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
+  # Retro compatibility .
+  with Meta(stripe_api_key = Stripe.key) as meta:
     plans = {plan['name']: plan for plan in meta.database.plans.find()}
     alice = User(meta, "alice@infinit.io")
+    alice.login()
+    usage = 0
+    value = 1000
+    while usage < (value * 10):
+      link = alice.getalink()
+      account = alice.get('user/synchronize')['account']
+      assertEq(account['link_size_quota'],
+               plans['basic']['quotas']['links']['default_storage'])
+      assertEq(account['quotas']['links']['quota'],
+               plans['basic']['quotas']['links']['default_storage'])
+      assertEq(account['link_size_used'], usage)
+      assertEq(account['quotas']['links']['used'], usage)
+      alice.link_update(link, transaction_status.FINISHED)
+      # Meta is updating quota by reading cloud storage file size which is
+      # not realy uploaded here, so insert set the value manually.
+      meta.database.links.update({'hash': link['hash']},
+        {'$set': {'file_size': value, 'quota_counted': True}})
+      account = alice.get('user/synchronize')['account']
+      assertEq(account['link_size_quota'],
+               plans['basic']['quotas']['links']['default_storage'])
+      assertEq(account['quotas']['links']['quota'],
+               plans['basic']['quotas']['links']['default_storage'])
+      usage = usage + value
+      assertEq(account['link_size_used'], usage)
+      assertEq(account['quotas']['links']['used'], usage)
+
+  # Exceed quota.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    plans = {plan['name']: plan for plan in meta.database.plans.find()}
+    alice = User(meta, 'alice@infinit.io')
+    alice.login()
+    alice.meta = meta
+    storage = alice.me['quotas']['links']['quota']
+    get_a_link(alice, storage - 1)
+    assertEq(alice.me['quotas']['links']['used'], storage - 1)
+    get_a_link(alice, 1)
+    assertEq(alice.me['quotas']['links']['used'], storage)
+    throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
+
+    # Delete all links.
+    for link in alice.get('links')['links']:
+      alice.link_update(link, transaction_status.DELETED)
+    assertEq(alice.me['quotas']['links']['used'], 0)
+
+    # Create a link already to big.
+    throws(lambda: alice.getalink(files = [('bite', storage + 1)]), 402)
+    assertEq(alice.me['quotas']['links']['used'], 0)
+
+    link = None
+    # Create two links (with the sum bigger than the quota) and finish them  at
+    # the same time.
+    half_storage_plus = storage / 2 + 1
+    link1 = alice.getalink(files = [('bite', half_storage_plus)])
+    link2 = alice.getalink(files = [('bite', half_storage_plus)])
+    alice.link_update(link1, transaction_status.FINISHED)
+    alice.link_update(link2, transaction_status.FINISHED)
+    res = meta.database.links.update(
+      {'hash': {'$in': [link1['hash'], link2['hash']]}},
+      {'$set': {'file_size': half_storage_plus, 'quota_counted': True}},
+      multi = True)
+    assertEq(res['n'], 2)
+    # Right now, storage can be over quota.
+    assertGT(alice.me['quotas']['links']['used'],
+             alice.me['quotas']['links']['quota'])
+    throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
+    alice.link_update(link1, transaction_status.DELETED)
+    assertEq(alice.me['quotas']['links']['used'],
+             half_storage_plus)
+
+  # Referral.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    plans = {plan['name']: plan for plan in meta.database.plans.find()}
+    alice = User(meta, 'alice@infinit.io')
     alice.meta = meta
     alice.login()
     storage = alice.me['quotas']['links']['quota']
     get_a_link(alice, storage)
     throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
-    meta.meta.change_plan(bson.ObjectId(alice.id), plan_name)
-    assertEq(alice.me['plan'], plan_name)
-    assertEq(alice.get('user/synchronize')['account']['plan'], plan_name)
-    storage = plans[plan_name]['quotas']['links']['default_storage']
-    assertEq(plans[plan_name]['quotas']['links']['default_storage'],
+    User(meta, 'bob@infinit.io', referral_code = alice.referral_code).login()
+    bonus = plans['basic']['quotas']['links']['bonuses']['referrer']
+    assertEq(alice.me['quotas']['links']['quota'],
+             storage + bonus)
+    get_a_link(alice, bonus)
+    throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
+    assertEq(alice.me['plan'], 'basic')
+    assertEq(alice.get('user/synchronize')['account']['plan'], 'basic')
+    User(meta, 'bob2@infinit.io', referral_code = alice.referral_code).login()
+    assertEq(alice.me['plan'], 'plus')
+    assertEq(alice.get('user/synchronize')['account']['plan'], 'plus')
+    storage = plans['plus']['quotas']['links']['default_storage']
+    bonus = plans['plus']['quotas']['links']['bonuses']['referrer'] * 2
+    assertEq(plans['plus']['quotas']['links']['default_storage'] + bonus,
              alice.me['quotas']['links']['quota'])
     size = alice.me['quotas']['links']['quota'] - \
            alice.me['quotas']['links']['used']
     get_a_link(alice, size)
     throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
 
-upgrade_plan('plus')
-upgrade_plan('premium')
+  # Upgrade plan.
+  def upgrade_plan(plan_name):
+    with Meta(stripe_api_key = Stripe.key) as meta:
+      test_suffix = stripe.suffix()
+      plans = {plan['name']: plan for plan in meta.database.plans.find()}
+      alice = User(meta, 'alice_%s@infinit.io' % test_suffix)
+      alice.meta = meta
+      alice.login()
+      storage = alice.me['quotas']['links']['quota']
+      get_a_link(alice, storage)
+      throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
+      alice.update_plan(plan_name, stripe_token = stripe.pay(alice.email))
+      assertEq(alice.me['plan'], plan_name)
+      assertEq(alice.get('user/synchronize')['account']['plan'], plan_name)
+      storage = plans[plan_name]['quotas']['links']['default_storage']
+      assertEq(plans[plan_name]['quotas']['links']['default_storage'],
+               alice.me['quotas']['links']['quota'])
+      size = alice.me['quotas']['links']['quota'] - \
+             alice.me['quotas']['links']['used']
+      get_a_link(alice, size)
+      throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
+
+  upgrade_plan('plus')
+  upgrade_plan('premium')
