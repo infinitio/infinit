@@ -15,7 +15,7 @@ def check_view(plan):
 
 # Use that to make sure plans are unique across machine running the tests.
 import random
-post_fix = str(random.randint(1e9, 9e9))
+suffix = str(random.randint(1e9, 9e9))
 
 with Stripe() as stripe:
   # Basic / Plus / Premium.

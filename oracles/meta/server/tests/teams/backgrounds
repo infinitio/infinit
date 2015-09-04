@@ -5,7 +5,8 @@ import requests
 
 import infinit.oracles.meta.server.gcs
 gcs_login = '798530033299-s9b7qmrc99trk8uid53giuvus1o74cif@developer.gserviceaccount.com'
-gcs_key = bytes('''-----BEGIN PRIVATE KEY-----
+gcs_key = bytes(
+'''-----BEGIN PRIVATE KEY-----
 MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBALCm3D3cHlKYRygk
 vRgesY39WUGeUN/sCBsVaxMuga1bCAZ6fVoh58pQEmeBpkjaVdtB0nz9ZBVoeDtR
 PcfafaUW+UFXjRf2rJ3MoJ/J72mccSD08sjVX3Q9U5iydYhjZEx3uwhUcaHG6+Rq
@@ -30,14 +31,17 @@ gcs = GCS(login = gcs_login, key = gcs_key, bucket_ns = 'test')
 
 with Stripe() as stripe:
   with Meta(gcs = gcs, stripe_api_key = Stripe.key) as meta:
+
+    test_suffix = stripe.suffix()
     import sys
-    leader = User(meta, 'leader@infinit.io')
+    leader = User(meta, 'leader_%s@infinit.io' % test_suffix)
     leader.login()
     team = leader.create_team(name = 'infinit',
                               stripe_token = stripe.pay(leader.email))
     jean = User(meta, 'jean@infinit.io')
-    leader.add_team_member(jean.id)
+    leader.invite_team_member(jean.id)
     jean.login()
+    jean.join_team(team['id'])
     body = b'coincoin'
     content_type = 'image/png'
     content_length = len(body)
