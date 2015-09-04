@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+
+from utils import *
+import requests
+
+import infinit.oracles.meta.server.gcs
+gcs_login = '798530033299-s9b7qmrc99trk8uid53giuvus1o74cif@developer.gserviceaccount.com'
+gcs_key = bytes(
+'''-----BEGIN PRIVATE KEY-----
+MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBALCm3D3cHlKYRygk
+vRgesY39WUGeUN/sCBsVaxMuga1bCAZ6fVoh58pQEmeBpkjaVdtB0nz9ZBVoeDtR
+PcfafaUW+UFXjRf2rJ3MoJ/J72mccSD08sjVX3Q9U5iydYhjZEx3uwhUcaHG6+Rq
+f4xhb/49jfFmDJ/9zCopsiPBJQgfAgMBAAECgYEAqxgByrxOdirdCGmE6D6aM+8E
+qwReSnL+atT0zzBFExVPEY9Dp6+dI5soKC4vUvJ9I45+AucdL4ruoG0QTGg3NbjC
+XCD88TL2UdSog/xxHAQ37EvnoPwK6v04FZHdm94eXkJMQzpf9pP8EyVEaXZWb8Uw
+2MDPGluTWgkUKZitkLECQQDjuLBFwtU9rdDZB3G00P3hMXuvomPPEHRvdpvwbxLG
+WX1XNPG1FlBbQhyBgUIVATn9sU28df7kANqhhnEthXY3AkEAxpaoR0rtZzPIt4c4
+3PQm+mclxxEUZozrRnO/t6bDc/wGvI7C69wIu4UI8j4zFtRRuC2qCDaTorXibFRb
+PKEJWQJAY8eNFUQlg30hwbbNT9kzJPU1qOOSsCwZmK1z7on8xAR6MzfzoNFCLHpv
+Wx90ARgkfNCvqyBYqzbklVn/RV7xSQJBAJluCPGb+DPGFIuHU+2STRMl4lAc6BAb
+TCOQhk0T8OqJi4LfIcYsqCqJLFJMsBgxTjnoPfg+gm4x7JAZ1KvRF3ECQFcwSrNV
+cun1SplfUKZQZywA8ueUU/ZuGj/XXwopPR5LgWW7sgkwdCklQUPjcecWEZFy/ODl
+e9FGZj7sEHpPuDE=
+-----END PRIVATE KEY-----
+''', 'UTF-8')
+
+class GCS(infinit.oracles.meta.server.gcs.GCS):
+  pass
+
+gcs = GCS(login = gcs_login, key = gcs_key, bucket_ns = 'test')
+
+with Stripe() as stripe:
+  with Meta(gcs = gcs, stripe_api_key = Stripe.key) as meta:
+    # Ensure uniqueness for stripe.
+    def __suffix():
+      from random import randint
+      return str(randint(1e9, 9e9))
+
+    test_suffix = __suffix()
+    import sys
+    leader = User(meta, 'leader_%s@infinit.io' % test_suffix)
+    leader.login()
+    team = leader.create_team(name = 'infinit',
+                              stripe_token = stripe.pay(leader.email))
+    jean = User(meta, 'jean@infinit.io')
+    leader.invite_team_member(jean.id)
+    jean.login()
+    jean.join_team(team['id'])
+    body = b'coincoin'
+    content_type = 'image/png'
+    content_length = len(body)
+    def put(user):
+      return user.put('team/logo',
+                      raw = True,
+                      content_type = content_type,
+                      content_length = content_length,
+                      body = body)
+    # Upload logo
+    response = put(jean)
+    assertEq(response.status_code, 403)
+    response = put(leader)
+    assertEq(response.status_code, 307)
+    url = response.headers['location']
+    response = requests.put(url,
+                            headers = {
+                              'Content-Type': content_type,
+                              'Content-Length': content_length,
+                            },
+                            data = body)
+    assertEq(response.status_code / 100, 2)
