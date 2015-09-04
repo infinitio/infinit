@@ -149,12 +149,14 @@ with Meta() as meta:
   encule = invitees[6]
   encule = User(meta, encule, referral_code = alice.referral_code)
   assertEq(len(alice.referrees), 7)
-  old_quota = alice.me['quotas']
+  original_quota = alice.me['quotas']
   encule.login(device_id = alice.devices[0]['id'])
   res = meta.database.users.find_one({'_id': bson.ObjectId(encule.id)})
   assertEq(str(res['blocked_referrer']), alice.id)
-  new_quota = alice.me['quotas']
-  assertEq(old_quota, new_quota)
+  alice_quota = alice.me['quotas']
+  assertEq(original_quota, alice_quota)
+  encule_quota = encule.me['quotas']
+  assertEq(original_quota, encule_quota)
 
   # Check if all the invites are listed.
   assertEq(set([entry['recipient'] for entry in alice.referrees]),
