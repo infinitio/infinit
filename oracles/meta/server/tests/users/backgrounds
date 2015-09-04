@@ -28,71 +28,75 @@ class GCS(infinit.oracles.meta.server.gcs.GCS):
 
 gcs = GCS(login = gcs_login, key = gcs_key, bucket_ns = 'test')
 
-with Meta(gcs = gcs) as meta:
-  import sys
-  user = User(meta, 'user@infinit.io')
-  user.login()
-  # Upload background
-  body = b'coincoin'
-  content_type = 'image/png'
-  content_length = len(body)
-  def put():
-    return user.put('user/backgrounds/bg.jpg',
-                    raw = True,
-                    content_type = content_type,
-                    content_length = content_length,
-                    body = body)
-  response = put()
-  assertEq(response.status_code, 402)
-  meta.meta.change_plan(bson.ObjectId(user.id), 'premium')
-  response = put()
-  assertEq(response.status_code, 307)
-  url = response.headers['location']
-  response = requests.put(url,
-                          headers = {
-                            'Content-Type': content_type,
-                            'Content-Length': content_length,
-                          },
-                          data = body)
-  assertEq(response.status_code / 100, 2)
-  # List backgrounds
-  assertEq(user.get('user/backgrounds')['backgrounds'], ['bg.jpg'])
-  # Get background
-  for request in [
-      lambda: user.get('user/backgrounds/bg.jpg', raw = True),
-      lambda: meta.get('users/%s/backgrounds/bg.jpg' % user.id,
-                       raw = True),
-      lambda: meta.get('users/%s/backgrounds/bg.jpg' % user.email,
-                       raw = True),
-  ]:
-    response = request()
+with Stripe() as stripe:
+
+  with Meta(gcs = gcs, stripe_api_key = Stripe.key) as meta:
+    import sys
+    test_suffix = stripe.suffix()
+    user = User(meta, 'user_%s@infinit.io' % test_suffix)
+    user.login()
+    # Upload background
+    body = b'coincoin'
+    content_type = 'image/png'
+    content_length = len(body)
+    def put():
+      return user.put('user/backgrounds/bg.jpg',
+                      raw = True,
+                      content_type = content_type,
+                      content_length = content_length,
+                      body = body)
+    response = put()
+    assertEq(response.status_code, 402)
+    res = user.update_plan('premium', stripe_token = stripe.pay(user.email))
+    assertEq(res['plan'], 'premium')
+    response = put()
+    assertEq(response.status_code, 307)
+    url = response.headers['location']
+    response = requests.put(url,
+                            headers = {
+                              'Content-Type': content_type,
+                              'Content-Length': content_length,
+                            },
+                            data = body)
+    assertEq(response.status_code / 100, 2)
+    # List backgrounds
+    assertEq(user.get('user/backgrounds')['backgrounds'], ['bg.jpg'])
+    # Get background
+    for request in [
+        lambda: user.get('user/backgrounds/bg.jpg', raw = True),
+        lambda: meta.get('users/%s/backgrounds/bg.jpg' % user.id,
+                         raw = True),
+        lambda: meta.get('users/%s/backgrounds/bg.jpg' % user.email,
+                         raw = True),
+    ]:
+      response = request()
+      assertEq(response.status_code, 307)
+      response = requests.get(response.headers['location'])
+      assertEq(response.status_code, 200)
+      assertEq(response.content, body)
+      assertEq(response.headers['content-type'], content_type)
+      assertEq(int(response.headers['content-length']), content_length)
+    # Erase background
+    user.delete('user/backgrounds/bg.jpg')
+    assertEq(user.get('user/backgrounds')['backgrounds'], [])
+    # Get background
+    response = user.get('user/backgrounds/bg.jpg', raw = True)
     assertEq(response.status_code, 307)
     response = requests.get(response.headers['location'])
-    assertEq(response.status_code, 200)
-    assertEq(response.content, body)
-    assertEq(response.headers['content-type'], content_type)
-    assertEq(int(response.headers['content-length']), content_length)
-  # Erase background
-  user.delete('user/backgrounds/bg.jpg')
-  assertEq(user.get('user/backgrounds')['backgrounds'], [])
-  # Get background
-  response = user.get('user/backgrounds/bg.jpg', raw = True)
-  assertEq(response.status_code, 307)
-  response = requests.get(response.headers['location'])
-  assertEq(response.status_code, 404)
-  # Account default background
-  link = user.getalink()
-  assert meta.get('link/%s' % link['hash'])['background'] is None
-  assert user.get('user/account').get('default_background') is None
-  assertEq(
-    user.post('user/account', {'default_background': 'bg.jpg'}),
-    {'default_background': 'bg.jpg'})
-  assertEq(user.get('user/account').get('default_background'),
-           'bg.jpg')
-  assertEq(meta.get('link/%s' % link['hash'])['background'],
-           'bg.jpg')
-  assertEq(
-    user.post('user/account', {'default_background': None}),
-    {'default_background': None})
-  assert meta.get('link/%s' % link['hash'])['background'] is None
-  assert user.get('user/account').get('default_background') is None
+    assertEq(response.status_code, 404)
+    # Account default background
+    link = user.getalink()
+    assert meta.get('link/%s' % link['hash'])['background'] is None
+    assert user.get('user/account').get('default_background') is None
+    assertEq(
+      user.post('user/account', {'default_background': 'bg.jpg'}),
+      {'default_background': 'bg.jpg'})
+    assertEq(user.get('user/account').get('default_background'),
+             'bg.jpg')
+    assertEq(meta.get('link/%s' % link['hash'])['background'],
+             'bg.jpg')
+    assertEq(
+      user.post('user/account', {'default_background': None}),
+      {'default_background': None})
+    assert meta.get('link/%s' % link['hash'])['background'] is None
+    assert user.get('user/account').get('default_background') is None
