@@ -121,9 +121,13 @@ class Plan(dict):
       return Plan.by_name(meta,
                           name = identifier,
                           ensure_existence = ensure_existence)
-    return Plan._find(meta,
-                      {'_id': identifier},
-                      ensure_existence = ensure_existence)
+    try:
+      identifier = bson.ObjectId(identifier)
+      return Plan._find(meta,
+                       {'_id': bson.ObjectId(identifier)},
+                       ensure_existence = ensure_existence)
+    except bson.errors.InvalidId as e:
+      return Plan.by_name(meta, identifier, ensure_existence)
 
   @staticmethod
   def by_name(meta, name, ensure_existence = False):
