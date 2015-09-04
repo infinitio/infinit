@@ -24,10 +24,11 @@ class Team(dict):
     self['lower_name'] = name.lower()
     self['plan'] = plan
     self['admin'] = admin['_id']
-    self['members'] = [admin['_id']]
+    now = meta.now
+    self['members'] = [Team.user_id_time_pair(admin['_id'], now)]
     self['invitees'] = []
-    self['creation_time'] = meta.now
-    self['modification_time'] = meta.now
+    self['creation_time'] = now
+    self['modification_time'] = now
 
   @staticmethod
   def from_data(meta, team_db):
@@ -63,6 +64,10 @@ class Team(dict):
     return Team.from_data(team_db = team, meta = meta)
 
   @staticmethod
+  def user_id_time_pair(user_id, time):
+    return sort_dict({'id': user_id, 'since': time})
+
+  @staticmethod
   def user_deleted(meta, user):
     user_id = user['_id']
     elle.log.trace('delete user from all teams: %s' % user_id)
@@ -78,16 +83,19 @@ class Team(dict):
       member_team.remove_member(user)
     # Remove user from invitees of all teams.
     meta.database.teams.update(
-      {'invitees': user_id},
-      {'$pull': {'invitees': user_id}})
+      {'invitees.id': user_id},
+      {
+        '$pull': {'invitees': {'id': user_id}},
+        '$set': {'modification_time': meta.now},
+      })
 
   def team_for_user(meta, user, pending = None, ensure_existence = False):
 
     def __find_team_for_user(meta, user, pending, ensure_existence):
       if pending:
-        query = {'_id': pending, 'invitees': user['_id']}
+        query = {'_id': pending, 'invitees.id': user['_id']}
       else:
-        query = {'members': user['_id']}
+        query = {'members.id': user['_id']}
       return Team.find(meta, query, ensure_existence)
 
     if hasattr(bottle.request, 'user'):
@@ -108,6 +116,10 @@ class Team(dict):
 
   def edit(self, update):
     elle.log.trace('%s: edit (update: %s)' % (self, update))
+    if update.get('$set'):
+      update['$set'].update({'modification_time': self.__meta.now})
+    else:
+      update['$set'] = {'modification_time': self.__meta.now}
     res = self.__meta.database.teams.find_and_modify(
       {'_id': self['id']},
       update,
@@ -153,13 +165,17 @@ class Team(dict):
   def add_invitee(self, invitee):
     user_id = invitee['_id']
     elle.log.trace('add invitee %s to team %s' % (user_id, self.id))
+    now = self.__meta.now
     res = self.__meta.database.teams.find_and_modify(
       {
         '_id': self.id,
-        'invitees': {'$ne': user_id},
-        'members': {'$ne': user_id},
+        'invitees.id': {'$ne': user_id},
+        'members.id': {'$ne': user_id},
       },
-      {'$addToSet': {'invitees': user_id}},
+      {
+        '$push': {'invitees': Team.user_id_time_pair(user_id, now)},
+        '$set': {'modification_time': now},
+      },
       new = True,
       upsert = False)
     if res is None:
@@ -177,7 +193,10 @@ class Team(dict):
     elle.log.trace('remove invitee %s from team %s' % (user_id, self.id))
     res = self.__meta.database.teams.find_and_modify(
       {'_id': self.id},
-      {'$pull': {'invitees': user_id}},
+      {
+        '$pull': {'invitees': {'id': user_id}},
+        '$set': {'modification_time': self.__meta.now},
+      },
       new = True)
     return Team.from_data(self.__meta, res)
 
@@ -188,14 +207,16 @@ class Team(dict):
     user_id = user['_id']
     elle.log.trace('add member %s to team %s' % (user_id, self.id))
     try:
+      now = self.__meta.now
       res = self.__meta.database.teams.find_and_modify(
         {
           '_id': self.id,
-          'invitees': user_id,
+          'invitees.id': user_id,
         },
         {
-          '$push': {'members': user_id},
-          '$pull': {'invitees': user_id},
+          '$push': {'members': Team.user_id_time_pair(user_id, now)},
+          '$pull': {'invitees': {'id': user_id}},
+          '$set': {'modification_time': now},
         },
         new = True,
         upsert = False)
@@ -228,7 +249,10 @@ class Team(dict):
     elle.log.trace('remove member %s from team %s' % (user_id, self.id))
     res = self.__meta.database.teams.find_and_modify(
       {'_id': self['id']},
-      {'$pull': {'members': user_id}},
+      {
+        '$pull': {'members': {'id': user_id}},
+        '$set': {'modification_time': self.__meta.now},
+      },
       new = True)
     if res is None:
       elle.log.warn('unable to remove member %s' % user_id)
@@ -242,7 +266,7 @@ class Team(dict):
     self.__meta._user_update(
       user, 'basic', force_prorata = True, team_member = True)
     # Ensure removed user is not updated as part of the team.
-    self['members'].remove(user_id)
+    self['members'] = [m for m in self['members'] if m['id'] != user_id]
     self.__notify_quota_change()
     return Team.from_data(self.__meta, res)
 
@@ -273,16 +297,24 @@ class Team(dict):
     return self['invitees']
 
   @property
+  def invitees_view(self):
+    return self['invitees']
+
+  @property
   def member_count(self):
     return len(self.member_ids)
 
   @property
   def member_ids(self):
-    return self['members']
+    return [m['id'] for m in self['members']]
 
   @property
   def member_users(self):
     return self.__meta.users_by_ids(self.member_ids)
+
+  @property
+  def members_view(self):
+    return self['members']
 
   @property
   def modification_time(self):
@@ -334,8 +366,8 @@ class Team(dict):
       'admin': self.admin_id,
       'creation_time' : self.creation_time,
       'id': self.id,
-      'invitees': self.invitee_ids,
-      'members': self.member_ids,
+      'invitees': self.invitees_view,
+      'members': self.members_view,
       'modification_time' : self.modification_time,
       'name' : self.name,
       'storage_used': self.storage_used,
@@ -434,7 +466,7 @@ class Mixin:
   @require_logged_in
   def team_view(self):
     team = Team.find(self,
-                     {'members': self.user['_id']},
+                     {'members.id': self.user['_id']},
                      ensure_existence = True)
     return team.view
 
