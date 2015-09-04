@@ -659,8 +659,8 @@ class Mixin:
     self.__require_team_member(team, user)
     return self.team_background_get(team, name)
 
-  @api('/team/<team_id>/backgrounds/<name>', method = 'GET')
-  def team_background_get_api(self, team_id: bson.ObjectId, name):
+  @api('/teams/<team_id>/backgrounds/<name>', method = 'GET')
+  def teams_background_get_api(self, team_id: bson.ObjectId, name):
     team = Team.find(self, {'_id': team_id}, ensure_existence = True)
     return self.team_background_get(team, name)
 
@@ -731,10 +731,10 @@ class Mixin:
     self.__require_team_member(team, user)
     return self.team_logo_get(team, cache_buster)
 
-  @api('/team/<team_id>/logo', method = 'GET')
-  def team_logo_get_api(self, team_id, cache_buster = None):
+  @api('/teams/<team_id>/logo', method = 'GET')
+  def teams_logo_get_api(self, team_id: bson.ObjectId, cache_buster = None):
     team = Team.find(self, {'_id': team_id}, ensure_existence = True)
-    self.team_logo_get(team, cache_buster)
+    return self.team_logo_get(team, cache_buster)
 
   def team_logo_get(self, team, cache_buster = None):
     return self._cloud_image_get('team_logo', None, team = team)
@@ -745,4 +745,4 @@ class Mixin:
     user = self.user
     team = Team.team_for_user(self, user, ensure_existence = True)
     self.__require_team_admin(team, user)
-    return self._cloud_image_delete('team_logo', None, user = self.user)
+    return self._cloud_image_delete('team_logo', None, team = team)
