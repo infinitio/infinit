@@ -3373,10 +3373,7 @@ class Mixin:
   ## -------------- ##
 
   def _custom_domain_notify(self, name, team = None):
-    if team:
-      recipients = team.member_ids
-    else:
-      recipients = [self.user['_id']]
+    recipients = team.member_ids if team else [self.user['_id']]
     self.notifier.notify_some(
       notifier.MODEL_UPDATE,
       message = {'account': {'custom_domain': name}},
@@ -3385,10 +3382,7 @@ class Mixin:
 
   def _custom_domain_edit(self, name, action, team = None):
     assert action == 'add' or action == 'remove'
-    if action == 'add':
-      db_action = '$addToSet'
-    else:
-      db_action = '$pull'
+    db_action = '$addToSet' if action == 'add' else '$pull'
     if team:
       collection = self.database.teams
       search_id = team.id
