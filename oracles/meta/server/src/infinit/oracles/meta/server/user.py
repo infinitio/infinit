@@ -185,6 +185,7 @@ class Mixin:
   def __user_self_fields(self):
     return self.__user_view_fields + [
       'account',
+      'blocked_referrer',
       'consumed_ghost_codes',
       'creation_time',
       'email',
@@ -514,18 +515,20 @@ class Mixin:
     res = self.database.users.find_and_modify(
       { '_id': user['_id'], },
       { '$set': {'last_connection': time.time()}},
-      fields = ['last_connection', 'referred_by'],
+      fields = ['blocked_referrer', 'last_connection', 'referred_by'],
       new = False
     )
+
+    def _same_device_as_referrer(device_id, referrer_ids):
+      for referrer in [self.__user_fetch({'_id': id}) for id in referrer_ids]:
+        for device in referrer.get('devices', []):
+          if device['id'] == str(device_id):
+            return referrer['_id']
+      return None
+
     if res and 'last_connection' not in res and 'referred_by' in res:
       referrer_ids = [referrer['id'] for referrer in res['referred_by']
                       if isinstance(referrer, dict)]
-      def _same_device_as_referrer(device_id, referrer_ids):
-        for referrer in [self.__user_fetch({'_id': id}) for id in referrer_ids]:
-          for device in referrer.get('devices', []):
-            if device['id'] == str(device_id):
-              return referrer['_id']
-        return None
       blocked_referrer = _same_device_as_referrer(device_id, referrer_ids)
       if blocked_referrer:
         self.__user_fetch_and_modify(
@@ -536,6 +539,18 @@ class Mixin:
         )
         referrer_ids.remove(blocked_referrer)
       self.process_referrals(user, referrer_ids)
+    elif res and 'blocked_referrer' in res and 'referred_by' in res:
+      referrer_ids = [referrer['id'] for referrer in res['referred_by']
+                      if isinstance(referrer, dict)]
+      if _same_device_as_referrer(device_id, referrer_ids) is None:
+        self.__user_fetch_and_modify(
+          {'_id': user['_id']},
+          {'$unset': {'blocked_referrer': True}},
+          [],
+          False
+        )
+        self.process_referrals(user, [user['blocked_referrer']])
+        del user['blocked_referrer']
     bottle.request.session['device'] = device['id']
     bottle.request.session['identifier'] = user['_id']
     elle.log.trace("successfully connected as %s on device %s" %
@@ -3707,7 +3722,10 @@ class Mixin:
         }
         update.update(self.__add_referrer_update_query(inviter, 'public_link'))
         self.database.users.update(
-          {'_id': user['_id']},
+          {
+            '_id': user['_id'],
+            'referred_by.id': {'$ne': inviter['_id']},
+          },
           update,
         )
         # XXX: This is buggy because referred_by will be proceed twice.
@@ -3998,7 +4016,7 @@ class Mixin:
         if user.get('blocked_referrer'):
           was_referred = False
         else:
-          was_referred = True if len(user.get('referred_by', [])) else True
+          was_referred = True if len(user.get('referred_by', [])) else False
         bonus = int(number_of_referred * bonuses['referrer'] + \
                     bonuses['referree'] * int(was_referred) + \
                     len(social_posts) * bonuses['social_post'] + \
