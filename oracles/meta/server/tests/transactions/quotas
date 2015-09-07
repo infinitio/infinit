@@ -11,11 +11,11 @@ with Stripe() as stripe:
 
   def get_a_link(user, size):
     link = user.getalink(files = [('bite', size)])
-    user.link_update(link, transaction_status.FINISHED)
     # Meta is updating quota by reading cloud storage file size which is
     # not realy uploaded here, so insert set the value manually.
     user.meta.database.links.update({'hash': link['hash']},
                                     {'$set': {'file_size': size, 'quota_counted': True}})
+    user.link_update(link, transaction_status.FINISHED)
 
   # Test features.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -78,11 +78,11 @@ with Stripe() as stripe:
                plans['basic']['quotas']['links']['default_storage'])
       assertEq(account['link_size_used'], usage)
       assertEq(account['quotas']['links']['used'], usage)
-      alice.link_update(link, transaction_status.FINISHED)
       # Meta is updating quota by reading cloud storage file size which is
       # not realy uploaded here, so insert set the value manually.
       meta.database.links.update({'hash': link['hash']},
         {'$set': {'file_size': value, 'quota_counted': True}})
+      alice.link_update(link, transaction_status.FINISHED)
       account = alice.get('user/synchronize')['account']
       assertEq(account['link_size_quota'],
                plans['basic']['quotas']['links']['default_storage'])
