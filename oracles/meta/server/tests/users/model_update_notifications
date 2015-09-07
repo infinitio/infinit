@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from pprint import pprint
 from utils import *
 
 with Stripe() as stripe:
@@ -89,7 +88,6 @@ with Stripe() as stripe:
       {'hash': link['hash']},
       {'$set': {'file_size': size, 'quota_counted': True}}, new = True)
     alice.link_update(link, transaction_status.FINISHED)
-    print(alice.notifications)
     types = set([notif.type for notif in alice.notifications])
     assert 42 in types
     for notif in alice.notifications:
