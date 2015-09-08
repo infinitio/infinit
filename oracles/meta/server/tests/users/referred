@@ -199,6 +199,7 @@ with Meta() as meta:
   assertEq(len(alice.referrees), 8)
   original_alice_quota = alice.me['quotas']
   encule.login(device_id = alice.devices[0]['id'])
+  assertEq(alice.referrees[-1]['status'], 'blocked')
   res = meta.database.users.find_one({'_id': bson.ObjectId(encule.id)})
   assertEq(str(res['blocked_referrer']), alice.id)
   alice_quota = alice.me['quotas']
@@ -210,6 +211,7 @@ with Meta() as meta:
   # on another device.
   from uuid import uuid4
   encule.login(device_id = str(uuid4()))
+  assertEq(alice.referrees[-1]['status'], 'completed')
   res = meta.database.users.find_one({'_id': bson.ObjectId(encule.id)})
   assertEq(res.get('blocked_referrer'), None)
   assertGT(encule.me['quotas']['links']['quota'],
