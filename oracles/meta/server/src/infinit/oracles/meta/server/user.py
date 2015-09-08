@@ -3851,10 +3851,19 @@ class Mixin:
   # referred'.
   @api('/user/referrees')
   @require_logged_in
-  def referred_users(self):
+  def referred_users_api(self):
+    return self.referred_users(self.user)
+
+  @api('/users/<identifier>/referrees')
+  @require_admin
+  def referred_users_admin_api(self, identifier):
+    user = self.user_from_identifier(identifier)
+    return self.referred_users(user)
+
+  def referred_users(self, user):
     # Plain invites.
     invites = self.database.invitations.find(
-      {'sender': self.user['_id']})
+      {'sender': user['_id']})
     invitees = {}
     for invitation in invites:
       invitees[str(invitation['recipient'])] = invitation
@@ -3866,15 +3875,16 @@ class Mixin:
       'email': 1,
     }
     res = self.database.users.aggregate([
-      {'$match': {'referred_by.id': self.user['_id']}},
+      {'$match': {'referred_by.id': user['_id']}},
       {
         '$project': {
           'id': '$_id',
           '_id': 0,
+          'blocked_referrer': {'$ifNull': ['$blocked_referrer', None]},
           'referred_by.date': 1,
           'referred_by.type': 1,
           'register_status': 1,
-          'has_logged_in': {'$gt': ["$last_connection", None]},
+          'has_logged_in': {'$gt': ['$last_connection', None]},
           'accounts.id': 1,
           'email': 1,
         }
@@ -3888,7 +3898,9 @@ class Mixin:
         return entry['email']
 
     def _status(invitees, entry):
-      if entry['register_status'] == 'ok':
+      if entry['blocked_referrer'] is not None:
+        return 'blocked'
+      elif entry['register_status'] == 'ok':
         return 'completed'
       elif invitees.get(str(entry['id'])) is None:
         return 'pending'
