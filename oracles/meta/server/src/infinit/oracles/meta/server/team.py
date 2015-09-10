@@ -93,7 +93,9 @@ class Team(dict):
 
     def __find_team_for_user(meta, user, pending, ensure_existence):
       if pending:
-        query = {'_id': pending, 'invitees.id': user['_id']}
+        emails = [a['type'] == 'email' and a['id'] for a in user['accounts']]
+        emails = list(filter(lambda e: e is not False, emails))
+        query = {'_id': pending, 'invitees.id': {'$in': [user['_id']] + emails}}
       else:
         query = {'members.id': user['_id']}
       return Team.find(meta, query, ensure_existence)
@@ -163,38 +165,38 @@ class Team(dict):
       self.__meta._stripe.remove_plan(subscription)
 
   def add_invitee(self, invitee):
-    user_id = invitee['_id']
-    elle.log.trace('add invitee %s to team %s' % (user_id, self.id))
+    identifier = invitee['_id'] if isinstance(invitee, dict) else invitee
+    elle.log.trace('add invitee %s to team %s' % (identifier, self.id))
     now = self.__meta.now
     res = self.__meta.database.teams.find_and_modify(
       {
         '_id': self.id,
-        'invitees.id': {'$ne': user_id},
-        'members.id': {'$ne': user_id},
+        'invitees.id': {'$ne': identifier},
+        'members.id': {'$ne': identifier},
       },
       {
-        '$push': {'invitees': Team.user_id_time_pair(user_id, now)},
+        '$push': {'invitees': Team.user_id_time_pair(identifier, now)},
         '$set': {'modification_time': now},
       },
       new = True,
       upsert = False)
     if res is None:
       elle.log.warn('unable to invite user %s, user is already invited' %
-                    user_id)
+                    identifier)
       return self.__meta.bad_request(
         {
           'error': 'user_already_invited_to_team',
-          'message': 'The user %s has already been invited' % user_id
+          'message': 'The user %s has already been invited' % identifier
         })
     return Team.from_data(self.__meta, res)
 
   def remove_invitee(self, invitee):
-    user_id = invitee['_id']
-    elle.log.trace('remove invitee %s from team %s' % (user_id, self.id))
+    identifier = invitee['_id'] if isinstance(invitee, dict) else invitee
+    elle.log.trace('remove invitee %s from team %s' % (identifier, self.id))
     res = self.__meta.database.teams.find_and_modify(
       {'_id': self.id},
       {
-        '$pull': {'invitees': {'id': user_id}},
+        '$pull': {'invitees': {'id': identifier}},
         '$set': {'modification_time': self.__meta.now},
       },
       new = True)
@@ -205,21 +207,23 @@ class Team(dict):
 
   def add_member(self, user):
     user_id = user['_id']
+    emails = [a['type'] == 'email' and a['id'] for a in user['accounts']]
+    emails = list(filter(lambda e: e is not False, emails))
     elle.log.trace('add member %s to team %s' % (user_id, self.id))
     try:
       now = self.__meta.now
       res = self.__meta.database.teams.find_and_modify(
         {
           '_id': self.id,
-          'invitees.id': user_id,
+          'invitees.id': {'$in': [user_id] + emails},
         },
         {
           '$push': {'members': Team.user_id_time_pair(user_id, now)},
-          '$pull': {'invitees': {'id': user_id}},
+          '$pull': {'invitees': {'id': {'$in': [user_id] + emails}}},
           '$set': {'modification_time': now},
         },
         new = True,
-        upsert = False)
+        upsert = False,)
       if res is None:
         elle.log.warn(
           'unable to add user %s, user not invited or already member' % user_id)
@@ -405,7 +409,7 @@ class Mixin:
     user = self.user
     team = Team.team_for_user(self, user)
     if team:
-      self.forbidden(
+      return self.forbidden(
         {
           'error': 'already_in_a_team',
           'reason': 'You already are in team %s.' % team['name'],
@@ -501,6 +505,15 @@ class Mixin:
   @require_logged_in
   def add_team_invitee(self, identifier : utils.identifier):
     invitee = self.user_from_identifier(identifier)
+    if invitee is None:
+      if utils.is_an_email_address(identifier):
+        invitee = identifier
+      else:
+        return self.bad_request({
+          'error': 'email_not_valid',
+          'reason': 'No user was found with the identifier (%s) and it is not \
+                     a valid email address' % identifier,
+        })
     user = self.user
     team = Team.team_for_user(self, user, ensure_existence = True)
     self.__require_team_admin(team, user)
@@ -525,6 +538,15 @@ class Mixin:
   @require_logged_in
   def remove_team_invitee(self, identifier : utils.identifier):
     invitee = self.user_from_identifier(identifier)
+    if invitee is None:
+      if utils.is_an_email_address(identifier):
+        invitee = identifier
+      else:
+        return self.bad_request({
+          'error': 'email_not_valid',
+          'reason': 'No user was found with the identifier (%s) and it is not \
+                     a valid email address' % identifier,
+        })
     user = self.user
     team = Team.team_for_user(self, user, ensure_existence = True)
     self.__require_team_admin(team, user)
