@@ -518,6 +518,45 @@ with Stripe() as stripe:
     stripe.emails.add(new_email)
     throws(lambda: stripe.customer_with_email(original_email), StripeTestException)
 
+  # Invite user who isn't on Infinit by email.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+
+    def sort_dict(d):
+      import collections
+      return collections.OrderedDict(sorted(d.items()))
+
+    test_suffix = stripe.suffix()
+    leader = User(meta, 'boss@infinit.io')
+    leader.login()
+    team = leader.create_team(
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(leader.email))
+    jean_email = 'jean@infinit.io'
+    jean_email2 = 'jean2@infinit.io'
+    leader.invite_team_member(jean_email)
+    leader.invite_team_member(jean_email2)
+    res = leader.get('team')
+    assertEq(len(res['invitees']), 2)
+    for invitee in res['invitees']:
+      if invitee['id'] != jean_email and invitee['id'] != jean_email2:
+        assert False
+    assertEq(len(res['members']), 1)
+    assertEq(res['invitees'][0]['id'], jean_email)
+    assertEq(res['invitees'][1]['id'], jean_email2)
+    jean = User(meta, jean_email)
+    # Add another email address the dirty way.
+    meta.inner.database.users.update(
+      {'_id': bson.ObjectId(jean.id)},
+      {'$push': {
+        'accounts': sort_dict({'id': 'jean2@infinit.io', 'type': 'email'})}
+      })
+    jean.login()
+    jean.join_team(team['id'])
+    res = leader.get('team')
+    assertEq(len(res['members']), 2)
+    assertEq(len(res['invitees']), 0)
+    assertEq(res['members'][1]['id'], jean.id)
+
   # XXX: Add tests for all admin functions calls.
 
   # # Infinit administration.
