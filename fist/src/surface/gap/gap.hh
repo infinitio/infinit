@@ -282,6 +282,10 @@ gap_update_avatar(gap_State* state, void const* data, size_t size);
 std::string
 gap_self_device_id(gap_State* state);
 
+/// Used on iOS to restore device ID on reinstalls.
+gap_Status
+gap_set_device_id(gap_State* state, std::string const& device_id);
+
 /// Get user icon data.
 gap_Status
 gap_avatar(gap_State* state, uint32_t id, void** data, size_t* size);

@@ -773,6 +773,20 @@ gap_self_device_id(gap_State* state)
 }
 
 gap_Status
+gap_set_device_id(gap_State* state, std::string const& device_id)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "set device id",
+    [&] (surface::gap::State& state)
+    {
+      state.set_device_id(device_id);
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_avatar(gap_State* state, uint32_t id, void** data, size_t* size)
 {
   ELLE_ASSERT(state != nullptr);
