@@ -277,6 +277,9 @@ namespace infinit
       user_first_launch();
 
       void
+      user_changed_device_id(std::string const& old_device_id);
+
+      void
       user_proxy(reactor::network::ProxyType proxy_type);
 
       void
@@ -349,6 +352,10 @@ namespace infinit
       virtual
       void
       _user_first_launch();
+
+      virtual
+      void
+      _user_changed_device_id(std::string const& old_device_id);
 
       virtual
       void

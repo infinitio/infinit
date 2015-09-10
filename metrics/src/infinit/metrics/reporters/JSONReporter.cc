@@ -303,6 +303,16 @@ namespace infinit
     }
 
     void
+    JSONReporter::_user_changed_device_id(std::string const& old_device_id)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] =
+        std::string("app/change_device_id");
+      data[this->_key_str(JSONKey::existing)] = old_device_id;
+      this->_send(this->_user_dest, data);
+    }
+
+    void
     JSONReporter::_user_proxy(reactor::network::ProxyType proxy_type)
     {
       elle::json::Object data;
@@ -559,6 +569,8 @@ namespace infinit
           return "duration";
         case JSONKey::event:
           return "event";
+        case JSONKey::existing:
+          return "existing";
         case JSONKey::exit_reason:
           return "exit_reason";
         case JSONKey::fail_reason:

@@ -348,6 +348,13 @@ namespace infinit
     }
 
     void
+    Reporter::user_changed_device_id(std::string const& old_device_id)
+    {
+      this->_push(std::bind(
+        &Reporter::_user_changed_device_id, this, old_device_id));
+    }
+
+    void
     Reporter::user_proxy(reactor::network::ProxyType proxy_type)
     {
       this->_push(
@@ -630,6 +637,10 @@ namespace infinit
 
     void
     Reporter::_user_first_launch()
+    {}
+
+    void
+    Reporter::_user_changed_device_id(std::string const& old_device_id)
     {}
 
     void

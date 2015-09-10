@@ -315,6 +315,14 @@ namespace infinit
     }
 
     void
+    CompositeReporter::_user_changed_device_id(std::string const& old_device_id)
+    {
+      this->_dispatch(std::bind(&Reporter::_user_changed_device_id,
+                                std::placeholders::_1,
+                                old_device_id));
+    }
+
+    void
     CompositeReporter::_user_proxy(reactor::network::ProxyType proxy_type)
     {
       this->_dispatch(
