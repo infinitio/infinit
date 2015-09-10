@@ -311,7 +311,9 @@ namespace surface
               this->user(transaction.sender_id);
               this->user(transaction.recipient_id);
             }
-            bool sender = (this->me().id == transaction.sender_id);
+            bool sender =
+              (this->me().id == transaction.sender_id &&
+               this->device().id == transaction.sender_device_id);
             auto const& final_statuses = sender
               ? Transaction::sender_final_statuses
               : Transaction::recipient_final_statuses;
