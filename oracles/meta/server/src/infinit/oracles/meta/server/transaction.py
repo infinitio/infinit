@@ -1441,6 +1441,19 @@ class Mixin:
       "final_transactions": [self._transaction_view(t) for t in finals],
     }
 
+  # Used for admin function in user which returns all of a user's pending
+  # transactions (user_pending_transactions_admin_api).
+  def _user_pending_transactions(self, user):
+    non_pending_states = transaction_status.final + [transaction_status.CREATED]
+    res = self.database.transactions.aggregate([
+      {'$match': {
+        'involved': user['_id'],
+        'status': {'$nin': non_pending_states}}
+      },
+      {'$sort': {'modification_time': DESCENDING}},
+      ])['result'][0]
+    return res
+
   # FIXME: fill and apply this everywhere relevant
   def _transaction_view(self, transaction):
     transaction['id'] = transaction['_id'] # Start deprecating _id
