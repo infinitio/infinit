@@ -4093,7 +4093,7 @@ class Mixin:
 
   @api('/users/<identifier>/pending-transactions')
   @require_admin
-  def user_pending_transactions_admin_api(self, identifier):
+  def user_pending_transactions_admin_api(self, identifier : utils.identifier):
     user = self.user_from_identifier(identifier)
     if user is None:
       return self.not_found({'reason': 'User not found'})
