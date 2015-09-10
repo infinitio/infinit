@@ -174,6 +174,7 @@ class Mixin:
   def __referral_fields(self):
     return [
       'accounts',
+      'blocked_referrer',
       'plan',
       'quotas',
       'referred_by',
@@ -2968,17 +2969,49 @@ class Mixin:
       'plan': new_plan_name or 'basic'
     }
 
-  @api('/users/<user>', method='PUT')
+  # DEPRECATED: (0.9.43) in favour of /user/update.
+  # Ensure website is updated before removing this function.
+  @api('/users/<user>', method = 'PUT')
   @require_logged_in
-  def user_update(self,
-                  user,
-                  plan = None,
-                  stripe_token = None,
-                  stripe_coupon = None,
-                ):
-    return self._user_update(self.user, plan = plan,
+  def user_update_deprecated_api(self,
+                                 user,
+                                 plan = None,
+                                 stripe_token = None,
+                                 stripe_coupon = None,
+                                 ):
+    return self._user_update(self.user,
+                             plan = plan,
                              stripe_token = stripe_token,
                              stripe_coupon = stripe_coupon)
+
+  @api('/user/update', method = 'PUT')
+  @require_logged_in
+  def user_update_api(self,
+                      plan = None,
+                      stripe_token = None,
+                      stripe_coupon = None,
+                      ):
+    return self._user_update(self.user,
+                             plan = plan,
+                             stripe_token = stripe_token,
+                             stripe_coupon = stripe_coupon)
+
+  @api('/users/<identifier>/update', method = 'PUT')
+  @require_admin
+  def user_update_admin_api(self,
+                            identifier,
+                            plan = None,
+                            stripe_token = None,
+                            stripe_coupon = None):
+    user = self.user_from_identifier(identifier)
+    if user is None:
+      return self.not_found(
+        {'reason': 'No user with identifier: %s' % identifier})
+    return self._user_update(user,
+                             plan = plan,
+                             stripe_token = stripe_token,
+                             stripe_coupon = stripe_coupon)
+
   def _user_update(self,
                    user,
                    plan = None,
@@ -4057,3 +4090,11 @@ class Mixin:
         'limit': _file_size_limit(user),
       }
     }
+
+  @api('/users/<identifier>/pending-transactions')
+  @require_admin
+  def user_pending_transactions_admin_api(self, identifier):
+    user = self.user_from_identifier(identifier)
+    if user is None:
+      return self.not_found({'reason': 'User not found'})
+    return self._user_pending_transactions(user)
