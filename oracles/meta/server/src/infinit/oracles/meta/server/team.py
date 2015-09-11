@@ -414,6 +414,10 @@ class Mixin:
           'error': 'already_in_a_team',
           'reason': 'You already are in team %s.' % team['name'],
         })
+    if plan is None or name is None or stripe_token is None:
+      return self.bad_request({
+        'error': 'missing_fields',
+        'reason': 'plan, name or stripe_token missing'})
     return self.__create_team(user, name, stripe_token = stripe_token,
                               plan = plan)
 
