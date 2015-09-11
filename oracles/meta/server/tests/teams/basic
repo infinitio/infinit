@@ -502,7 +502,7 @@ with Stripe() as stripe:
     team = leader.create_team(
       name = 'infinit_%s' % test_suffix,
       stripe_token = stripe.pay(leader.email))
-    stripe.check_plan(leader.email, 'team', 100, quantity = 1)
+    stripe.check_plan(leader.email, 'team', 1200, quantity = 1)
     new_email = 'jean_pierre_%s@infinit.io' % test_suffix
     leader.put('user/accounts/%s' % new_email)
     keys = get_keys(meta.emailer.emails, 1)
@@ -513,7 +513,7 @@ with Stripe() as stripe:
     leader.post('user/accounts/%s/make_primary' % new_email, {
       'password': leader.password
     })
-    stripe.check_plan(new_email, 'team', 100, quantity = 1)
+    stripe.check_plan(new_email, 'team', 1200, quantity = 1)
     # Add email address to stripe list for cleanup.
     stripe.emails.add(new_email)
     throws(lambda: stripe.customer_with_email(original_email), StripeTestException)
