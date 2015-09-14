@@ -297,12 +297,16 @@ class Team(dict):
     return self.__id
 
   @property
-  def invitee_ids(self):
-    return self['invitees']
-
-  @property
   def invitees_view(self):
-    return self['invitees']
+    res = []
+    for element in self['invitees']:
+      if isinstance(element['id'], bson.ObjectId):
+        user = self.__meta.user_from_identifier(element['id'],
+                                                fields = ['email', 'fullname'])
+        element.update(user)
+        del element['_id']
+      res.append(element)
+    return res
 
   @property
   def member_count(self):
@@ -318,7 +322,14 @@ class Team(dict):
 
   @property
   def members_view(self):
-    return self['members']
+    res = []
+    for element in self['members']:
+      user = self.__meta.user_from_identifier(element['id'],
+                                              fields = ['email', 'fullname'])
+      del user['_id']
+      element.update(user)
+      res.append(element)
+    return res
 
   @property
   def modification_time(self):
