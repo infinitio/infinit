@@ -4098,3 +4098,33 @@ class Mixin:
     if user is None:
       return self.not_found({'reason': 'User not found'})
     return self._user_pending_transactions(user)
+
+  # -------- #
+  # Invoices #
+  # -------- #
+
+  @api('/user/invoices')
+  @require_logged_in
+  def user_invoices_api(self):
+    return self.__user_invoices(self.user)
+
+  @api('/users/<identifier>/invoices')
+  @require_admin
+  def user_invoices_admin_api(self, identifier : utils.identifier):
+    user = self.user_from_identifier(identifier)
+    if user is None:
+      return self.not_found()
+    return self.__user_invoices(user)
+
+  def __user_invoice_view(self, invoice):
+    return {'date': invoice['date'], 'url': invoice['lines']['url']}
+
+  def __user_invoices(self, user):
+    customer = self._stripe.fetch_customer(user)
+    if customer is None:
+      return self.not_found()
+    invoices = self._stripe.invoices(customer)
+    res = []
+    if invoices:
+      res = list(map(self.__user_invoice_view, invoices))
+    return {'invoices': res}
