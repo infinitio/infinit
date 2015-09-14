@@ -81,6 +81,14 @@ class Stripe:
       sub = None
     return sub
 
+  def invoices(self, customer, limit = 12):
+    if self.__meta.stripe_api_key is None:
+      return []
+    response = stripe.Invoice.all(customer = customer, limit = limit)
+    if response is None:
+      return []
+    return response.get('data', [])
+
   def set_plan(self, customer, subscription, plan, coupon):
     elle.log.trace(
       'set plan (customer: %s, subscription: %s, plan: %s, coupon: %s)'
