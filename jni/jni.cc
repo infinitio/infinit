@@ -189,6 +189,37 @@ static jobject to_user(JNIEnv* env, surface::gap::User const& u)
   return res;
 }
 
+static jobject to_device(JNIEnv* env, surface::gap::Device const* d)
+{
+  static jclass d_class = 0;
+  static jmethodID d_init;
+  if (!d_class)
+  {
+    d_class = env->FindClass("io/infinit/Device");
+    d_class = (jclass)env->NewGlobalRef(d_class);
+    d_init = env->GetMethodID(d_class, "<init>", "()V");
+  }
+  jobject res = env->NewObject(d_class, d_init);
+  jfieldID f;
+  jobject tmp;
+  f = env->GetFieldID(d_class, "name", "Ljava/lang/String;");
+  tmp = from_string(env, d->name);
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
+  f = env->GetFieldID(d_class, "model", "Ljava/lang/String;");
+  tmp = from_string(env, d->model? *d->model : std::string());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
+  f = env->GetFieldID(d_class, "os", "Ljava/lang/String;");
+  tmp = from_string(env, d->os? *d->os : std::string());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
+  f = env->GetFieldID(d_class, "id", "Ljava/lang/String;");
+  tmp = from_string(env, d->id.repr());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
+  return res;
+}
 
 static jobject to_linktransaction(JNIEnv* env, surface::gap::LinkTransaction const& t)
 {
@@ -1093,6 +1124,18 @@ extern "C" jobject Java_io_infinit_State_gapPeerTransactions(
   else
     return throw_exception(env, s);
 }
+
+extern "C" jobject Java_io_infinit_State_gapDevices(
+  JNIEnv* env, jobject thiz, jlong handle)
+{
+  std::vector<surface::gap::Device const*> res;
+  gap_Status s = gap_devices((gap_State*)handle, res);
+  if (s == gap_ok)
+    return to_array<decltype(res)>(env, res, "io/infinit/Device", &to_device);
+  else
+    return throw_exception(env, s);
+}
+
 
 extern "C" jint Java_io_infinit_State_gapSendFiles(
   JNIEnv* env, jobject thiz, jlong handle,
