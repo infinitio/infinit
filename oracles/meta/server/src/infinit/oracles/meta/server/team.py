@@ -57,7 +57,7 @@ class Team(dict):
         meta.not_found(
           {
             'error': 'unknown_team',
-            'message': 'This team doesn\'t exist.'
+            'reason': 'This team doesn\'t exist.'
           })
       else:
         return None
@@ -77,7 +77,7 @@ class Team(dict):
       meta.forbidden(
         {
           'error': 'cant_delete_team_admin_user',
-          'reason': 'User is admin of a team, delete the team first'
+          'reason': 'User is admin of a team, delete the team first.'
         })
     elif member_team:
       member_team.remove_member(user)
@@ -183,10 +183,11 @@ class Team(dict):
     if res is None:
       elle.log.warn('unable to invite user %s, user is already invited' %
                     identifier)
+      email = invitee['email'] if isinstance(invitee, dict) else invitee
       return self.__meta.bad_request(
         {
           'error': 'user_already_invited_to_team',
-          'message': 'The user %s has already been invited' % identifier
+          'reason': 'The user (%s) has already been invited.' % email
         })
     return Team.from_data(self.__meta, res)
 
@@ -230,7 +231,7 @@ class Team(dict):
         self.__meta.bad_request(
           {
             'error': 'user_in_team_or_not_invited',
-            'message': 'User %s not invited or already member' % user_id
+            'reason': 'User (%s) not invited or already member.' % user['email']
           })
       self.__clear_cached_team(user)
       self.__update_stripe_quantity(len(res['members']))
@@ -245,7 +246,7 @@ class Team(dict):
       return self.__meta.conflict(
         {
           'error': 'user_already_in_a_team',
-          'message': 'The user %s is already in a team' % user_id
+          'reason': 'The user (%s) is already in a team.' % user_id
         })
 
   def remove_member(self, user):
@@ -263,7 +264,8 @@ class Team(dict):
       self.__meta.bad_request(
         {
           'error': 'not_team_member',
-          'message': 'The user %s is not part of team %s' % (user_id, self.id)
+          'reason': 'The user (%s) is not part of team (%s).' %
+            (user['email'], self.id)
         })
     self.__clear_cached_team(user)
     self.__update_stripe_quantity(len(res['members']))
@@ -408,7 +410,7 @@ class Mixin:
       return self.conflict(
         {
           'error': 'team_name_already_taken',
-          'reason': 'A team named %s already exists' % name
+          'reason': 'A team named "%s" already exists.' % name
         })
 
   @api('/teams', method = 'POST')
@@ -428,7 +430,7 @@ class Mixin:
     if plan is None or name is None or stripe_token is None:
       return self.bad_request({
         'error': 'missing_fields',
-        'reason': 'plan, name or stripe_token missing'})
+        'reason': 'Plan, name or stripe_token missing.'})
     return self.__create_team(user, name, stripe_token = stripe_token,
                               plan = plan)
 
@@ -448,7 +450,7 @@ class Mixin:
       return self.forbidden(
         {
           'error': 'not_team_member',
-          'reason': 'Only team members can access team properties'
+          'reason': 'Only team members can access team properties.'
         })
 
   def __enforce_user_password(self, user, password):
@@ -456,7 +458,7 @@ class Mixin:
       return self.unauthorized(
         {
           'error': 'wrong_password',
-          'message': 'Password don\'t match.'
+          'reason': 'Password don\'t match.'
         })
 
   def __delete_specific_team(self, team):
@@ -489,8 +491,8 @@ class Mixin:
                      ensure_existence = True)
     return team.view
 
-  @api('/team/<identifier>', method = 'GET')
-  @require_admin
+  @api('/teams/<identifier>', method = 'GET')
+  @require_key
   def team_view_admin(self, identifier: bson.ObjectId):
     team = Team.find(self, {'_id': identifier}, ensure_existence = True)
     return team.view
@@ -527,7 +529,7 @@ class Mixin:
         return self.bad_request({
           'error': 'email_not_valid',
           'reason': 'No user was found with the identifier (%s) and it is not \
-                     a valid email address' % identifier,
+                     a valid email address.' % identifier,
         })
     user = self.user
     team = Team.team_for_user(self, user, ensure_existence = True)
@@ -560,7 +562,7 @@ class Mixin:
         return self.bad_request({
           'error': 'email_not_valid',
           'reason': 'No user was found with the identifier (%s) and it is not \
-                     a valid email address' % identifier,
+                     a valid email address.' % identifier,
         })
     user = self.user
     team = Team.team_for_user(self, user, ensure_existence = True)
@@ -617,7 +619,7 @@ class Mixin:
       return self.not_found(
         {
           'error': 'unknown_user',
-          'message': 'The user %s is not in the team' % member['_id'],
+          'reason': 'The user (%s) is not in the team.' % member['_id'],
         })
     return team.remove_member(member)
 
