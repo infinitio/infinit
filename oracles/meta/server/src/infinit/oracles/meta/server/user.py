@@ -129,7 +129,17 @@ class Mixin:
         user['stripe'] = self._stripe.fetch_customer(user).get('subscriptions', {})
     team = Team.team_for_user(self, user)
     if team:
-      user['team'] = team.view
+      def __joined_team(team, user):
+        for m in team.members:
+          if m['id'] == user['_id']:
+            return m['since']
+        return None
+      user['team'] = {
+        'admin': team.admin_id,
+        'id': team.id,
+        'name': team.name,
+        'joined': __joined_team(team, user),
+      }
     self.__plan_and_quotas(user)
     # Remove '_id' key, replaced earlier by 'id'.
     del user['_id']
