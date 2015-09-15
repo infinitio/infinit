@@ -1807,6 +1807,9 @@ operator <<(std::ostream& out,
     case gap_transaction_payment_required:
       out << "payment required";
       break;
+    case gap_transaction_ghost_uploaded:
+      out << "ghost uploaded";
+      break;
   }
   return out;
 }
