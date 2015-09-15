@@ -279,7 +279,7 @@ namespace infinit
       public:
         CloudCredentialsGCS(elle::serialization::SerializerIn& s);
         void
-        serialize(elle::serialization::Serializer& s);
+        serialize(elle::serialization::Serializer& s) override;
         CloudCredentials*
         clone() const override;
         ELLE_ATTRIBUTE_R(std::string,  url);
@@ -302,7 +302,7 @@ namespace infinit
                             boost::posix_time::ptime server_time);
         CloudCredentialsAws(elle::serialization::SerializerIn& s);
         void
-        serialize(elle::serialization::Serializer& s);
+        serialize(elle::serialization::Serializer& s) override;
         CloudCredentials*
         clone() const override;
       };
