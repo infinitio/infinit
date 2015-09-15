@@ -71,9 +71,6 @@ namespace surface
 
     public:
       virtual
-      float
-      progress() const = 0;
-      virtual
       bool
       is_sender() const override
       {
