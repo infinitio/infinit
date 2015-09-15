@@ -138,7 +138,7 @@ class Mixin:
         'admin': team.admin_id,
         'id': team.id,
         'name': team.name,
-        'joined': __joined_team(team, user),
+        'since': __joined_team(team, user),
       }
     self.__plan_and_quotas(user)
     # Remove '_id' key, replaced earlier by 'id'.
