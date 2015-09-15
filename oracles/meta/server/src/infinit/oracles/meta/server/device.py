@@ -224,17 +224,23 @@ class Mixin:
     # error.Error concept.
     try:
       if self.admin:
-        guard = {}
-      else:
-        guard = {
-          'owner': self.user['_id'],
+        users = []
+        device = self.device(id = id, include_passport = True)
+        for user in self.database.users.find({'devices.id': str(id)},
+                                             {'_id': True, 'email': True}):
+          users.append({'id': user['_id'], 'email': user['email']})
+        return {
+          'users': users,
+          'device': self.device_view(device)
         }
-      # FIXME: this 404's even if the device exists but is not
-      # ours. Replace with a 403.
-      device = self.device(id = id,
-                           include_passport = True,
-                           **guard)
-      return self.device_view(device)
+      else:
+        guard = {'owner': self.user['_id']}
+        # FIXME: this 404's even if the device exists but is not
+        # ours. Replace with a 403.
+        device = self.device(id = id,
+                             include_passport = True,
+                             **guard)
+        return self.device_view(device)
     except error.Error:
       self.not_found({
         'reason': 'device %s does not exist' % id,
