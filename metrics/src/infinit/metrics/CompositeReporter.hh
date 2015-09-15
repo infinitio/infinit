@@ -24,7 +24,7 @@ namespace infinit
 
       virtual
       void
-      stop();
+      stop() override;
 
     /// Proxy management.
     public:
