@@ -287,17 +287,19 @@ class Mixin:
           fields = {}, new = False)
     # Update transaction
     diff = {'status': transaction_status.FINISHED}
-    transaction = self.database.transactions.find_and_modify(
+    updated_transaction = self.database.transactions.find_and_modify(
       {'_id': tid},
       {'$set': diff},
-      new = False,
+      new = True,
     )
     if transaction['status'] != transaction_status.FINISHED:
       self.notifier.notify_some(
         notifier.PEER_TRANSACTION,
-        recipient_ids =
-          {transaction['sender_id'], transaction['recipient_id']},
-        message = self._transaction_view(transaction),
+        recipient_ids = {
+          transaction['sender_id'],
+          transaction['recipient_id']
+        },
+        message = self._transaction_view(updated_transaction),
       )
       return diff
     else:
