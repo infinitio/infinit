@@ -84,7 +84,9 @@ class Stripe:
   def invoices(self, customer, limit = 12):
     if self.__meta.stripe_api_key is None:
       return []
-    response = stripe.Invoice.all(customer = customer, limit = limit)
+    response = stripe.Invoice.all(customer = customer,
+                                  limit = limit,
+                                  api_key = self.__meta.stripe_api_key)
     if response is None:
       return []
     return response.get('data', [])
