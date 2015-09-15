@@ -323,6 +323,10 @@ class Team(dict):
     return self.__meta.users_by_ids(self.member_ids)
 
   @property
+  def members(self):
+    return self['members']
+
+  @property
   def members_view(self):
     res = []
     for element in self['members']:
