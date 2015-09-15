@@ -379,8 +379,13 @@ class Team(dict):
 
   @property
   def view(self):
+    admin_user = self.admin_user
     return {
-      'admin': self.admin_id,
+      'admin': {
+        'email': admin_user['email'],
+        'fullname': admin_user['fullname'],
+        'id': admin_user['_id'],
+      },
       'creation_time' : self.creation_time,
       'id': self.id,
       'invitees': self.invitees_view,
@@ -495,15 +500,7 @@ class Mixin:
   @require_key
   def team_view_admin(self, identifier: bson.ObjectId):
     team = Team.find(self, {'_id': identifier}, ensure_existence = True)
-    res = team.view
-    admin_user = self.user_from_identifier(res['admin'])
-    del res['admin']
-    res.update({'admin:': {
-      'email': admin_user['email'],
-      'id': admin_user['_id'],
-      'name': admin_user['fullname'],
-    }})
-    return res
+    return team.view
 
   # ============================================================================
   # Update.
