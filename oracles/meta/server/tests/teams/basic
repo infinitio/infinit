@@ -42,7 +42,7 @@ with Stripe() as stripe:
            name = 'fail', stripe_token = stripe.pay(leader.email)), 403)
     team = leader.get('team')
     assertEq(team['name'], team_name)
-    assertEq(team['admin'], leader.id)
+    assertEq(team['admin']['id'], leader.id)
     assertEq(len(team['members']), 1)
     assertEq(team['members'][0]['id'], leader.id)
     stripe.check_plan(leader.email, plan_id, quantity = 1)
@@ -314,7 +314,7 @@ with Stripe() as stripe:
     # Get info about the team as non leader.
     team = baptiste.get('team')
     assertEq(len(team['members']), 2)
-    assertEq(team['admin'], leader.id)
+    assertEq(team['admin']['id'], leader.id)
 
   # Deleting a team should remove all members.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -333,7 +333,7 @@ with Stripe() as stripe:
     team = leader.get('team')
     assertEq(len(team['members']), 2)
     stripe.check_plan(leader.email, plan['id'], quantity = 2)
-    assertEq(team['admin'], leader.id)
+    assertEq(team['admin']['id'], leader.id)
     leader.delete('team', {'password': leader.password})
     stripe.check_plan(leader.email, plan['id'], canceled = True)
     throws(lambda: baptiste.get('team'), 404)
