@@ -64,7 +64,7 @@ with Stripe() as stripe:
       name = 'bombarde', stripe_token = stripe.pay(leader.email)),
            401)
 
-  # Team name uniqueness.
+  # Team name does not require to be unique.
   with Meta(stripe_api_key = Stripe.key) as meta:
     test_suffix = stripe.suffix()
     leader = User(meta, 'boss_%s@infinit.io' % test_suffix)
@@ -74,14 +74,8 @@ with Stripe() as stripe:
       name = original_name, stripe_token = stripe.pay(leader.email))
     bob = User(meta, 'bob_%s@infinit.io' % test_suffix)
     bob.login()
-    throws(lambda: bob.create_team(
-      name = original_name,
-      stripe_token = stripe.pay(leader.email)),
-           409)
-    leader.put('team', {'name': 'bombarde_%s' % test_suffix})
-    # original name is now available.
     bob.create_team(
-      name = original_name, stripe_token = stripe.pay(bob.email))
+      name = original_name, stripe_token = stripe.pay(leader.email))
 
   # Adding and removing users.
   with Meta(stripe_api_key = Stripe.key) as meta:
