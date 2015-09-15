@@ -497,9 +497,12 @@ class Mixin:
     team = Team.find(self, {'_id': identifier}, ensure_existence = True)
     res = team.view
     admin_user = self.user_from_identifier(res['admin'])
-    res.update({
-      'admin_email': admin_user['email'],
-      'admin_name': admin_user['fullname']})
+    del res['admin']
+    res.update({'admin:': {
+      'email': admin_user['email'],
+      'id': admin_user['_id'],
+      'name': admin_user['fullname'],
+    }})
     return res
 
   # ============================================================================
