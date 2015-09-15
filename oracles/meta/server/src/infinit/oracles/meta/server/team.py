@@ -405,18 +405,10 @@ class Mixin:
                     stripe_coupon = None):
     elle.log.trace('create team %s (plan: %s)' % (name, plan))
     Plan.find(self, plan, ensure_existence = True)
-    try:
-      team = Team(self, owner, name, plan).db_insert()
-      assert team is not None
-      team.register_to_stripe(stripe_token, stripe_coupon)
-      return team
-    except pymongo.errors.DuplicateKeyError:
-      elle.log.warn('unable to create team %s' % name)
-      return self.conflict(
-        {
-          'error': 'team_name_already_taken',
-          'reason': 'A team named "%s" already exists.' % name
-        })
+    team = Team(self, owner, name, plan).db_insert()
+    assert team is not None
+    team.register_to_stripe(stripe_token, stripe_coupon)
+    return team
 
   @api('/teams', method = 'POST')
   @require_logged_in
