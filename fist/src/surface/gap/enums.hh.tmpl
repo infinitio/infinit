@@ -20,7 +20,7 @@ extern "C"
     gap_transaction_connecting = 4,
     // Actively transfering.
     gap_transaction_transferring = 5,
-    // Uploaded in the cloud, not yet dowloaded.
+    // Uploaded in the cloud, not yet downloaded.
     gap_transaction_cloud_buffered = 6,
     // Finished.
     gap_transaction_finished = 7,
@@ -36,6 +36,8 @@ extern "C"
     gap_transaction_paused = 12,
     // Account limitation reached.
     gap_transaction_payment_required = 13,
+    // Ghost uploaded.
+    gap_transaction_ghost_uploaded = 14,
   } gap_TransactionStatus;
 
   typedef enum
