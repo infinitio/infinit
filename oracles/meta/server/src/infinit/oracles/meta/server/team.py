@@ -495,7 +495,12 @@ class Mixin:
   @require_key
   def team_view_admin(self, identifier: bson.ObjectId):
     team = Team.find(self, {'_id': identifier}, ensure_existence = True)
-    return team.view
+    res = team.view
+    admin_user = self.user_from_identifier(res['admin'])
+    res.update({
+      'admin_email': admin_user['email'],
+      'admin_name': admin_user['fullname']})
+    return res
 
   # ============================================================================
   # Update.
