@@ -543,6 +543,7 @@ class Mixin:
   @require_logged_in
   def update_team(self, name):
     team = Team.team_for_user(self, self.user, ensure_existence = True)
+    self.__require_team_admin(team, self.user)
     return team.edit({'$set': {'name': name, 'lower_name': name.lower()}}).view
 
   @api('/team/<identifier>', method = 'PUT')
@@ -560,6 +561,9 @@ class Mixin:
   @api('/team/invitees/<identifier>', method = 'PUT')
   @require_logged_in
   def add_team_invitee(self, identifier : utils.identifier):
+    user = self.user
+    team = Team.team_for_user(self, user, ensure_existence = True)
+    self.__require_team_admin(team, user)
     invitee = self.user_from_identifier(identifier,
                                         fields = ['_id', 'email', 'fullname'])
     if invitee is None:
@@ -571,9 +575,6 @@ class Mixin:
           'reason': 'No user was found with the identifier (%s) and it is not \
                      a valid email address.' % identifier,
         })
-    user = self.user
-    team = Team.team_for_user(self, user, ensure_existence = True)
-    self.__require_team_admin(team, user)
     return self.__invite_team_member(team, invitee)
 
   @api('/team/<team_id>/invitees/<user_identifier>', method = 'PUT')
@@ -594,6 +595,9 @@ class Mixin:
   @api('/team/invitees/<identifier>', method = 'DELETE')
   @require_logged_in
   def remove_team_invitee(self, identifier : utils.identifier):
+    user = self.user
+    team = Team.team_for_user(self, user, ensure_existence = True)
+    self.__require_team_admin(team, user)
     invitee = self.user_from_identifier(identifier)
     if invitee is None:
       if utils.is_an_email_address(identifier):
@@ -604,9 +608,6 @@ class Mixin:
           'reason': 'No user was found with the identifier (%s) and it is not \
                      a valid email address.' % identifier,
         })
-    user = self.user
-    team = Team.team_for_user(self, user, ensure_existence = True)
-    self.__require_team_admin(team, user)
     return self.__remove_team_invitee(team, invitee)
 
   @api('/team/<team_id>/reject', method = 'POST')
