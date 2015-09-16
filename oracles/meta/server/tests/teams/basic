@@ -572,6 +572,34 @@ with Stripe() as stripe:
     assertEq(len(res['invitees']), 0)
     assertEq(res['members'][1]['id'], jean.id)
 
+  # Emails.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+
+    def __check_email(email, admin, team, user = None):
+      vars = email.variables
+      assertEq(vars['admin']['id'], leader.id)
+      assertEq(vars['admin']['email'], leader.email)
+      assertEq(vars['admin']['fullname'], leader.fullname)
+      assertNeq(vars['admin']['avatar'], None)
+      assertEq(vars['team']['id'], bson.ObjectId(team['id']))
+      assertEq(vars['team']['name'], team['name'])
+      if user:
+        assertNeq(vars.get('login_token'), None)
+        assertEq(vars['user']['email'], user.email)
+        assertEq(vars['user']['fullname'], user.fullname)
+
+    test_suffix = stripe.suffix()
+    leader = User(meta, 'leader_%s@infinit.io' % test_suffix)
+    leader.login()
+    team = leader.create_team(name = 'email_test_%s' % test_suffix,
+                              stripe_token = stripe.pay(leader.email))
+    leader.invite_team_member('non_user_%s@infinit.io' % test_suffix)
+    __check_email(meta.emailer.template('Join')[0], leader, team)
+    bob = User(meta, 'user_%s@infinit.io' % test_suffix)
+    bob.login()
+    leader.invite_team_member(bob.email)
+    __check_email(meta.emailer.template('Join')[0], leader, team, bob)
+
   # XXX: Add tests for all admin functions calls.
 
   # # Infinit administration.
