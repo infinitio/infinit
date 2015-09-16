@@ -648,8 +648,7 @@ class Mixin:
                             team_id : bson.ObjectId,
                             user_identifier : utils.identifier):
     team = Team.find(self, {'_id': team_id}, ensure_existence = True)
-    user = self.user_from_identifier(user_identifier,
-                                     fields = self._user_self_fields())
+    user = self.user_from_identifier(user_identifier)
     return team.__add_team_member(team, user)
 
   # ============================================================================
