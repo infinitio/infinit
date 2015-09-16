@@ -590,13 +590,10 @@ class Mixin:
       self.database.users.update(
         {'_id': user['_id']},
         {'$set': { 'features': features}})
-    # Store language if we don't have one already.
+    # Store or update language.
     if device_language:
       self.database.users.update(
-        {
-          '_id': user['_id'],
-          'language': {'$exists': False},
-        },
+        {'_id': user['_id']},
         {'$set': {'language': device_language}})
     # _login_response returns a user without an _id.
     # Do not use _id beyond this point.
