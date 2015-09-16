@@ -3001,6 +3001,11 @@ class Mixin:
                       stripe_token = None,
                       stripe_coupon = None,
                       ):
+    if Team.team_for_user(self, self.user):
+      return self.forbidden({
+        'error': 'user_in_team',
+        'reason': 'User cannot change plan when part of a team.'
+      })
     return self._user_update(self.user,
                              plan = plan,
                              stripe_token = stripe_token,
@@ -3351,8 +3356,10 @@ class Mixin:
   @require_logged_in
   def user_background_put_api(self, name):
     if Team.team_for_user(self, self.user):
-      return self.bad_request(
-        {'reason': 'User is part of a team, use /team/backgrounds/<name> instead'})
+      return self.bad_request({
+        'error': 'user_in_team',
+        'reason': 'User is part of a team, use /team/backgrounds/<name> instead.'
+      })
     self.require_premium(self.user)
     return self._cloud_image_upload('backgrounds', name, user = self.user)
 
@@ -3379,8 +3386,10 @@ class Mixin:
   def user_background_delete_api(self, name):
     user = self.user
     if Team.team_for_user(self, user):
-      self.bad_request(
-        {'reason': 'User is part of a team, use /team/backgrounds/<name> instead'})
+      self.bad_request({
+        'error': 'user_in_team',
+        'reason': 'User is part of a team, use /team/backgrounds/<name> instead.'
+      })
     self.require_premium(user)
     return self._cloud_image_delete('backgrounds', name, user = user)
 
@@ -3404,8 +3413,10 @@ class Mixin:
   @require_logged_in
   def user_logo_put_api(self):
     if Team.team_for_user(self, self.user):
-      return self.bad_request(
-        {'reason': 'User is part of a team, use /team/logo instead'})
+      return self.bad_request({
+        'error': 'user_in_team',
+        'reason': 'User is part of a team, use /team/logo instead.'
+      })
     self.require_premium(self.user)
     return self._cloud_image_upload('logo', None, user = self.user)
 
@@ -3431,8 +3442,10 @@ class Mixin:
   @require_logged_in
   def user_logo_delete_api(self):
     if Team.team_for_user(self, self.user):
-      return self.bad_request(
-        {'reason': 'User is part of a team, use /team/logo instead'})
+      return self.bad_request({
+        'error': 'user_in_team',
+        'reason': 'User is part of a team, use /team/logo instead.'
+      })
     self.require_premium(self.user)
     return self._cloud_image_delete('logo', None, user = self.user)
 
@@ -3514,8 +3527,10 @@ class Mixin:
   @require_logged_in
   def user_account_update_api(self, **kwargs):
     if Team.team_for_user(self, self.user):
-      self.bad_request(
-        {'reason': 'User is part of a team, use /team/shared_settings instead'})
+      self.bad_request({
+        'error': 'user_in_team',
+        'reason': 'User is part of a team, use /team/shared_settings instead.'
+      })
     update = {}
     for field, premium in [
         ('default_background', True)
@@ -3901,6 +3916,8 @@ class Mixin:
   @require_admin
   def referred_users_admin_api(self, identifier):
     user = self.user_from_identifier(identifier)
+    if user is None:
+      return self.not_found()
     return self.referred_users(user)
 
   def referred_users(self, user):
