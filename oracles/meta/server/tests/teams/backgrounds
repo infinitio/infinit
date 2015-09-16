@@ -34,12 +34,12 @@ with Stripe() as stripe:
 
     test_suffix = stripe.suffix()
     import sys
-    leader = User(meta, 'leader_%s@infinit.io' % test_suffix)
-    leader.login()
-    team = leader.create_team(name = 'infinit',
-                              stripe_token = stripe.pay(leader.email))
+    admin = User(meta, 'admin_%s@infinit.io' % test_suffix)
+    admin.login()
+    team = admin.create_team(name = 'infinit',
+                              stripe_token = stripe.pay(admin.email))
     jean = User(meta, 'jean@infinit.io')
-    leader.invite_team_member(jean.id)
+    admin.invite_team_member(jean.id)
     jean.login()
     jean.join_team(team['id'])
     body = b'coincoin'
@@ -54,7 +54,7 @@ with Stripe() as stripe:
     # Upload background
     response = put(jean)
     assertEq(response.status_code, 403)
-    response = put(leader)
+    response = put(admin)
     assertEq(response.status_code, 307)
     url = response.headers['location']
     response = requests.put(url,
@@ -65,13 +65,13 @@ with Stripe() as stripe:
                             data = body)
     assertEq(response.status_code / 100, 2)
     # List backgrounds
-    assertEq(leader.get('team/backgrounds')['backgrounds'], ['bg.jpg'])
+    assertEq(admin.get('team/backgrounds')['backgrounds'], ['bg.jpg'])
     # Get background
     for request in [
-        lambda: leader.get('user/backgrounds/bg.jpg', raw = True),
+        lambda: admin.get('user/backgrounds/bg.jpg', raw = True),
         lambda: jean.get('user/backgrounds/bg.jpg', raw = True),
         lambda: meta.get('users/%s/backgrounds/bg.jpg' % jean.id, raw = True),
-        lambda: meta.get('users/%s/backgrounds/bg.jpg' % leader.id, raw = True),
+        lambda: meta.get('users/%s/backgrounds/bg.jpg' % admin.id, raw = True),
         lambda: meta.get('users/%s/backgrounds/bg.jpg' % jean.email,
                          raw = True),
         lambda: meta.get('teams/%s/backgrounds/bg.jpg' % team['id'], raw = True),
@@ -86,17 +86,17 @@ with Stripe() as stripe:
     # Erase background
     throws(lambda: jean.delete('team/backgrounds/bg.jpg'), 403)
     throws(lambda: jean.delete('user/backgrounds/bg.jpg'), 400)
-    throws(lambda: leader.delete('user/backgrounds/bg.jpg'), 400)
-    leader.delete('team/backgrounds/bg.jpg')
-    assertEq(leader.get('user/backgrounds')['backgrounds'], [])
+    throws(lambda: admin.delete('user/backgrounds/bg.jpg'), 400)
+    admin.delete('team/backgrounds/bg.jpg')
+    assertEq(admin.get('user/backgrounds')['backgrounds'], [])
     assertEq(jean.get('user/backgrounds')['backgrounds'], [])
-    assertEq(leader.get('team/backgrounds')['backgrounds'], [])
+    assertEq(admin.get('team/backgrounds')['backgrounds'], [])
     # Get background
     response = jean.get('user/backgrounds/bg.jpg', raw = True)
     assertEq(response.status_code, 307)
     response = requests.get(response.headers['location'])
     assertEq(response.status_code, 404)
-    response = leader.get('user/backgrounds/bg.jpg', raw = True)
+    response = admin.get('user/backgrounds/bg.jpg', raw = True)
     assertEq(response.status_code, 307)
     response = requests.get(response.headers['location'])
     assertEq(response.status_code, 404)
@@ -104,23 +104,23 @@ with Stripe() as stripe:
     link = jean.getalink()
     assert meta.get('link/%s' % link['hash'])['background'] is None
     assert jean.get('user/account').get('default_background') is None
-    assert leader.get('user/account').get('default_background') is None
+    assert admin.get('user/account').get('default_background') is None
     assert jean.get('team/shared_settings').get('default_background') is None
-    assert leader.get('team/shared_settings').get('default_background') is None
+    assert admin.get('team/shared_settings').get('default_background') is None
     throws(lambda:
       jean.post('user/account', {'default_background': 'bg.jpg'}), 400)
     throws(lambda:
-      leader.post('user/account', {'default_background': 'bg.jpg'}), 400)
+      admin.post('user/account', {'default_background': 'bg.jpg'}), 400)
     throws(lambda:
       jean.post('team/shared_settings', {'default_background': 'bg.jpg'}), 403)
     assertEq(
-      leader.post('team/shared_settings', {'default_background': 'bg.jpg'}),
+      admin.post('team/shared_settings', {'default_background': 'bg.jpg'}),
                   {'default_background': 'bg.jpg'})
     assertEq(jean.get('user/account').get('default_background'), 'bg.jpg')
-    assertEq(leader.get('user/account').get('default_background'), 'bg.jpg')
+    assertEq(admin.get('user/account').get('default_background'), 'bg.jpg')
     assertEq(meta.get('link/%s' % link['hash'])['background'], 'bg.jpg')
     assertEq(
-      leader.post('team/shared_settings', {'default_background': None}),
+      admin.post('team/shared_settings', {'default_background': None}),
       {'default_background': None})
     assert meta.get('link/%s' % link['hash'])['background'] is None
     assert jean.get('user/account').get('default_background') is None

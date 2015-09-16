@@ -24,11 +24,11 @@ with Stripe() as stripe:
         while len(user.notifications):
           user.next_notification()
 
-      leader = User(meta, 'julien@infinit.io')
-      leader.login(trophonius = tropho)
-      team = leader.create_team(
+      admin = User(meta, 'julien@infinit.io')
+      admin.login(trophonius = tropho)
+      team = admin.create_team(
         name = 'infinit',
-        stripe_token = stripe.pay(leader.email))
+        stripe_token = stripe.pay(admin.email))
       jean = User(meta, 'jean@infinit.io')
       jean.login(trophonius = tropho)
       res = jean.get('user/synchronize?init=1')
@@ -41,7 +41,7 @@ with Stripe() as stripe:
       res = jean.get('user/synchronize?init=1')
       assertEq(res['account']['custom_domain'], user_domain)
       # Add team member.
-      leader.invite_team_member(jean.id)
+      admin.invite_team_member(jean.id)
       jean.join_team(team['id'])
       # Team member can't change team domain.
       throws(lambda: jean.put('team/custom_domains/bob'), 403)
@@ -49,13 +49,13 @@ with Stripe() as stripe:
       throws(lambda: jean.put('user/account/custom_domains/bob'), 403)
       # Set team custom domain.
       team_domain = 'team'
-      leader.put('team/custom_domains/%s' % team_domain)
-      check_for_domain(leader, team_domain)
+      admin.put('team/custom_domains/%s' % team_domain)
+      check_for_domain(admin, team_domain)
       check_for_domain(jean, team_domain)
       # Delete team domain.
-      leader.delete('team/custom_domains/%s' % team_domain)
-      check_for_domain(leader, '')
+      admin.delete('team/custom_domains/%s' % team_domain)
+      check_for_domain(admin, '')
       check_for_domain(jean, '')
       # User has original domain when removed from the team.
-      leader.delete_team_member(jean.id)
+      admin.delete_team_member(jean.id)
       check_for_domain(jean, user_domain)

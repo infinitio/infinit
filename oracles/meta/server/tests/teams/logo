@@ -38,12 +38,12 @@ with Stripe() as stripe:
 
     test_suffix = __suffix()
     import sys
-    leader = User(meta, 'leader_%s@infinit.io' % test_suffix)
-    leader.login()
-    team = leader.create_team(name = 'infinit',
-                              stripe_token = stripe.pay(leader.email))
+    admin = User(meta, 'admin_%s@infinit.io' % test_suffix)
+    admin.login()
+    team = admin.create_team(name = 'infinit',
+                              stripe_token = stripe.pay(admin.email))
     jean = User(meta, 'jean@infinit.io')
-    leader.invite_team_member(jean.id)
+    admin.invite_team_member(jean.id)
     jean.login()
     jean.join_team(team['id'])
     body = b'coincoin'
@@ -58,7 +58,7 @@ with Stripe() as stripe:
     # Upload logo
     response = put(jean)
     assertEq(response.status_code, 403)
-    response = put(leader)
+    response = put(admin)
     assertEq(response.status_code, 307)
     url = response.headers['location']
     response = requests.put(url,
@@ -70,10 +70,10 @@ with Stripe() as stripe:
     assertEq(response.status_code / 100, 2)
     # Get logo
     for request in [
-        lambda: leader.get('user/logo', raw = True),
+        lambda: admin.get('user/logo', raw = True),
         lambda: jean.get('user/logo', raw = True),
         lambda: meta.get('users/%s/logo' % jean.id, raw = True),
-        lambda: meta.get('users/%s/logo' % leader.id, raw = True),
+        lambda: meta.get('users/%s/logo' % admin.id, raw = True),
         lambda: meta.get('users/%s/logo' % jean.email, raw = True),
         lambda: meta.get('teams/%s/logo' % team['id'], raw = True),
     ]:
@@ -87,17 +87,17 @@ with Stripe() as stripe:
     # Erase logo
     throws(lambda: jean.delete('team/logo'), 403)
     throws(lambda: jean.delete('user/logo'), 400)
-    throws(lambda: leader.delete('user/logo'), 400)
-    leader.delete('team/logo')
-    assertEq(leader.get('user/logo'), b'')
+    throws(lambda: admin.delete('user/logo'), 400)
+    admin.delete('team/logo')
+    assertEq(admin.get('user/logo'), b'')
     assertEq(jean.get('user/logo'), b'')
-    assertEq(leader.get('team/logo'), b'')
+    assertEq(admin.get('team/logo'), b'')
     # Get logo
     response = jean.get('user/logo', raw = True)
     assertEq(response.status_code, 307)
     response = requests.get(response.headers['location'])
     assertEq(response.status_code, 404)
-    response = leader.get('user/logo', raw = True)
+    response = admin.get('user/logo', raw = True)
     assertEq(response.status_code, 307)
     response = requests.get(response.headers['location'])
     assertEq(response.status_code, 404)
