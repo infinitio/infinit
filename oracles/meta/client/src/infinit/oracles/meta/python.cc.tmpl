@@ -218,7 +218,6 @@ void export_meta_client()
   py::class_<Self>("Self")
     .def_readonly("identity", &Self::identity)
     .def_readonly("email", &Self::email)
-    .def_readonly("remaining_invitations", &Self::remaining_invitations)
   ;
   py::class_<Device>("Device")
     .def_readonly("id", &Device::id)

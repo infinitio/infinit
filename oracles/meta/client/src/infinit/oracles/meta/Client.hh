@@ -147,7 +147,6 @@ namespace infinit
         std::string identity;
         boost::optional<std::string> email;
         boost::optional<std::string> facebook_id;
-        int remaining_invitations;
         std::string token_generation_key;
         // std::list<boost::uuids::uuid> devices;
         std::list<std::string> devices;

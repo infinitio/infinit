@@ -82,7 +82,6 @@ login_success_response(
                        "    \"public_key\": \"public_key\","
                        "    \"name\": \"FUUUUUUUUUUCK\","
                        "    \"accounts\": [],"
-                       "    \"remaining_invitations\": 0,"
                        "    \"token_generation_key\": \"token_generation_key\","
                        "    \"favorites\": [],"
                        "    \"connected_devices\": [\"%s\"],"
