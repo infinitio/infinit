@@ -1152,7 +1152,7 @@ class User(Client):
   def join_team(self, team_id):
     return self.post('team/%s/join' % team_id)
 
-  def leave_team(self, team_id, password):
+  def leave_team(self, password):
     return self.post('team/leave', {'password': password})
 
 def user_in_team(team, user):
