@@ -3,6 +3,7 @@
 import elle.log
 from elle.log import log, trace, debug, dump
 from . import notifier, transaction_status, utils
+import infinit.oracles.emailer
 from .utils import *
 from .plans import Plan
 
@@ -165,7 +166,8 @@ class Team(dict):
       self.__meta._stripe.remove_plan(subscription)
 
   def add_invitee(self, invitee):
-    identifier = invitee['_id'] if isinstance(invitee, dict) else invitee
+    is_user = isinstance(invitee, dict)
+    identifier = invitee['_id'] if is_user else invitee
     elle.log.trace('add invitee %s to team %s' % (identifier, self.id))
     now = self.__meta.now
     res = self.__meta.database.teams.find_and_modify(
@@ -183,12 +185,27 @@ class Team(dict):
     if res is None:
       elle.log.warn('unable to invite user %s, user is already invited' %
                     identifier)
-      email = invitee['email'] if isinstance(invitee, dict) else invitee
       return self.__meta.bad_request(
         {
           'error': 'user_already_invited_to_team',
-          'reason': 'The user (%s) has already been invited.' % email
+          'reason': 'The user (%s) has already been invited.' %
+            invitee['email'] if is_user else invitee
         })
+    variables = {
+      'admin': self.__meta.email_user_vars(self.admin_user),
+      'key': utils.key('/team/%s/join' % self.id),
+      'team': {'id': self.id, 'name': self.name}
+    }
+    if is_user:
+      variables.update({
+        'user': self.__meta.email_user_vars(invitee),
+        'login_token': self.__meta.login_token(invitee['email']),
+      })
+    self.__meta.emailer.send_one(
+      'Join',
+      recipient_email = invitee['email'] if is_user else invitee,
+      recipient_name = invitee['fullname'] if is_user else invitee,
+      variables = variables)
     return Team.from_data(self.__meta, res)
 
   def remove_invitee(self, invitee):
@@ -522,7 +539,8 @@ class Mixin:
   @api('/team/invitees/<identifier>', method = 'PUT')
   @require_logged_in
   def add_team_invitee(self, identifier : utils.identifier):
-    invitee = self.user_from_identifier(identifier)
+    invitee = self.user_from_identifier(identifier,
+                                        fields = ['_id', 'email', 'fullname'])
     if invitee is None:
       if utils.is_an_email_address(identifier):
         invitee = identifier
@@ -609,7 +627,8 @@ class Mixin:
                              team_id : bson.ObjectId,
                              user_identifier : utils.identifier):
     team = Team.find(self, {'_id': team_id}, ensure_existence = True)
-    user = self.user_from_identifier(user_identifier)
+    user = self.user_from_identifier(user_identifier,
+                                     fields = ['_id', 'email', 'fullname'])
     return team.__add_team_member(team, user)
 
   # ============================================================================
