@@ -302,8 +302,7 @@ class Team(dict):
         })
     self.__clear_cached_team(user)
     self.__update_stripe_quantity(len(res['members']))
-    self.__meta._user_update(
-      user, 'basic', force_prorata = True, team_member = True)
+    self.__meta._user_update(user, 'basic', team_member = True)
     # Ensure removed user is not updated as part of the team.
     self['members'] = [m for m in self['members'] if m['id'] != user_id]
     self.__notify_quota_change()
@@ -314,6 +313,9 @@ class Team(dict):
     res = self.__meta.database.teams.remove(self.id)
     assert res['n'] == 1
     self.__cancel_stripe_subscription()
+    for user in self.member_users:
+      self.__clear_cached_team(user)
+      self.__meta._user_update(user, 'basic', team_member = True)
 
   @property
   def admin_id(self):
@@ -434,6 +436,33 @@ class Team(dict):
 
 class Mixin:
   # ============================================================================
+  # Helpers.
+  # ============================================================================
+  def __require_team_admin(self, team, user):
+    if team.admin_id != user['_id']:
+      return self.forbidden(
+        {
+          'error': 'not_the_team_admin',
+          'reason': 'Only the team administrator can edit or delete a team.'
+        })
+
+  def __require_team_member(self, team, user):
+    if user['_id'] not in team.member_ids:
+      return self.forbidden(
+        {
+          'error': 'not_team_member',
+          'reason': 'Only team members can access team properties.'
+        })
+
+  def __enforce_user_password(self, user, password):
+    if user['password'] != hash_password(password):
+      return self.unauthorized(
+        {
+          'error': 'wrong_password',
+          'reason': 'Incorrect password.'
+        })
+
+  # ============================================================================
   # Creation.
   # ============================================================================
   def __create_team(self, owner, name,
@@ -471,30 +500,6 @@ class Mixin:
   # ============================================================================
   # Deletion.
   # ============================================================================
-  def __require_team_admin(self, team, user):
-    if team.admin_id != user['_id']:
-      return self.forbidden(
-        {
-          'error': 'not_the_team_admin',
-          'reason': 'Only the team administrator can edit or delete a team.'
-        })
-
-  def __require_team_member(self, team, user):
-    if user['_id'] not in team.member_ids:
-      return self.forbidden(
-        {
-          'error': 'not_team_member',
-          'reason': 'Only team members can access team properties.'
-        })
-
-  def __enforce_user_password(self, user, password):
-    if user['password'] != hash_password(password):
-      return self.unauthorized(
-        {
-          'error': 'wrong_password',
-          'reason': 'Password don\'t match.'
-        })
-
   def __delete_specific_team(self, team):
     team.remove()
     return {}
@@ -512,7 +517,7 @@ class Mixin:
   @require_admin
   def delete_specific_team(self, identifier):
     team = Team.find(self, identifier = identifier)
-    return self.__delete_specific_team(self, team)
+    return self.__delete_specific_team(team)
 
   # ============================================================================
   # View.
