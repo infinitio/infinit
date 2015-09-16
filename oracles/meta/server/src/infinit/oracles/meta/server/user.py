@@ -203,6 +203,7 @@ class Mixin:
       'facebook_id',
       'favorites',
       'features',
+      'language',
       'identity',
       'plan',
       'stripe_id',
@@ -582,11 +583,6 @@ class Mixin:
                                     email = user['email'])
       else:
         elle.log.debug("%s: no OS specified" % user['_id'])
-    response = self.success(self._login_response(user,
-                                                 device = device,
-                                                 web = False))
-    if pick_trophonius:
-      response['trophonius'] = self.trophonius_pick()
     # Update missing features
     current_features = user.get('features', {})
     features = self._roll_features(False, current_features)
@@ -594,6 +590,21 @@ class Mixin:
       self.database.users.update(
         {'_id': user['_id']},
         {'$set': { 'features': features}})
+    # Store language if we don't have one already.
+    if device_language:
+      self.database.users.update(
+        {
+          '_id': user['_id'],
+          'language': {'$exists': False},
+        },
+        {'$set': {'language': device_language}})
+    # _login_response returns a user without an _id.
+    # Do not use _id beyond this point.
+    response = self.success(self._login_response(user,
+                                                 device = device,
+                                                 web = False))
+    if pick_trophonius:
+      response['trophonius'] = self.trophonius_pick()
     # Force immediate buffering on mobile devices.
     if self.device_mobile:
       features['preemptive_buffering_delay'] = '0'
