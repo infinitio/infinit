@@ -255,6 +255,22 @@ class Team(dict):
       self.__meta._user_update(
         user, self.plan_id, force_prorata = True, team_member = True)
       self.__notify_quota_change()
+      self.__meta.emailer.send_one(
+        'Joined',
+        recipient_email = self.admin_user['email'],
+        recipient_name = self.admin_user['fullname'],
+        variables = {
+          'admin': self.__meta.email_user_vars(self.admin_user),
+          'login_token': self.__meta.login_token(self.admin_user['email']),
+          'members': self.members_view,
+          'team': {
+            'id': self.id,
+            'members': self.members_view,
+            'name': self.name,
+          },
+          'user': self.__meta.email_user_vars(user),
+        }
+      )
       return Team.from_data(self.__meta, res)
     except pymongo.errors.DuplicateKeyError as e:
       elle.log.warn(
@@ -622,13 +638,13 @@ class Mixin:
     return {}
 
   @api('/team/<team_id>/members/<user_identifier>', method = 'PUT')
-  @require_logged_in
+  @require_admin
   def add_team_member_admin(self,
-                             team_id : bson.ObjectId,
-                             user_identifier : utils.identifier):
+                            team_id : bson.ObjectId,
+                            user_identifier : utils.identifier):
     team = Team.find(self, {'_id': team_id}, ensure_existence = True)
     user = self.user_from_identifier(user_identifier,
-                                     fields = ['_id', 'email', 'fullname'])
+                                     fields = self._user_self_fields())
     return team.__add_team_member(team, user)
 
   # ============================================================================
@@ -646,10 +662,23 @@ class Mixin:
   @api('/team/members/<identifier>', method = 'DELETE')
   @require_logged_in
   def remove_team_member(self, identifier : utils.identifier):
-    member = self.user_from_identifier(identifier)
+    member = self.user_from_identifier(identifier,
+                                       fields = ['_id', 'email', 'fullname'])
     team = Team.team_for_user(self, member, ensure_existence = True)
     self.__require_team_admin(team, self.user)
-    return self.__remove_team_member(team, member)
+    res = self.__remove_team_member(team, member)
+    self.emailer.send_one(
+      'Kicked Out',
+      recipient_email = member['email'],
+      recipient_name = member['fullname'],
+      variables = {
+        'admin': self.email_user_vars(team.admin_user),
+        'login_token': self.login_token(member['email']),
+        'team': {'id': team.id, 'name': team.name},
+        'user': self.email_user_vars(member),
+      }
+    )
+    return res
 
   @api('/team/<team_id>/members/<user_identifier>', method = 'DELETE')
   @require_admin
@@ -662,12 +691,26 @@ class Mixin:
 
   @api('/team/leave', method = 'POST')
   @require_logged_in_fields(['password'])
-  def exit_a_team(self,
-                  password):
+  def exit_a_team(self, password):
     user = self.user
     self.__enforce_user_password(user, password)
     team = Team.team_for_user(self, user, ensure_existence = True)
     self.__remove_team_member(team, user)
+    self.emailer.send_one(
+      'Left',
+      recipient_email = team.admin_user['email'],
+      recipient_name = team.admin_user['fullname'],
+      variables = {
+        'admin': self.email_user_vars(team.admin_user),
+        'login_token': self.login_token(team.admin_user['email']),
+        'team': {
+          'id': team.id,
+          'members': team.members_view,
+          'name': team.name,
+        },
+        'user': self.email_user_vars(user),
+      }
+    )
     return {}
 
   # ============================================================================
