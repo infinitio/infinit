@@ -9,6 +9,24 @@ with Meta() as meta:
   assert not user.data['connected']
 
 with Meta() as meta:
+  user = User(meta, 'bob@infinit.io')
+  # Login without a language.
+  user.login()
+  db_user = meta.inner.database.users.find_one({'_id': bson.ObjectId(user.id)})
+  assertEq(db_user.get('language'), None)
+  user.logout()
+  # Login with a language.
+  language = 'fr'
+  user.login(device_language = language)
+  db_user = meta.inner.database.users.find_one({'_id': bson.ObjectId(user.id)})
+  assertEq(db_user.get('language'), language)
+  user.logout()
+  # Login with a different language. Ensure language is not replaced.
+  user.login(device_language = 'en')
+  db_user = meta.inner.database.users.find_one({'_id': bson.ObjectId(user.id)})
+  assertEq(db_user.get('language'), language)
+
+with Meta() as meta:
   email = 'foo@bar.baz'
   user = User(meta, email)
   token = meta.meta.login_token(email)
