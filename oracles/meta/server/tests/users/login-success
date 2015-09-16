@@ -14,17 +14,20 @@ with Meta() as meta:
   user.login()
   db_user = meta.inner.database.users.find_one({'_id': bson.ObjectId(user.id)})
   assertEq(db_user.get('language'), None)
+  assertEq(user.get('user/self').get('language'), None)
   user.logout()
   # Login with a language.
   language = 'fr'
   user.login(device_language = language)
   db_user = meta.inner.database.users.find_one({'_id': bson.ObjectId(user.id)})
   assertEq(db_user.get('language'), language)
+  assertEq(user.get('user/self')['language'], language)
   user.logout()
   # Login with a different language. Ensure language is not replaced.
   user.login(device_language = 'en')
   db_user = meta.inner.database.users.find_one({'_id': bson.ObjectId(user.id)})
   assertEq(db_user.get('language'), language)
+  assertEq(user.get('user/self')['language'], language)
 
 with Meta() as meta:
   email = 'foo@bar.baz'
