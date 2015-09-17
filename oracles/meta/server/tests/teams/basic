@@ -617,6 +617,8 @@ with Stripe() as stripe:
       vars = email.variables
       if user:
         assertNeq(vars.get('login_token'), None)
+      else:
+        assertEq(vars.get('ghost_email'), recipient)
 
     def __check_joined_email(email, recipient, admin, team, user):
       __email_shared_check(email, recipient, admin, team, user)
