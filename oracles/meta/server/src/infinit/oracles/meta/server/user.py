@@ -3527,7 +3527,7 @@ class Mixin:
     if team:
       team_settings = team.get('shared_settings', {})
       custom_domains = team_settings.get('custom_domains', [])
-      res['custom_domain'] = next(iter(custom_domains), {'name': ''})['name']
+      res['custom_domains'] = custom_domains
       res['default_background'] = team_settings.get('default_background', None)
     return res
 
