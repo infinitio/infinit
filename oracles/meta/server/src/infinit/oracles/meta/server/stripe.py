@@ -49,7 +49,7 @@ class Stripe:
           # Handle 29/02
           return from_date.replace(
             year = from_date.year - 1, month = 2, day = 28)
-      after = one_year_ago(datetime.datetime.today())
+      after = one_year_ago(self.__meta.now)
     date_dict = {'gte': int(after.timestamp())}
     if before:
       date_dict.update({'lt': int(before.timestamp())})
@@ -129,6 +129,17 @@ class Stripe:
       if i['paid']:
         res.append(i)
     return res
+
+  def invoice(self, invoice_id: str):
+    if self.__meta.stripe_api_key is None:
+      return None
+    try:
+      return stripe.Invoice.retrieve(invoice_id,
+                                     api_key = self.__meta.stripe_api_key)
+    except stripe.error.StripeError as e:
+      elle.log.err('error fetching invoices: %s' % e)
+      return None
+
 
   def invoices(self, customer, before = None, after = None):
     """
