@@ -201,6 +201,8 @@ class Team(dict):
         'user': self.__meta.email_user_vars(invitee),
         'login_token': self.__meta.login_token(invitee['email']),
       })
+    else:
+      variables.update({'ghost_email': invitee})
     self.__meta.emailer.send_one(
       'Join',
       recipient_email = invitee['email'] if is_user else invitee,
