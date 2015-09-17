@@ -35,6 +35,26 @@ class Stripe:
       except BaseException:
         pass
 
+  def __stripe_date_dict(self, before = None, after = None):
+    """
+    Return a generic stripe date dictionary.
+    By default this will be for the last year.
+    """
+    if after is None:
+      import datetime
+      def one_year_ago(from_date):
+        try:
+          return from_date.replace(year = from_date.year - 1)
+        except:
+          # Handle 29/02
+          return from_date.replace(
+            year = from_date.year - 1, month = 2, day = 28)
+      after = one_year_ago(datetime.datetime.today())
+    date_dict = {'gte': int(after.timestamp())}
+    if before:
+      date_dict.update({'lt': int(before.timestamp())})
+    return date_dict
+
   def fetch_or_create_stripe_customer(self, user):
     if self.__meta.stripe_api_key is None:
       return None
@@ -81,15 +101,48 @@ class Stripe:
       sub = None
     return sub
 
-  def invoices(self, customer, limit = 12):
+  def __fetch_invoices(self, customer, before, after, paid_only = False):
     if self.__meta.stripe_api_key is None:
       return []
-    response = stripe.Invoice.all(customer = customer,
-                                  limit = limit,
-                                  api_key = self.__meta.stripe_api_key)
-    if response is None:
-      return []
-    return response.get('data', [])
+    date_dict = self.__stripe_date_dict(before, after)
+    invoices = []
+    ending_before = None
+    while True:
+      try:
+        response = stripe.Invoice.all(customer = customer,
+                                      date = date_dict,
+                                      limit = 100,
+                                      ending_before = ending_before,
+                                      api_key = self.__meta.stripe_api_key)
+        invoices.extend(response.get('data', []))
+        if response['has_more']:
+          ending_before = invoices[-1]['id']
+        else:
+          break
+      except stripe.error.StripeError as e:
+        elle.log.err('error fetching invoices: %s' % e)
+        return invoices
+    if not paid_only:
+      return invoices
+    res = []
+    for i in invoices:
+      if i['paid']:
+        res.append(i)
+    return res
+
+  def invoices(self, customer, before = None, after = None):
+    """
+    Returns a customer's invoices.
+    By default this returns results for the last year.
+    """
+    return self.__fetch_invoices(customer, before, after, paid_only = False)
+
+  def receipts(self, customer, before = None, after = None):
+    """
+    Return a customer's paid invoices.
+    By default this returns results for the last year.
+    """
+    return self.__fetch_invoices(customer, before, after, paid_only = True)
 
   def set_plan(self, customer, subscription, plan, coupon):
     elle.log.trace(
