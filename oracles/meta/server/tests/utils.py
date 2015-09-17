@@ -1129,13 +1129,16 @@ class User(Client):
   def create_team(self,
                   name,
                   stripe_token,
-                  plan = 'team'):
-    return self.post('teams',
-                     {
-                       'name': name,
-                       'stripe_token': stripe_token,
-                       'plan': plan,
-                    })
+                  plan = 'team',
+                  stripe_coupon = None):
+    body = {
+       'name': name,
+       'stripe_token': stripe_token,
+       'plan': plan,
+    }
+    if stripe_coupon:
+      body.update({'stripe_coupon': stripe_coupon})
+    return self.post('teams', body)
 
   def invite_team_member(self, user_id):
     return self.put('team/invitees/%s' % user_id)
