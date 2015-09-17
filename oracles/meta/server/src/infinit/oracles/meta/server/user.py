@@ -4138,6 +4138,11 @@ class Mixin:
   # Payment Information #
   # ------------------- #
 
+  @api('/invoices/<id>')
+  @require_logged_in_or_admin
+  def user_invoice_api(self, id):
+    return {'invoice': self._stripe.invoice(id)}
+
   @api('/user/invoices')
   @require_logged_in
   def user_invoices_api(self):
