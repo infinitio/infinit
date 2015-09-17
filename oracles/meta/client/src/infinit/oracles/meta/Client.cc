@@ -209,7 +209,7 @@ namespace infinit
 
       ServerStatus::ServerStatus(bool status_, std::string message_)
         : status(status_)
-        , message(std::move(message))
+        , message(std::move(message_))
       {}
 
       void
