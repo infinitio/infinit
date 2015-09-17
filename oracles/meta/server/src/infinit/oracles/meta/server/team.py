@@ -483,7 +483,8 @@ class Mixin:
   def create_team(self,
                   name,
                   stripe_token,
-                  plan : Plan.translate_in):
+                  plan : Plan.translate_in,
+                  stripe_coupon = None):
     user = self.user
     team = Team.team_for_user(self, user)
     if team:
@@ -497,7 +498,7 @@ class Mixin:
         'error': 'missing_fields',
         'reason': 'Plan, name or stripe_token missing.'})
     return self.__create_team(user, name, stripe_token = stripe_token,
-                              plan = plan)
+                              plan = plan, stripe_coupon = stripe_coupon)
 
   # ============================================================================
   # Deletion.
