@@ -137,7 +137,7 @@ class Stripe:
       return stripe.Invoice.retrieve(invoice_id,
                                      api_key = self.__meta.stripe_api_key)
     except stripe.error.StripeError as e:
-      elle.log.err('error fetching invoices: %s' % e)
+      elle.log.err('error fetching invoice: %s' % e)
       return None
 
 
