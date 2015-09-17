@@ -193,7 +193,7 @@ class Team(dict):
         })
     variables = {
       'admin': self.__meta.email_user_vars(self.admin_user),
-      'key': utils.key('/team/%s' % self.id),
+      'key': utils.key('/teams/%s' % self.id),
       'team': {'id': self.id, 'name': self.name}
     }
     if is_user:
