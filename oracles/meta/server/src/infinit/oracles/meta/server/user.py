@@ -4141,7 +4141,15 @@ class Mixin:
   @api('/invoices/<id>')
   @require_logged_in_or_admin
   def user_invoice_api(self, id):
-    return {'invoice': self._stripe.invoice(id)}
+    invoice = self._stripe.invoice(id)
+    charge_list = []
+    if invoice is not None:
+      customer_id = invoice['customer']
+      charges = self._stripe.charges(customer)
+      for c in charges:
+        if c['invoice'] = invoice['id']:
+          charge_list.append(c)
+    return {'invoice': invoice, 'charges': charges}
 
   @api('/user/invoices')
   @require_logged_in
@@ -4162,7 +4170,16 @@ class Mixin:
       return self.not_found({
         'error': 'stripe_customer_not_found',
         'reason': 'No stripe customer found for user.'})
-    return {'invoices': self._stripe.invoices(customer)}
+    invoices = self._stripe.invoices(customer)
+    charges = self._stripe.charges(customer)
+    res = []
+    for i in invoices:
+      i_charges = []
+      for c in charges:
+        if c['invoice'] == i['id']:
+          i_charges.append(c)
+      res.append({'invoice': i, 'charges': i_charges})
+    return {'invoices': res}
 
   @api('/user/receipts')
   @require_logged_in
@@ -4183,4 +4200,13 @@ class Mixin:
       return self.not_found({
         'error': 'stripe_customer_not_found',
         'reason': 'No stripe customer found for user.'})
-    return {'receipts': self._stripe.receipts(customer)}
+    receipts = self._stripe.receipts(customer)
+    charges = self._stripe.charges(customer)
+    res = []
+    for r in receipts:
+      r_charges = []
+      for c in charges:
+        if c['invoice'] == r['id']:
+          r_charges.append(c)
+      res.append({'receipt': r, 'charges': r_charges})
+    return {'receipts': res}
