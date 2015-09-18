@@ -4142,19 +4142,10 @@ class Mixin:
   @require_logged_in_or_admin
   def user_invoice_api(self, id):
     invoice = self._stripe.invoice(id)
-    charge_list = []
+    last_charge = None
     if invoice is not None:
-      customer_id = invoice['customer']
-      charges = self._stripe.charges(customer_id)
-      if not charges:
-        charge = self._stripe.charge(invoice['charge'])
-        if charge:
-          charge_list.append(charge)
-      else:
-        for c in charges:
-          if c['invoice'] == invoice['id']:
-            charge_list.append(c)
-    return {'invoice': invoice, 'charges': charge_list}
+      last_charge = self._stripe.charge(invoice['charge'])
+    return {'invoice': invoice, 'last_charge': last_charge}
 
   @api('/user/invoices')
   @require_logged_in
@@ -4179,11 +4170,12 @@ class Mixin:
     charges = self._stripe.charges(customer)
     res = []
     for i in invoices:
-      i_charges = []
+      last_charge = None
       for c in charges:
         if c['invoice'] == i['id']:
-          i_charges.append(c)
-      res.append({'invoice': i, 'charges': i_charges})
+          last_charge = c
+          break
+      res.append({'invoice': i, 'last_charge': last_charge})
     return {'invoices': res}
 
   @api('/user/receipts')
@@ -4209,9 +4201,10 @@ class Mixin:
     charges = self._stripe.charges(customer)
     res = []
     for r in receipts:
-      r_charges = []
+      last_charge = None
       for c in charges:
         if c['invoice'] == r['id']:
-          r_charges.append(c)
-      res.append({'receipt': r, 'charges': r_charges})
+          last_charge = c
+          break
+      res.append({'receipt': r, 'last_charge': last_charge})
     return {'receipts': res}
