@@ -4145,10 +4145,15 @@ class Mixin:
     charge_list = []
     if invoice is not None:
       customer_id = invoice['customer']
-      charges = self._stripe.charges(customer)
-      for c in charges:
-        if c['invoice'] == invoice['id']:
-          charge_list.append(c)
+      charges = self._stripe.charges(customer_id)
+      if not charges:
+        charge = self._stripe.charge(invoice['charge'])
+        if charge:
+          charge_list.append(charge)
+      else:
+        for c in charges:
+          if c['invoice'] == invoice['id']:
+            charge_list.append(c)
     return {'invoice': invoice, 'charges': charge_list}
 
   @api('/user/invoices')
