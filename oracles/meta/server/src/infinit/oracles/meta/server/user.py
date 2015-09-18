@@ -4149,7 +4149,7 @@ class Mixin:
       for c in charges:
         if c['invoice'] == invoice['id']:
           charge_list.append(c)
-    return {'invoice': invoice, 'charges': charges}
+    return {'invoice': invoice, 'charges': charge_list}
 
   @api('/user/invoices')
   @require_logged_in
