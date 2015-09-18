@@ -167,9 +167,8 @@ class Stripe:
     if self.__meta.stripe_api_key is None:
       return None
     try:
-      response = stripe.Invoice.retrieve(invoice_id,
-                                         api_key = self.__meta.stripe_api_key)
-      return response.get('data', [None])[0]
+      return stripe.Invoice.retrieve(invoice_id,
+                                     api_key = self.__meta.stripe_api_key)
     except stripe.error.StripeError as e:
       elle.log.err('error fetching invoice: %s' % e)
       return None
