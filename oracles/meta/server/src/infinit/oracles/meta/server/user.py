@@ -4147,7 +4147,7 @@ class Mixin:
       customer_id = invoice['customer']
       charges = self._stripe.charges(customer)
       for c in charges:
-        if c['invoice'] = invoice['id']:
+        if c['invoice'] == invoice['id']:
           charge_list.append(c)
     return {'invoice': invoice, 'charges': charges}
 
