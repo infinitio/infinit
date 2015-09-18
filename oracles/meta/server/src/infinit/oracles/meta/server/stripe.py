@@ -105,15 +105,12 @@ class Stripe:
     if self.__meta.stripe_api_key is None:
       return []
     res = []
-    ending_before = None
+    kwargs.update({'limit': 100, 'api_key': self.__meta.stripe_api_key})
     while True:
-      response = stripe_call(**kwargs,
-                             limit = 100,
-                             ending_before = ending_before,
-                             api_key = self.__meta.stripe_api_key)
+      response = stripe_call(**kwargs)
       res.extend(response.get('data', []))
       if response['has_more']:
-        ending_before = res[-1]['id']
+        kwargs.update({'ending_before': res[-1]['id']})
       else:
         break
     return res
