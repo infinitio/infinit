@@ -101,27 +101,60 @@ class Stripe:
       sub = None
     return sub
 
-  def __fetch_invoices(self, customer, before, after, paid_only = False):
+  def __paginate(self, stripe_call, **kwargs):
     if self.__meta.stripe_api_key is None:
       return []
-    date_dict = self.__stripe_date_dict(before, after)
-    invoices = []
+    res = []
     ending_before = None
     while True:
-      try:
-        response = stripe.Invoice.all(customer = customer,
-                                      date = date_dict,
-                                      limit = 100,
-                                      ending_before = ending_before,
-                                      api_key = self.__meta.stripe_api_key)
-        invoices.extend(response.get('data', []))
-        if response['has_more']:
-          ending_before = invoices[-1]['id']
-        else:
-          break
-      except stripe.error.StripeError as e:
-        elle.log.err('error fetching invoices: %s' % e)
-        return invoices
+      response = stripe_call(**kwargs,
+                             limit = 100,
+                             ending_before = ending_before,
+                             api_key = self.__meta.stripe_api_key)
+      res.extend(response.get('data', []))
+      if response['has_more']:
+        ending_before = res[-1]['id']
+      else:
+        break
+    return res
+
+  def charges(self, customer, before = None, after = None):
+    """
+    Returns a customer's charges.
+    By default this returns results for the last year.
+    """
+    date_dict = self.__stripe_date_dict(before, after)
+    try:
+      charges = self.__paginate(stripe.Charge.all,
+                                customer = customer,
+                                created = date_dict)
+    except stripe.error.StripeError as e:
+      elle.log.err('error fetching charges: %s' % e)
+      return []
+    return charges
+
+  def charge(self, charge_id: str):
+    """
+    Fetch a single charge.
+    """
+    if self.__meta.stripe_api_key is None:
+      return None
+    try:
+      return stripe.Charge.retrieve(charge_id,
+                                    api_key = self.__meta.stripe_api_key)
+    except stripe.error.StripeError as e:
+      elle.log.err('error fetching charge: %s' % e)
+      return None
+
+  def __fetch_invoices(self, customer, before, after, paid_only = False):
+    date_dict = self.__stripe_date_dict(before, after)
+    try:
+      invoices = self.__paginate(stripe.Invoice.all,
+                                 customer = customer,
+                                 date = date_dict)
+    except stripe.error.StripeError as e:
+      elle.log.err('error fetching invoices: %s' % e)
+      return []
     if not paid_only:
       return invoices
     res = []
@@ -131,15 +164,18 @@ class Stripe:
     return res
 
   def invoice(self, invoice_id: str):
+    """
+    Fetch a single invoice.
+    """
     if self.__meta.stripe_api_key is None:
       return None
     try:
-      return stripe.Invoice.retrieve(invoice_id,
-                                     api_key = self.__meta.stripe_api_key)
+      response = stripe.Invoice.retrieve(invoice_id,
+                                         api_key = self.__meta.stripe_api_key)
+      return response.get('data', [None])[0]
     except stripe.error.StripeError as e:
       elle.log.err('error fetching invoice: %s' % e)
       return None
-
 
   def invoices(self, customer, before = None, after = None):
     """
