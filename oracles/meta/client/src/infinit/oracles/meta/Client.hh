@@ -147,6 +147,7 @@ namespace infinit
         std::string identity;
         boost::optional<std::string> email;
         boost::optional<std::string> facebook_id;
+        boost::optional<std::string> language;
         std::string token_generation_key;
         // std::list<boost::uuids::uuid> devices;
         std::list<std::string> devices;
@@ -513,7 +514,9 @@ namespace infinit
         void
         send_invite(std::string const& destination,
                     std::string const& message,
-                    std::string const& ghost_code) const;
+                    std::string const& ghost_code,
+                    std::string const& invite_type,
+                    bool user_cancel) const;
 
         void
         use_ghost_code(std::string const& code) const;
