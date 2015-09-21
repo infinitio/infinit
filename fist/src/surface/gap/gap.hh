@@ -77,7 +77,7 @@ gap_login(gap_State* state,
           std::string const& email,
           std::string const& password,
           boost::optional<std::string> device_push_token = boost::none,
-          boost::optional<std::string> country_conde = boost::none, // ISO 3611-1 alpha-2
+          boost::optional<std::string> country_conde = boost::none, // ISO 3166-1 alpha-2
           boost::optional<std::string> device_model = boost::none,
           boost::optional<std::string> device_name = boost::none,
           boost::optional<std::string> device_language = boost::none);
@@ -110,7 +110,7 @@ gap_register(gap_State* state,
              std::string const& email,
              std::string const& password,
              boost::optional<std::string> device_push_token = boost::none,
-             boost::optional<std::string> country_conde = boost::none, // ISO 3611-1 alpha-2
+             boost::optional<std::string> country_code = boost::none, // ISO 3166-1 alpha-2
              boost::optional<std::string> device_model = boost::none,
              boost::optional<std::string> device_name = boost::none,
              boost::optional<std::string> device_language = boost::none);
@@ -137,7 +137,9 @@ gap_Status
 gap_send_invite(gap_State* state,
                 std::string const& destination,
                 std::string const& message,
-                std::string const& ghost_code);
+                std::string const& ghost_code,
+                std::string const& invite_type, // plain, ghost or reminder.
+                bool user_cancel);
 
 gap_Status
 gap_check_ghost_code(gap_State* state, std::string const& code, bool& res);

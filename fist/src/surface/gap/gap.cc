@@ -413,7 +413,9 @@ gap_Status
 gap_send_invite(gap_State* state,
                 std::string const& destination,
                 std::string const& message,
-                std::string const& ghost_code)
+                std::string const& ghost_code,
+                std::string const& invite_type,
+                bool user_cancel)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -421,7 +423,8 @@ gap_send_invite(gap_State* state,
     "send invite",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.send_invite(destination, message, ghost_code);
+      state.send_invite(
+        destination, message, ghost_code, invite_type, user_cancel);
       return gap_ok;
     });
 }
