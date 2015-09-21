@@ -2043,7 +2043,7 @@ class Mixin:
                           facebook_id,
                           fields = None,
                           ensure_existence = True):
-    """Get a user with given phone number.
+    """Get a user with given Facebook ID.
 
     facebook_id -- the facebook id.
     ensure_existence -- if set, raise if user is invald.
@@ -3752,7 +3752,10 @@ class Mixin:
   def user_send_invite(self,
                        destination: str,
                        message: str,
-                       ghost_code: str):
+                       ghost_code: str,
+                       invite_type = 'ghost', # plain, ghost or reminder.
+                       user_cancel = False,
+                       ):
     return {}
 
   def __mongo_id_to_base64(self, mongo_id: bson.ObjectId):
