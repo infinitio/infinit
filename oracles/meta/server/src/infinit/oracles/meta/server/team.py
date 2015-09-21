@@ -77,7 +77,7 @@ class Team(dict):
     if member_team and user_id == member_team.admin_id:
       meta.forbidden(
         {
-          'error': 'cant_delete_team_admin_user',
+          'error': 'cant_delete_team_admin',
           'reason': 'User is admin of a team, delete the team first.'
         })
     elif member_team:
@@ -280,7 +280,7 @@ class Team(dict):
         user_id)
       return self.__meta.conflict(
         {
-          'error': 'user_already_in_a_team',
+          'error': 'already_in_a_team',
           'reason': 'The user (%s) is already in a team.' % user_id
         })
 
