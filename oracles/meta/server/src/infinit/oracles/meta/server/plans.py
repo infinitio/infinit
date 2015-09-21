@@ -8,6 +8,35 @@ import stripe
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Plan'
 
+def merge(a, b, path=None):
+  """Merge dictionnaries recursively, by updating the subdocument if needed,
+  otherwise by replacing it.
+  e.g.:
+  > merge({'a': 2, 'b': {'c': 1}}, {'c': 1})
+  {'a': 2, 'b': {'c': 1}, 'c': 1}
+  > merge({'a': {'b': 1}}, {'a': {'c': 2}})
+  {'a': {'b': 1, 'c': 2}}
+  > merge({'a': 1}, {'a': 2})
+  {'a': 2}
+  > merge({'a': {'b': 1}}, {'a': 3})
+  {'a': 3}
+
+  Found and adapted from:
+  http://stackoverflow.com/questions/7204805/dictionaries-of-dictionaries-merge
+  """
+  if path is None: path = []
+  for key in b:
+    if key in a:
+      if isinstance(a[key], dict) and isinstance(b[key], dict):
+        merge(a[key], b[key], path + [str(key)])
+      elif a[key] == b[key]:
+        pass # same leaf value
+      else:
+        a[key] = b[key]
+    else:
+      a[key] = b[key]
+  return a
+
 class Plan(dict):
 
   prohibited_names = ['none']
@@ -28,13 +57,6 @@ class Plan(dict):
     """Return the plan name.
     """
     return self['name']
-
-  @property
-  def links_quota(self):
-    """Return the associated plan link quota.
-    All plans *must* have quotas.links.quota.
-    """
-    return int(self['quotas']['links']['default_storage'])
 
   @property
   def stripe_id(self):
@@ -62,21 +84,10 @@ class Plan(dict):
     if self.__stripe_info['name'] in Plan.prohibited_names:
       return self.conflict(meta, 'none')
     self['team'] = True
-    # Default storage.
-    bonuses = {'social_post': 0, 'facebook_linked': 0, 'referrer': 0,
-               'referree': 0, 'has_avatar': 0}
-    self['quotas'] = {
-      'links': {
-        'default_storage': int(100e9),
-        'bonuses': bonuses},
-      'send_to_self': {
-        'default_quota': None,
-        'bonuses': bonuses},
-      'p2p': {'size_limit': None}}
-    self.update(body)
+    # Use default team as plan barebones.
+    self['quotas'] = BuiltInPlans.team()['quotas']
+    merge(self, body)
     self['creation_time'] = meta.now
-    # Check properties.
-    self.links_quota
 
   # ------- #
   # Saving. #

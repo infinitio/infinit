@@ -258,80 +258,87 @@ with Stripe() as stripe:
       check_user(jean, 'basic', int(1e9), 10)
 
   # Custom Team storage.
-  with Meta(stripe_api_key = Stripe.key) as meta:
-    with Trophonius(meta) as tropho:
+  for per_user in [True, False]:
+    with Meta(stripe_api_key = Stripe.key) as meta:
+      with Trophonius(meta) as tropho:
 
-      def check_account(account, plan, link_quota, link_usage = 0):
-        assertEq(account['plan'], plan)
-        link = account['quotas']['links']
-        assertEq(link['quota'], link_quota)
-        assertEq(link['used'], link_usage)
+        def check_account(account, plan, link_quota, link_usage = 0):
+          assertEq(account['plan'], plan)
+          link = account['quotas']['links']
+          assertEq(link['quota'], link_quota)
+          assertEq(link['used'], link_usage)
 
-      def check_user(user, plan, link_quota, link_usage = 0):
-        while len(user.notifications):
-          notif = user.next_notification()
-          # Only watch for model update notifications with the user's account.
-          if notif.get('account'):
-            check_account(notif['account'], plan, link_quota, link_usage)
-        res = user.get('user/synchronize?init=1')
-        check_account(res['account'], plan, link_quota, link_usage)
+        def check_user(user, plan, link_quota, link_usage = 0):
+          notified = False
+          while len(user.notifications):
+            notif = user.next_notification()
+            # Only watch for model update notifications with the user's account.
+            if notif.get('account'):
+              check_account(notif['account'], plan, link_quota, link_usage)
+              notified = True
+          assert notified
+          res = user.get('user/synchronize?init=1')
+          check_account(res['account'], plan, link_quota, link_usage)
 
-      def get_a_link(user, size):
-        link = user.getalink(files = [('bite', size)])
-        # Meta is updating quota by reading cloud storage file size which is
-        # not realy uploaded here, so insert set the value manually.
-        meta.database.links.update(
-          {'hash': link['hash']},
-          {'$set': {'file_size': size, 'quota_counted': True}})
-        user.link_update(link, transaction_status.FINISHED)
-        return link
+        def get_a_link(user, size):
+          link = user.getalink(files = [('bite', size)])
+          # Meta is updating quota by reading cloud storage file size which is
+          # not realy uploaded here, so insert set the value manually.
+          meta.database.links.update(
+            {'hash': link['hash']},
+            {'$set': {'file_size': size, 'quota_counted': True}})
+          user.link_update(link, transaction_status.FINISHED)
+          return link
 
-      test_suffix = stripe.suffix()
-      plan = meta.create_plan(stripe, 'plan_name_%s' % test_suffix, {})
-      link_limit = int(1e11)
-      admin = User(meta, 'boss_%s@infinit.io' % test_suffix)
-      members = [admin]
-      admin.login(trophonius = tropho)
-      team = admin.create_team(
-        name = 'infinit_%s' % test_suffix,
-        stripe_token = stripe.pay(admin.email),
-        plan = plan['id'])
-      check_user(admin, 'team', link_limit)
-      # Add first member.
-      jean = User(meta, 'jean_%s@infinit.io' % test_suffix)
-      jean.login(trophonius = tropho)
-      admin.invite_team_member(jean.email)
-      jean.join_team(team['id'])
-      members.append(jean)
-      for user in members:
-        check_user(user, 'team', link_limit)
-      # Add second member.
-      bob = User(meta, 'bob_%s@infinit.io' % test_suffix)
-      bob.login(trophonius = tropho)
-      admin.invite_team_member(bob.email)
-      bob.join_team(team['id'])
-      members.append(bob)
-      for user in members:
-        check_user(user, 'team', link_limit)
-      # Use some storage
-      get_a_link(jean, 10)
-      for user in members:
-        check_user(user, 'team', link_limit, 10)
-      link = get_a_link(admin, 25)
-      for user in members:
-        check_user(user, 'team', link_limit, 35)
-      admin.link_update(link, transaction_status.DELETED)
-      for user in members:
-        check_user(user, 'team', link_limit, 10)
-      get_a_link(bob, 20)
-      for user in members:
-        check_user(user, 'team', link_limit, 30)
-      # Remove a member.
-      admin.delete_team_member(jean.id)
-      members.remove(jean)
-      for user in members:
-        check_user(user, 'team', link_limit, 20)
-      check_user(jean, 'basic', int(1e9), 10)
+        test_suffix = stripe.suffix()
+        link_limit = int(1e11)
+        storage = lambda: link_limit * len(members) if per_user else link_limit
+        body = {'quotas': {'links': {'per_user_storage': link_limit}}} if per_user else \
+               {'quotas': {'links': {'default_storage': link_limit}}}
+        plan = meta.create_plan(stripe, 'plan_name_%s' % test_suffix, body)
+        admin = User(meta, 'boss_%s@infinit.io' % test_suffix)
+        members = [admin]
+        admin.login(trophonius = tropho)
+        team = admin.create_team(
+          name = 'infinit_%s' % test_suffix,
+          stripe_token = stripe.pay(admin.email),
+          plan = plan['id'])
+        check_user(admin, 'team', storage())
+        # Add first member.
+        jean = User(meta, 'jean_%s@infinit.io' % test_suffix)
+        jean.login(trophonius = tropho)
+        admin.invite_team_member(jean.email)
+        jean.join_team(team['id'])
+        members.append(jean)
+        for user in members:
+          check_user(user, 'team', storage())
+        # Add second member.
+        bob = User(meta, 'bob_%s@infinit.io' % test_suffix)
+        bob.login(trophonius = tropho)
+        admin.invite_team_member(bob.email)
+        bob.join_team(team['id'])
+        members.append(bob)
+        for user in members:
+          check_user(user, 'team', storage())
+        # Use some storage
+        get_a_link(jean, 10)
+        for user in members:
+          check_user(user, 'team', storage(), 10)
+        link = get_a_link(admin, 25)
+        for user in members:
+          check_user(user, 'team', storage(), 35)
+        admin.link_update(link, transaction_status.DELETED)
+        for user in members:
+          check_user(user, 'team', storage(), 10)
+        get_a_link(bob, 20)
+        for user in members:
+          check_user(user, 'team', storage(), 30)
+        # Remove a member.
+        admin.delete_team_member(jean.id)
+        members.remove(jean)
+        for user in members:
+          check_user(user, 'team', storage(), 20)
+        check_user(jean, 'basic', int(1e9), 10)
 
   # Team view as member.
   with Meta(stripe_api_key = Stripe.key) as meta:
