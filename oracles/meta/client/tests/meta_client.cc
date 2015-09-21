@@ -1105,7 +1105,7 @@ namespace invitations
       return elle::sprintf("{}");
     });
     infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
-    c.send_invite(destination, message, ghost_code, invite_type);
+    c.send_invite(destination, message, ghost_code, invite_type, false);
   }
 }
 
