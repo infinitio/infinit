@@ -1152,10 +1152,10 @@ class User(Client):
     return self.delete('team/members/%s' % user_id)
 
   def reject_invitation(self, team_id):
-    return self.post('team/%s/reject' % team_id)
+    return self.post('teams/%s/reject' % team_id)
 
   def join_team(self, team_id):
-    return self.post('team/%s/join' % team_id)
+    return self.post('teams/%s/join' % team_id)
 
   def leave_team(self, password):
     return self.post('team/leave', {'password': password})

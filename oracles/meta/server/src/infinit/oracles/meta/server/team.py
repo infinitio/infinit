@@ -516,7 +516,7 @@ class Mixin:
     self.__enforce_user_password(user, password)
     return self.__delete_specific_team(team)
 
-  @api('/team/<identifier>', method = 'DELETE')
+  @api('/teams/<identifier>', method = 'DELETE')
   @require_admin
   def delete_specific_team(self, identifier):
     team = Team.find(self, identifier = identifier)
@@ -549,7 +549,7 @@ class Mixin:
     self.__require_team_admin(team, self.user)
     return team.edit({'$set': {'name': name, 'lower_name': name.lower()}}).view
 
-  @api('/team/<identifier>', method = 'PUT')
+  @api('/teams/<identifier>', method = 'PUT')
   @require_admin
   def update_team_admin(self, identifier : bson.ObjectId, name):
     team = Team.find(self, {'_id': identifier}, ensure_existence = True)
@@ -580,7 +580,7 @@ class Mixin:
         })
     return self.__invite_team_member(team, invitee)
 
-  @api('/team/<team_id>/invitees/<user_identifier>', method = 'PUT')
+  @api('/teams/<team_id>/invitees/<user_identifier>', method = 'PUT')
   @require_admin
   def add_team_invitee_admin(self,
                              team_id : bson.ObjectId,
@@ -613,7 +613,7 @@ class Mixin:
         })
     return self.__remove_team_invitee(team, invitee)
 
-  @api('/team/<team_id>/reject', method = 'POST')
+  @api('/teams/<team_id>/reject', method = 'POST')
   @require_logged_in
   def reject_team_invite(self, team_id : bson.ObjectId):
     user = self.user
@@ -622,7 +622,7 @@ class Mixin:
     self.__remove_team_invitee(team, user)
     return {}
 
-  @api('/team/<team_id>/invitees/<user_identifier>', method = 'DELETE')
+  @api('/teams/<team_id>/invitees/<user_identifier>', method = 'DELETE')
   @require_admin
   def remove_team_invitee_admin(self,
                                 team_id : bson.ObjectId,
@@ -637,7 +637,7 @@ class Mixin:
   def __add_team_member(self, team, member):
     return team.add_member(member).view
 
-  @api('/team/<team_id>/join', method = 'POST')
+  @api('/teams/<team_id>/join', method = 'POST')
   @require_logged_in
   def team_join(self, team_id : bson.ObjectId):
     user = self.user
@@ -646,7 +646,7 @@ class Mixin:
     self.__add_team_member(team, user)
     return {}
 
-  @api('/team/<team_id>/members/<user_identifier>', method = 'PUT')
+  @api('/teams/<team_id>/members/<user_identifier>', method = 'PUT')
   @require_admin
   def add_team_member_admin(self,
                             team_id : bson.ObjectId,
@@ -688,7 +688,7 @@ class Mixin:
     )
     return res
 
-  @api('/team/<team_id>/members/<user_identifier>', method = 'DELETE')
+  @api('/teams/<team_id>/members/<user_identifier>', method = 'DELETE')
   @require_admin
   def remove_team_member(self,
                          team_id : bson.ObjectId,

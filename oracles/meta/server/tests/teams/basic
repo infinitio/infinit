@@ -711,10 +711,10 @@ with Stripe() as stripe:
   #     stripe_token = stripe.pay(admin.email),
   #     plan = plan['id'])
   #   # View.
-  #   admin_view = admin.get('team/%s' % team['id'])
+  #   admin_view = admin.get('teams/%s' % team['id'])
   #   # XXX: Do the correct checks.
   #   # Rename.
-  #   renamed_team = admin.put('team/%s' % team['id'], {'name': 'Bombarde'})
+  #   renamed_team = admin.put('teams/%s' % team['id'], {'name': 'Bombarde'})
   #   assertEq(renamed_team['name'], 'Bombarde')
   #   # Add user.
   #   baptiste = User(meta, 'baptiste_%s@infinit.io' % stripe.suffix())
@@ -727,11 +727,11 @@ with Stripe() as stripe:
   #   admin.delete('team', {'password': admin.password})
   #   throws(lambda: baptiste.get('team'), 404)
   #   throws(lambda: admin.get('team'), 404)
-  #   updated_team = admin.put('team/%s/members/%s' % (team['id'], baptiste.id))
+  #   updated_team = admin.put('teams/%s/members/%s' % (team['id'], baptiste.id))
   #   assert user_in_team(updated_team, baptiste)
   #   assert user_in_team(admin.get('team'), baptiste)
   #   # Remove user.
-  #   updated_team = admin.delete('team/%s/members/%s' %
+  #   updated_team = admin.delete('teams/%s/members/%s' %
   #                               (team['id'], baptiste.id))
   #   assert not user_in_team(updated_team, baptiste)
   #   assert not user_in_team(admin.get('team'), baptiste)
