@@ -827,8 +827,9 @@ namespace surface
       void
       send_invite(std::string const& destination,
                   std::string const& message,
-                  std::string const& ghost_code);
-
+                  std::string const& ghost_code,
+                  std::string const& invite_type,
+                  bool user_cancel);
 
     /*------------.
     | Ghost codes |

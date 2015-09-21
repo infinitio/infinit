@@ -1616,9 +1616,12 @@ namespace surface
     void
     State::send_invite(std::string const& destination,
                        std::string const& message,
-                       std::string const& ghost_code)
+                       std::string const& ghost_code,
+                       std::string const& invite_type,
+                       bool user_cancel)
     {
-      this->meta().send_invite(destination, message, ghost_code);
+      this->meta().send_invite(
+        destination, message, ghost_code, invite_type, user_cancel);
     }
 
     /*-----------.
