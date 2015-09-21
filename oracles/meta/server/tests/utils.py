@@ -651,6 +651,9 @@ class Stripe():
   def __init__(self):
     self.emails = set()
     self.plans = set()
+    # Ensure uniqueness for stripe.
+    from random import randint
+    self.__suffix = str(randint(1e9, 9e9))
 
   def __enter__(self):
     return self
@@ -660,8 +663,7 @@ class Stripe():
 
   # Ensure uniqueness for stripe.
   def suffix(self):
-    from random import randint
-    return str(randint(1e9, 9e9))
+    return self.__suffix
 
   def clear(self):
     import stripe
@@ -675,7 +677,7 @@ class Stripe():
         users = stripe.Customer.all(limit = 100)
       for user in users['data']:
         cursor = user['id']
-        if user['email'] in self.emails:
+        if self.suffix() in user['email']:
           cu = stripe.Customer.retrieve(user['id'])
           cu.delete()
       if not users['has_more']:
@@ -689,7 +691,7 @@ class Stripe():
         plans = stripe.Plan.all(limit = 100)
       for plan in plans['data']:
         cursor = plan['id']
-        if plan['id'] in self.plans:
+        if self.suffix() in plan['name']:
           p = stripe.Plan.retrieve(plan['id'])
           p.delete()
       if not plans['has_more']:

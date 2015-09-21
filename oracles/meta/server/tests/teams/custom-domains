@@ -24,12 +24,12 @@ with Stripe() as stripe:
         while len(user.notifications):
           user.next_notification()
 
-      admin = User(meta, 'julien@infinit.io')
+      admin = User(meta, 'julien_%s@infinit.io' % stripe.suffix())
       admin.login(trophonius = tropho)
       team = admin.create_team(
         name = 'infinit',
         stripe_token = stripe.pay(admin.email))
-      jean = User(meta, 'jean@infinit.io')
+      jean = User(meta, 'jean_%s@infinit.io' % stripe.suffix())
       jean.login(trophonius = tropho)
       res = jean.get('user/synchronize?init=1')
       assertEq(res['account']['custom_domain'], '')

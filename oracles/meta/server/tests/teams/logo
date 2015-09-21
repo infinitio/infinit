@@ -42,7 +42,7 @@ with Stripe() as stripe:
     admin.login()
     team = admin.create_team(name = 'infinit',
                               stripe_token = stripe.pay(admin.email))
-    jean = User(meta, 'jean@infinit.io')
+    jean = User(meta, 'jean_%s@infinit.io' % stripe.suffix())
     admin.invite_team_member(jean.id)
     jean.login()
     jean.join_team(team['id'])

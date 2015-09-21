@@ -128,7 +128,7 @@ with Stripe() as stripe:
       plan = plan['id'])
     stripe.check_plan(admin.email, plan['id'], quantity = 1)
     # Invite an existing user.
-    baptiste = User(meta, 'baptiste@infinit.io')
+    baptiste = User(meta, 'baptiste_%s@infinit.io' % stripe.suffix())
     admin.invite_team_member(baptiste.id)
     res = admin.get('team')
     assertEq(len(res['members']), 1)
@@ -140,7 +140,7 @@ with Stripe() as stripe:
     assertEq(len(res['members']), 2)
     assertEq(len(res['invitees']), 0)
     stripe.check_plan(admin.email, plan['id'], quantity = 2)
-    raph = User(meta, 'raph@infinit.io')
+    raph = User(meta, 'raph_%s@infinit.io' % stripe.suffix())
     raph.login()
     # Join without invitation.
     throws(lambda: raph.join_team(team['id']), 403)
@@ -171,7 +171,7 @@ with Stripe() as stripe:
     assertEq(len(res['members']), 2)
     assertEq(len(res['invitees']), 0)
     # Uninvite.
-    pierre = User(meta, 'pierre@infinit.io')
+    pierre = User(meta, 'pierre_%s@infinit.io' % stripe.suffix())
     admin.invite_team_member(pierre.id)
     res = admin.get('team')
     assertEq(len(res['members']), 2)
@@ -580,13 +580,13 @@ with Stripe() as stripe:
       return collections.OrderedDict(sorted(d.items()))
 
     test_suffix = stripe.suffix()
-    admin = User(meta, 'boss@infinit.io')
+    admin = User(meta, 'boss_%s@infinit.io' % stripe.suffix())
     admin.login()
     team = admin.create_team(
       name = 'infinit_%s' % test_suffix,
       stripe_token = stripe.pay(admin.email))
-    jean_email = 'jean@infinit.io'
-    jean_email2 = 'jean2@infinit.io'
+    jean_email = 'jean_%s@infinit.io' % stripe.suffix()
+    jean_email2 = 'jean2_%s@infinit.io' % stripe.suffix()
     admin.invite_team_member(jean_email)
     admin.invite_team_member(jean_email2)
     res = admin.get('team')
@@ -602,7 +602,7 @@ with Stripe() as stripe:
     meta.inner.database.users.update(
       {'_id': bson.ObjectId(jean.id)},
       {'$push': {
-        'accounts': sort_dict({'id': 'jean2@infinit.io', 'type': 'email'})}
+        'accounts': sort_dict({'id': jean_email2, 'type': 'email'})}
       })
     jean.login()
     jean.join_team(team['id'])
@@ -710,7 +710,7 @@ with Stripe() as stripe:
   #   renamed_team = admin.put('team/%s' % team['id'], {'name': 'Bombarde'})
   #   assertEq(renamed_team['name'], 'Bombarde')
   #   # Add user.
-  #   baptiste = User(meta, 'baptiste@infinit.io')
+  #   baptiste = User(meta, 'baptiste_%s@infinit.io' % stripe.suffix())
   #   admin.add_team_member(baptiste.id)
   #   # Get info about the team as non admin.
   #   baptiste.login()
