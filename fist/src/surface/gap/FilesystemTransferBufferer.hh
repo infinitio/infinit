@@ -36,11 +36,14 @@ namespace surface
                                  FileSize total_size,
                                  Files const& files,
                                  infinit::cryptography::Code const& key);
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Winconsistent-missing-override"
       ELLE_ATTRIBUTE_R(boost::filesystem::path, root);
       ELLE_ATTRIBUTE_R(FileCount, count);
       ELLE_ATTRIBUTE_R(FileSize, full_size);
       ELLE_ATTRIBUTE_R(Files, files);
       ELLE_ATTRIBUTE_R(infinit::cryptography::Code, key_code);
+# pragma clang diagnostic pop
 
     /*------.
     | Frete |

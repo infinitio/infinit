@@ -56,11 +56,14 @@ namespace surface
         std::string const& file,
         aws::S3::ErrorCallback on_error
         );
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Winconsistent-missing-override"
       ELLE_ATTRIBUTE_R(FileCount, count);
       ELLE_ATTRIBUTE_R(FileSize, full_size);
       ELLE_ATTRIBUTE_R(Files, files);
       ELLE_ATTRIBUTE_R(infinit::cryptography::Code, key_code);
       ELLE_ATTRIBUTE_R(bool, raw_file);
+# pragma clang diagnostic pop
     /*------.
     | Frete |
     `------*/
