@@ -12,7 +12,7 @@ from .utils import *
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Device'
 
-# We use UUID for typechecking but they are all cast into str represnetation.
+# We use UUID for typechecking but they are all cast into str representation.
 # The reason is because the (py)mongo store them as BinData, making them
 # impossible to search from mongo shell.
 class Mixin:
@@ -281,6 +281,7 @@ class Mixin:
           conf.INFINIT_AUTHORITY_PATH,
           conf.INFINIT_AUTHORITY_PASSWORD
         ),
+        'created': self.now,
       }
       if OS is not None:
         device['os'] = OS
