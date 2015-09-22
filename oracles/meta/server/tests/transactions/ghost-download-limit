@@ -96,5 +96,6 @@ with Meta() as meta:
 
   res = check.get(__sign_path('transaction/%s' % basic_t3['_id']))
   assertNin('download_link', res)
+  assertEq(res['ghost_download_limited'], True)
   check.post(__sign_path('transactions/%s/downloaded' % basic_t3['_id']))
   assertEq(__ghost_downloads_remaining(ghost_email), 0)
