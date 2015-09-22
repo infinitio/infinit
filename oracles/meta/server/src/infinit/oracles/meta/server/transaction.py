@@ -341,6 +341,7 @@ class Mixin:
         has_download_link = transaction.get('download_link')
         if no_ghost_downloads and has_download_link and not sender_premium:
           del transaction['download_link']
+          transaction['ghost_download_limited'] = True
         return transaction
 
   # FIXME: Nuke this ! Use the user fetching routines from user.py and
