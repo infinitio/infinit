@@ -31,24 +31,24 @@ ELLE_TEST_SCHEDULED(send_ghost)
 
   // Callbacks
   reactor::Barrier transferring;
-  reactor::Barrier finished;
+  reactor::Barrier uploaded;
   state->attach_callback<surface::gap::PeerTransaction>(
     [&] (surface::gap::PeerTransaction const& transaction)
     {
-      // Check the GUI goes created -> transferring -> finished.
+      // Check the GUI goes created -> transferring -> uploaded.
       auto status = transaction.status;
       ELLE_LOG("new transaction status: %s", status);
       switch (status)
       {
         case gap_transaction_transferring:
           BOOST_CHECK(!transferring);
-          BOOST_CHECK(!finished);
+          BOOST_CHECK(!uploaded);
           transferring.open();
           break;
-        case gap_transaction_finished:
+        case gap_transaction_ghost_uploaded:
           BOOST_CHECK(transferring);
-          BOOST_CHECK(!finished);
-          finished.open();
+          BOOST_CHECK(!uploaded);
+          uploaded.open();
           break;
         default:
           BOOST_ERROR(elle::sprintf("unexpected GAP status: %s", status));
@@ -70,7 +70,7 @@ ELLE_TEST_SCHEDULED(send_ghost)
                     infinit::oracles::Transaction::Status::initialized);
   auto tid = state_transaction.data()->id;
   ELLE_LOG_SCOPE("transaction was initialized: %s", tid);
-  while (!finished)
+  while (!uploaded)
   {
     reactor::sleep(100_ms);
     state->poll();
