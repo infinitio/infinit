@@ -587,6 +587,12 @@ namespace surface
       this->_email = email;
       this->_password = password;
 
+      if (device_language)
+      {
+        infinit::metrics::Reporter::metric_sender_language(
+          device_language.get());
+      }
+
       std::string lower_email = email;
       std::transform(lower_email.begin(),
                      lower_email.end(),
@@ -1610,9 +1616,12 @@ namespace surface
     void
     State::send_invite(std::string const& destination,
                        std::string const& message,
-                       std::string const& ghost_code)
+                       std::string const& ghost_code,
+                       std::string const& invite_type,
+                       bool user_cancel)
     {
-      this->meta().send_invite(destination, message, ghost_code);
+      this->meta().send_invite(
+        destination, message, ghost_code, invite_type, user_cancel);
     }
 
     /*-----------.
@@ -1800,6 +1809,9 @@ operator <<(std::ostream& out,
       break;
     case gap_transaction_payment_required:
       out << "payment required";
+      break;
+    case gap_transaction_ghost_uploaded:
+      out << "ghost uploaded";
       break;
   }
   return out;

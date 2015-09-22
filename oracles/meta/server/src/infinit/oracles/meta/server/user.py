@@ -20,6 +20,8 @@ from .utils import api, require_logged_in, require_logged_in_fields, require_adm
 from .utils import sort_dict
 from . import utils
 from . import error, notifier, regexp, conf, invitation, mail, transaction_status
+from .plans import Plan
+from .team import Team
 
 import pymongo
 import pymongo.errors
@@ -81,9 +83,8 @@ class Mixin:
     if self.admin:
       self.__plan_and_quotas(user)
       if 'stripe_id' in user:
-        user['stripe'] = stripe.Customer.retrieve(
-          user['stripe_id'],
-          api_key = self.stripe_api_key).get('subscriptions', {})
+        with self._stripe:
+          user['stripe'] = self._stripe.fetch_customer(user).get('subscriptions', {})
     return user
 
   def __sent_to_self(self, user):
@@ -117,21 +118,32 @@ class Mixin:
       social_post['medium']: social_post['date']
       for social_post in user.get('social_posts', {})
     }
-    # If you has no plan or 'None', return basic.
-    user['plan'] = user.get('plan', 'basic') or 'basic'
+    user['plan'] = self._user_plan_name(user)
 
   def __user_self(self, user):
     user = self.__user(user)
     if 'favorites' not in user:
       user['favorites'] = []
-    if self.stripe_api_key is not None and 'stripe_id' in user:
-      cus = stripe.Customer.retrieve(
-        user['stripe_id'],
-        expand = ['subscriptions'],
-        api_key = self.stripe_api_key,
-      )
-      if cus.subscriptions.total_count > 0:
-          user['subscription_data'] = cus.subscriptions.data[0]
+    if 'stripe_id' in user:
+      with self._stripe:
+        stripe_subs = self._stripe.fetch_customer(user).get('subscriptions', {})
+        user['stripe'] = stripe_subs
+        # DEPRECATED: Old web client needs subscription_data field.
+        if len(stripe_subs.get('data', [])):
+          user['subscription_data'] = stripe_subs['data'][0]
+    team = Team.team_for_user(self, user)
+    if team:
+      def __joined_team(team, user):
+        for m in team.members:
+          if m['id'] == user['_id']:
+            return m['since']
+        return None
+      user['team'] = {
+        'admin': team.admin_id,
+        'id': team.id,
+        'name': team.name,
+        'since': __joined_team(team, user),
+      }
     self.__plan_and_quotas(user)
     # Remove '_id' key, replaced earlier by 'id'.
     del user['_id']
@@ -169,9 +181,14 @@ class Mixin:
     return res
 
   @property
+  def user_view_fields(self):
+    return self.__user_view_fields
+
+  @property
   def __referral_fields(self):
     return [
       'accounts',
+      'blocked_referrer',
       'plan',
       'quotas',
       'referred_by',
@@ -183,12 +200,14 @@ class Mixin:
   def __user_self_fields(self):
     return self.__user_view_fields + [
       'account',
+      'blocked_referrer',
       'consumed_ghost_codes',
       'creation_time',
       'email',
       'facebook_id',
       'favorites',
       'features',
+      'language',
       'identity',
       'plan',
       'stripe_id',
@@ -197,6 +216,7 @@ class Mixin:
       'quota',
       'total_link_size',
     ] + self.__referral_fields
+
 
   def __user_fetch(self, query, fields = None):
     if fields is None or 'has_avatar' not in fields:
@@ -511,18 +531,20 @@ class Mixin:
     res = self.database.users.find_and_modify(
       { '_id': user['_id'], },
       { '$set': {'last_connection': time.time()}},
-      fields = ['last_connection', 'referred_by'],
+      fields = ['blocked_referrer', 'last_connection', 'referred_by'],
       new = False
     )
+
+    def _same_device_as_referrer(device_id, referrer_ids):
+      for referrer in [self.__user_fetch({'_id': id}) for id in referrer_ids]:
+        for device in referrer.get('devices', []):
+          if device['id'] == str(device_id):
+            return referrer['_id']
+      return None
+
     if res and 'last_connection' not in res and 'referred_by' in res:
       referrer_ids = [referrer['id'] for referrer in res['referred_by']
                       if isinstance(referrer, dict)]
-      def _same_device_as_referrer(device_id, referrer_ids):
-        for referrer in [self.__user_fetch({'_id': id}) for id in referrer_ids]:
-          for device in referrer.get('devices', []):
-            if device['id'] == str(device_id):
-              return referrer['_id']
-        return None
       blocked_referrer = _same_device_as_referrer(device_id, referrer_ids)
       if blocked_referrer:
         self.__user_fetch_and_modify(
@@ -533,6 +555,18 @@ class Mixin:
         )
         referrer_ids.remove(blocked_referrer)
       self.process_referrals(user, referrer_ids)
+    elif res and 'blocked_referrer' in res and 'referred_by' in res:
+      referrer_ids = [referrer['id'] for referrer in res['referred_by']
+                      if isinstance(referrer, dict)]
+      if _same_device_as_referrer(device_id, referrer_ids) is None:
+        self.__user_fetch_and_modify(
+          {'_id': user['_id']},
+          {'$unset': {'blocked_referrer': True}},
+          [],
+          False
+        )
+        self.process_referrals(user, [user['blocked_referrer']])
+        del user['blocked_referrer']
     bottle.request.session['device'] = device['id']
     bottle.request.session['identifier'] = user['_id']
     elle.log.trace("successfully connected as %s on device %s" %
@@ -553,11 +587,6 @@ class Mixin:
                                     email = user['email'])
       else:
         elle.log.debug("%s: no OS specified" % user['_id'])
-    response = self.success(self._login_response(user,
-                                                 device = device,
-                                                 web = False))
-    if pick_trophonius:
-      response['trophonius'] = self.trophonius_pick()
     # Update missing features
     current_features = user.get('features', {})
     features = self._roll_features(False, current_features)
@@ -565,6 +594,18 @@ class Mixin:
       self.database.users.update(
         {'_id': user['_id']},
         {'$set': { 'features': features}})
+    # Store or update language.
+    if device_language:
+      self.database.users.update(
+        {'_id': user['_id']},
+        {'$set': {'language': device_language}})
+    # _login_response returns a user without an _id.
+    # Do not use _id beyond this point.
+    response = self.success(self._login_response(user,
+                                                 device = device,
+                                                 web = False))
+    if pick_trophonius:
+      response['trophonius'] = self.trophonius_pick()
     # Force immediate buffering on mobile devices.
     if self.device_mobile:
       features['preemptive_buffering_delay'] = '0'
@@ -758,7 +799,7 @@ class Mixin:
     # For a smoother transition, sessions registered as email are
     # still available.
     methods = {
-      'identifier': self._user_by_id,
+      'identifier': self.user_by_id,
       'email': self.user_by_email,
     }
     with dump('get user from session: %s' % bottle.request.session):
@@ -1371,7 +1412,7 @@ class Mixin:
   def accounts_users_api(self, user):
     fields = ['accounts']
     if isinstance(user, bson.ObjectId):
-      user = self._user_by_id(user, fields = fields)
+      user = self.user_by_id(user, fields = fields)
     else:
       user = self.user_by_id_or_email(user, fields = fields)
     if not self.admin and user['_id'] != self.user['_id']:
@@ -1614,6 +1655,12 @@ class Mixin:
           'accounts': sort_dict({'type': 'email', 'id': new_email})
         },
       })
+    # Update the user's email on stripe if they have an account.
+    if user.get('stripe_id'):
+      with self._stripe:
+        customer = self._stripe.fetch_customer(user)
+        if customer:
+          self._stripe.update_customer_email(customer, new_email)
     return {}
 
   @api('/user/change_password', method = 'POST')
@@ -1735,45 +1782,17 @@ class Mixin:
         'reason': 'Only ghost accounts can be merged'
       })
 
-    # Fail early if stripe customer could not be deleted
-    try:
-      if 'stripe_id' in user:
-        cus = stripe.Customer.retrieve(user['stripe_id'],
-                api_key = self.stripe_api_key)
-        cus.delete()
-    # Handle each exception case separately, even though the behaviour is the
-    # same for now. Explicit is better than implicit.
-    except stripe.error.InvalidRequestError as e:
-      # Invalid parameters were supplied to Stripe's API
-      elle.log.warn('Unable to delete Stripe customer for user {0}:'
-              '{1}'.format(user['email'], e.args))
-      return self.unavailable({
-        'reason': e.args[0]
-      })
-    except stripe.error.AuthenticationError as e:
-      # Authentication with Stripe's API failed
-      # (maybe you changed API keys recently)
-      elle.log.warn('Unable to delete Stripe customer for user {0}:'
-              '{1}'.format(user['email'], e.args))
-      return self.unavailable({
-        'reason': e.args[0]
-      })
-    except stripe.error.APIConnectionError as e:
-      # Network communication with Stripe failed
-      elle.log.warn('Unable to delete Stripe customer for user {0}:'
-              '{1}'.format(user['email'], e.args))
-      return self.unavailable({
-        'reason': e.args[0]
-      })
-    except stripe.error.StripeError as e:
-      # Display a very generic error to the user, and maybe send
-      # yourself an email
-      elle.log.warn('Unable to delete Stripe customer for user {0}:'
-              '{1}'.format(user['email'], e.args))
-      return self.unavailable({
-        'reason': e.args[0]
-      })
-
+    # Fail early if stripe customer could not be deleted.
+    if 'stripe_id' in user:
+      with self._stripe:
+        customer = self._stripe.fetch_customer(user)
+        if customer:
+          subscription = self._stripe.subscription(customer)
+          if subscription:
+            self._stripe.remove_plan(subscription, at_period_end = True)
+    # Ensure user is deleted from all teams. Also checks if user is team admin
+    # in which case the delete is blocked with a forbidden.
+    Team.user_deleted(self, user)
     # Invalidate credentials.
     self.remove_session(user)
     # Kick them out of the app.
@@ -1961,7 +1980,12 @@ class Mixin:
     assert isinstance(id, bson.ObjectId)
     return {'_id': id}
 
-  def _user_by_id(self, _id, fields, ensure_existence = True):
+  def users_by_ids(self, ids, fields = None):
+    for id in ids:
+      assert isinstance(id, bson.ObjectId)
+    return self.__users_fetch({'_id': {'$in': ids}}, fields)
+
+  def user_by_id(self, _id, fields, ensure_existence = True):
     """Get a user using by id.
 
     _id -- the _id of the user.
@@ -2023,7 +2047,7 @@ class Mixin:
                           facebook_id,
                           fields = None,
                           ensure_existence = True):
-    """Get a user with given phone number.
+    """Get a user with given Facebook ID.
 
     facebook_id -- the facebook id.
     ensure_existence -- if set, raise if user is invald.
@@ -2135,9 +2159,9 @@ class Mixin:
     else:
       try:
         id = bson.ObjectId(id_or_email)
-        return self._user_by_id(id,
-                                fields = fields,
-                                ensure_existence = ensure_existence)
+        return self.user_by_id(id,
+                               fields = fields,
+                               ensure_existence = ensure_existence)
       except bson.errors.InvalidId:
         self.bad_request('invalid user id: %r' % id_or_email)
 
@@ -2221,11 +2245,11 @@ class Mixin:
     # ObjectIds
     if isinstance(identifier, bson.ObjectId):
       assert account_type is None or account_type == 'id'
-      return self._user_by_id(identifier, **args)
+      return self.user_by_id(identifier, **args)
     # Explicit cases
     if account_type is not None:
       if account_type == 'id':
-        return self._user_by_id(self.__object_id(identifier), **args)
+        return self.user_by_id(self.__object_id(identifier), **args)
       elif account_type == 'email':
         return self.user_by_email(identifier, **args)
       elif account_type == 'facebook':
@@ -2257,7 +2281,7 @@ class Mixin:
       return self.user_by_facebook_id(identifier, **args)
     # Try as an id
     try:
-      return self._user_by_id(bson.ObjectId(identifier), **args)
+      return self.user_by_id(bson.ObjectId(identifier), **args)
     except:
       pass
     # Try as a handle
@@ -2298,8 +2322,8 @@ class Mixin:
       assert isinstance(lhs, bson.ObjectId)
       assert isinstance(rhs, bson.ObjectId)
 
-      # lh_user = self._user_by_id(lhs)
-      # rh_user = self._user_by_id(rhs)
+      # lh_user = self.user_by_id(lhs)
+      # rh_user = self.user_by_id(rhs)
 
       # if lh_user is None or rh_user is None:
       #   raise Exception("unknown user")
@@ -2389,7 +2413,7 @@ class Mixin:
     assert isinstance(user_id, bson.ObjectId)
     # FIXME: surely that user is already fetched. It's probably self
     # anyway ...
-    user = self._user_by_id(user_id, fields = ['swaggers'])
+    user = self.user_by_id(user_id, fields = ['swaggers'])
     swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
     d = {"user_id" : user_id}
     d.update(data)
@@ -2509,9 +2533,9 @@ class Mixin:
                      date: int = 0,
                      no_place_holder: bool = False,
                      ghost_code: str = ''):
-    user = self._user_by_id(id,
-                            ensure_existence = False,
-                            fields = ['small_avatar'])
+    user = self.user_by_id(id,
+                           ensure_existence = False,
+                           fields = ['small_avatar'])
     return self.get_avatar(user = user,
                            date = date,
                            no_place_holder = no_place_holder,
@@ -2598,7 +2622,7 @@ class Mixin:
     )
     if 'small_avatar' not in res:
       user.update({'has_avatar': True})
-      self._quota_updated_notification(user)
+      self._quota_updated_notify(user)
     return self.success()
 
   ## ----------------- ##
@@ -2882,28 +2906,46 @@ class Mixin:
     else:
       res.update(self.devices_users_api(user['_id']))
     res.update(self.accounts_users_api(user['_id']))
-    custom_domains = user.get('account', {}).get('custom_domains', [])
+    res['account'] = self._account_synchronize(user)
+    return self.success(res)
+
+  def _account_synchronize(self, user):
     quotas = self.__quotas(user)
-    res['account'] = {
-      'plan': user.get('plan', 'basic') or 'basic',
+    custom_domains = self._user_custom_domain(user)
+    res = {
+      'plan': self._user_plan_name(user),
       'custom_domain': next(iter(custom_domains), {'name': ''})['name'],
       'link_format': user.get('account', {}).get('link_format', 'http://%s/_/%s'),
       # 0.9.40.
       'link_size_quota': quotas['links']['quota'],
       'link_size_used': quotas['links']['used'],
     }
-    res['account'].update({'quotas': quotas})
-    return self.success(res)
+    res.update({'quotas': quotas})
+    return res
 
-  def _quota_updated_notification(self, user, version = (0, 9, 37),
-                                  extra_link_size = 0):
+  def _user_plan_name(self, user):
+    return user.get('plan', 'basic') or 'basic'
+
+  def _user_custom_domain(self, user):
+    team = Team.team_for_user(self, user)
+    if team:
+      return team.get('shared_settings', {}).get('custom_domains', [])
+    else:
+      return user.get('account', {}).get('custom_domains', [])
+
+  def _quota_updated_notify(self, user, team = None, version = (0, 9, 37),
+                            extra_link_size = 0):
     # extra_link_size is a way to 'fake' the local storage usage. It's
     # conceptually broken because it's stored nowhere so /synchronize won't be
     # able to provide the same state.
+    if team:
+      recipients = team.member_ids
+    else:
+      recipients = [user['_id']]
     quotas = self.__quotas(user)
     message = {
       'account': {
-        'plan': user.get('plan', 'basic') or 'basic',
+        'plan': self._user_plan_name(user),
         # 0.9.40.
         'link_size_used': quotas['links']['used'] + extra_link_size,
         'link_size_quota': quotas['links']['quota'],
@@ -2911,22 +2953,24 @@ class Mixin:
     }
     message['account'].update({'quotas': quotas})
     message['account']['quotas']['links']['used'] += extra_link_size
-
     self.notifier.notify_some(
       notifier.MODEL_UPDATE,
       message = message,
-      recipient_ids = {user['_id']},
+      recipient_ids = set(recipients),
       version = version)
 
-  def change_plan(self, uid, new_plan):
-    return self._change_plan(self._user_by_id(uid, self.__user_self_fields),
-                             new_plan)
-
-  def _change_plan(self, user, new_plan_name):
-    current_plan = self.plans[user.get('plan', 'basic')]
-    if new_plan_name == 'basic' and self.eligible_for_plus(user['_id']):
-      new_plan_name = 'plus'
-    new_plan = self.plans[new_plan_name]
+  def _change_plan(self, user, new_plan_id):
+    current_plan = \
+      Plan.find(self, user.get('plan_id', 'basic'), ensure_existence = True)
+    if new_plan_id == 'basic' and self.eligible_for_plus(user['_id']):
+      new_plan_id = 'plus'
+    new_plan = Plan.find(self, new_plan_id, ensure_existence = True)
+    new_plan_name = new_plan['name']
+    new_plan_id = new_plan['id']
+    if new_plan.is_team_plan:
+      # Ensure that the user's plan name is one that is compatible with the
+      # client backened. The real plan id is kept in plan_id.
+      new_plan_name = 'team'
     fset = dict()
     funset = dict()
     for (k, v) in new_plan.get('features', {}).items():
@@ -2934,7 +2978,7 @@ class Mixin:
     for (k, v) in current_plan.get('features', {}).items():
       if k not in new_plan.get('features', {}):
         funset.update({'features.' + k: 1})
-    fset.update({'plan': new_plan_name})
+    fset.update({'plan': new_plan_name, 'plan_id': new_plan_id})
     update = {'$set': fset}
     if len(funset):
       update.update({'$unset': funset})
@@ -2942,42 +2986,87 @@ class Mixin:
                                                update,
                                                fields = self.__referral_fields,
                                                new = True)
-    self._quota_updated_notification(user)
+    self._quota_updated_notify(user)
     return {
       'plan': new_plan_name or 'basic'
     }
 
-  @api('/users/<user>', method='PUT')
+  # DEPRECATED: (0.9.43) in favour of /user/update.
+  # Ensure website is updated before removing this function.
+  @api('/users/<user>', method = 'PUT')
   @require_logged_in
-  def user_update(self,
-                  user,
-                  plan = None,
-                  stripe_token = None,
-                  stripe_coupon = None,
-                ):
-    try:
-      if plan not in self.plans.keys():
-        return self.bad_request({
-          'error': 'invalid_plan',
-          'reason': 'invalid plan: %s' % plan,
-          'plan': plan,
-        })
-      user = self.user
-      customer = self.__fetch_or_create_stripe_customer(user)
-      res = {
-        'plan': plan or user['plan']
-      }
-      eligible_for_plus = self.eligible_for_plus(user['_id'])
-      # Subscribing to a paying plan without source raises an error
-      # Update user's payment source, represented by a token
+  def user_update_deprecated_api(self,
+                                 user,
+                                 plan = None,
+                                 stripe_token = None,
+                                 stripe_coupon = None,
+                                 ):
+    return self._user_update(self.user,
+                             plan = plan,
+                             stripe_token = stripe_token,
+                             stripe_coupon = stripe_coupon)
+
+  @api('/user/update', method = 'PUT')
+  @require_logged_in
+  def user_update_api(self,
+                      plan = None,
+                      stripe_token = None,
+                      stripe_coupon = None,
+                      ):
+    if Team.team_for_user(self, self.user):
+      return self.forbidden({
+        'error': 'user_in_team',
+        'reason': 'User cannot change plan when part of a team.'
+      })
+    return self._user_update(self.user,
+                             plan = plan,
+                             stripe_token = stripe_token,
+                             stripe_coupon = stripe_coupon)
+
+  @api('/users/<identifier>/update', method = 'PUT')
+  @require_admin
+  def user_update_admin_api(self,
+                            identifier,
+                            plan = None,
+                            stripe_token = None,
+                            stripe_coupon = None):
+    user = self.user_from_identifier(identifier)
+    if user is None:
+      return self.not_found(
+        {'reason': 'No user with identifier: %s' % identifier})
+    return self._user_update(user,
+                             plan = plan,
+                             stripe_token = stripe_token,
+                             stripe_coupon = stripe_coupon)
+
+  def _user_update(self,
+                   user,
+                   plan = None,
+                   stripe_token = None,
+                   stripe_coupon = None,
+                   force_prorata = False,
+                   team_member = False):
+    elle.log.trace('update user %s (plan: %s, token: %s)' % (
+      user, plan, stripe_token))
+    eligible_for_plus = self.eligible_for_plus(user['_id'])
+    free_plans = ['basic']
+    if eligible_for_plus:
+      free_plans.append('plus')
+      if plan == 'basic':
+        plan = 'plus'
+    if plan is not None:
+      if not isinstance(plan, Plan):
+        plan = Plan.find(self, plan, ensure_existence = True)
+    elle.log.debug('plan: %s' % plan)
+    with self._stripe:
+      customer = self._stripe.fetch_or_create_stripe_customer(user)
       if stripe_token is not None:
         customer.source = stripe_token
         customer.save()
+      res = {
+        'plan': plan or user['plan']
+      }
       if plan is not None or stripe_coupon is not None:
-        # We do not want multiple plans to be active at the same
-        # time, so a customer can only have at most one subscription
-        # (ideally, exactly one subscription, which would be 'basic'
-        # for non paying customers)
         def _build_response(sub):
           discount = sub.discount
           off = discount.coupon.percent_off / 100 if sub.discount else 0
@@ -2985,83 +3074,17 @@ class Mixin:
             'amount': sub.plan['amount'] * (1 - off),
             'currency': sub.plan['currency'],
           }
-        if customer.subscriptions.total_count > 0:
-          sub = customer.subscriptions.data[0]
+        if team_member or (plan is None) or (plan['name'] in free_plans):
+          stripe_plan = None
         else:
-          sub = None
-        if plan is not None:
-          free_plans = ['basic']
-          if eligible_for_plus:
-            free_plans.append('plus')
-          if plan not in free_plans:
-            if sub is None:
-              sub = customer.subscriptions.create(
-                plan = plan, coupon = stripe_coupon)
-              stripe_coupon = None
-            else:
-              sub.plan = plan
-          else:
-            if sub is not None:
-              sub.delete(at_period_end = True)
-              sub = None
-        if stripe_coupon is not None:
-          if sub is None:
-            self.bad_request({
-              'error': 'invalid_plan_coupon',
-              'reason': 'cannot use a coupon on basic plan',
-            })
-          sub.coupon = stripe_coupon
+          stripe_plan = plan.stripe_id if plan is not None else None
+        sub = self._stripe.update_subscription(customer, stripe_plan,
+          coupon = stripe_coupon, at_period_end = not force_prorata)
         if sub:
-          sub = sub.save()
           res.update(_build_response(sub))
-        if plan is not None and user.get('plan', 'basic') != plan:
-          res.update(self._change_plan(user, plan))
-    except stripe.error.CardError as e:
-      warn(
-        '%s: stripe error: customer %s card has been declined' % \
-        (self, user['_id'], e.args[0]))
-      return self.bad_request({
-        'reason': e.args[0],
-      })
-    except stripe.error.InvalidRequestError as e:
-      warn(
-        '%s: invalid stripe request: cannot update customer: %s' % \
-        (self, e.args[0]))
-      return self.bad_request({
-        'reason': e.args[0],
-      })
-    except stripe.error.AuthenticationError as e:
-      warn('%s: stripe auth failed: %s' % (self, e.args[0]))
-      return self.bad_request({
-        'reason': e.args[0],
-      })
-    except stripe.error.APIConnectionError as e:
-      warn(
-        '%s: connection to stripe failed: %s' % (self, e.args[0]))
-      return self.unavailable({
-        'reason': e.args[0],
-      })
+    if plan is not None and user.get('plan_id') != plan.id:
+      res.update(self._change_plan(user, plan.id))
     return res
-
-  def __fetch_or_create_stripe_customer(self, user):
-    if self.stripe_api_key is None:
-      return None
-    if 'stripe_id' in user:
-      return stripe.Customer.retrieve(
-        user['stripe_id'],
-        expand = ['subscriptions'],
-        api_key = self.stripe_api_key,
-      )
-    else:
-      customer = stripe.Customer.create(
-        email = user['email'],
-        api_key = self.stripe_api_key,
-      )
-      self.database.users.update(
-        {'_id': user['_id']},
-        {'$set': {'stripe_id': customer.id}})
-      return customer
-
 
   @api('/user/contacts', method='PUT')
   @require_logged_in
@@ -3273,24 +3296,26 @@ class Mixin:
     return res
 
   ## ------------------ ##
-  ## User images helper ##
+  ## Cloud image helper ##
   ## ------------------ ##
 
-  def __check_gcs(self):
+  def _check_gcs(self):
     if self.gcs is None:
       self.not_implemented({
         'reason': 'GCS support not enabled',
       })
 
-  def __user_image_name(self, name, user):
-    if user:
-      return '%s/%s' % (user['_id'], name)
-    else:
-      return str(user['_id'])
+  def __cloud_image_name(self, name, id):
+    # XXX FIXME: Add check for name and update GCS when this is done.
+    return '%s/%s' % (id, name)
 
-  def __user_upload_image(self, bucket, name, user):
-    self.__check_gcs()
-    self.require_premium(user)
+  def _cloud_image_upload(self, bucket, name, user = None, team = None):
+    assert (user is None) != (team is None)
+    self._check_gcs()
+    if team:
+      image_id = team.id
+    else:
+      image_id = user['_id']
     t = bottle.request.headers['Content-Type']
     l = bottle.request.headers['Content-Length']
     if t not in ['image/gif', 'image/jpeg', 'image/png']:
@@ -3300,7 +3325,7 @@ class Mixin:
       })
     url = self.gcs.upload_url(
       bucket,
-      self.__user_image_name(name, user),
+      self.__cloud_image_name(name, image_id),
       content_type = t,
       content_length = l,
       expiration = datetime.timedelta(minutes = 3),
@@ -3308,23 +3333,31 @@ class Mixin:
     bottle.response.status = 307
     bottle.response.headers['Location'] = url
 
-  def __user_get_image(self, bucket, name, user):
-    self.__check_gcs()
-    self.require_premium(user)
+  def _cloud_image_get(self, bucket, name, user = None, team = None):
+    assert (user is None) != (team is None)
+    self._check_gcs()
+    if team:
+      image_id = team.id
+    else:
+      image_id = user['_id']
     url = self.gcs.download_url(
       bucket,
-      self.__user_image_name(name, user),
+      self.__cloud_image_name(name, image_id),
       expiration = datetime.timedelta(minutes = 3),
     )
     bottle.response.status = 307
     bottle.response.headers['Location'] = url
 
-  def __user_delete_image(self, bucket, name, user):
-    self.__check_gcs()
-    self.require_premium(user)
+  def _cloud_image_delete(self, bucket, name, user = None, team = None):
+    assert (user is None) != (team is None)
+    self._check_gcs()
+    if team:
+      image_id = team.id
+    else:
+      image_id = user['_id']
     self.gcs.delete(
       bucket,
-      self.__user_image_name(name, user))
+      self.__cloud_image_name(name, image_id))
     self.no_content()
 
   ## ----------- ##
@@ -3334,7 +3367,13 @@ class Mixin:
   @api('/user/backgrounds/<name>', method = 'PUT')
   @require_logged_in
   def user_background_put_api(self, name):
-    return self.__user_upload_image('backgrounds', name, self.user)
+    if Team.team_for_user(self, self.user):
+      return self.bad_request({
+        'error': 'user_in_team',
+        'reason': 'User is part of a team, use /team/backgrounds/<name> instead.'
+      })
+    self.require_premium(self.user)
+    return self._cloud_image_upload('backgrounds', name, user = self.user)
 
   @api('/user/backgrounds/<name>', method = 'GET')
   @require_logged_in
@@ -3347,21 +3386,36 @@ class Mixin:
       self.user_from_identifier(user_id, fields = ['plan']), name)
 
   def user_background_get(self, user, name):
-    return self.__user_get_image('backgrounds', name, user)
+    team = Team.team_for_user(self, user)
+    if team:
+      return self.team_background_get(team, name)
+    else:
+      self.require_premium(user)
+      return self._cloud_image_get('backgrounds', name, user = user)
 
   @api('/user/backgrounds/<name>', method = 'DELETE')
   @require_logged_in
   def user_background_delete_api(self, name):
-    return self.__user_delete_image('backgrounds', name, self.user)
+    user = self.user
+    if Team.team_for_user(self, user):
+      self.bad_request({
+        'error': 'user_in_team',
+        'reason': 'User is part of a team, use /team/backgrounds/<name> instead.'
+      })
+    self.require_premium(user)
+    return self._cloud_image_delete('backgrounds', name, user = user)
 
   @api('/user/backgrounds', method = 'GET')
   @require_logged_in
   def user_background_list_api(self):
-    self.__check_gcs()
-    return {
-      'backgrounds': self.gcs.bucket_list('backgrounds',
-                                          prefix = self.user['_id']),
-    }
+    self._check_gcs()
+    if Team.team_for_user(self, self.user):
+      return self.team_background_list_api()
+    else:
+      return {
+        'backgrounds': self.gcs.bucket_list('backgrounds',
+                                            prefix = self.user['_id']),
+      }
 
   ## ---- ##
   ## Logo ##
@@ -3370,85 +3424,125 @@ class Mixin:
   @api('/user/logo', method = 'PUT')
   @require_logged_in
   def user_logo_put_api(self):
-    return self.__user_upload_image('logo', None, self.user)
+    if Team.team_for_user(self, self.user):
+      return self.bad_request({
+        'error': 'user_in_team',
+        'reason': 'User is part of a team, use /team/logo instead.'
+      })
+    self.require_premium(self.user)
+    return self._cloud_image_upload('logo', None, user = self.user)
 
   @api('/user/logo', method = 'GET')
   @require_logged_in
   def user_logo_get_api(self, cache_buster = None):
-    return self.__user_get_image('logo', None, self.user)
+    return self.user_logo_get(self.user, cache_buster)
 
-  @api('/users/<user_id>/logo', method = 'GET')
-  def user_logo_get_api(self, user_id, cache_buster = None):
-    return self.__user_get_image(
-      'logo', None,
-      self.user_from_identifier(user_id, fields = ['plan']))
+  @api('/users/<identifier>/logo', method = 'GET')
+  def user_logo_get_api(self, identifier, cache_buster = None):
+    user = self.user_from_identifier(identifier, fields = ['plan'])
+    self.user_logo_get(user, cache_buster)
+
+  def user_logo_get(self, user, cache_buster = None):
+    team = Team.team_for_user(self, user)
+    if team:
+      return self.team_logo_get(team, cache_buster)
+    else:
+      self.require_premium(user)
+      return self._cloud_image_get('logo', None, user = user)
 
   @api('/user/logo', method = 'DELETE')
   @require_logged_in
-  def user_background_delete_api(self):
-    return self.__user_delete_image('logo', None, self.user)
+  def user_logo_delete_api(self):
+    if Team.team_for_user(self, self.user):
+      return self.bad_request({
+        'error': 'user_in_team',
+        'reason': 'User is part of a team, use /team/logo instead.'
+      })
+    self.require_premium(self.user)
+    return self._cloud_image_delete('logo', None, user = self.user)
 
   ## -------------- ##
   ## Custom domains ##
   ## -------------- ##
 
-  def __user_account_domains_edit(self, name, action):
+  def _custom_domain_notify(self, name, team = None):
+    recipients = team.member_ids if team else [self.user['_id']]
+    self.notifier.notify_some(
+      notifier.MODEL_UPDATE,
+      message = {'account': {'custom_domain': name}},
+      recipient_ids = set(recipients),
+      version = (0, 9, 37))
+
+  def _custom_domain_edit(self, name, action, team = None):
+    assert action == 'add' or action == 'remove'
+    db_action = '$addToSet' if action == 'add' else '$pull'
+    if team:
+      collection = self.database.teams
+      search_id = team.id
+      setting = 'shared_settings'
+    else:
+      if Team.team_for_user(self, self.user):
+        self.forbidden({'reason': 'User is part of team'})
+      collection = self.database.users
+      search_id = self.user['_id']
+      setting = 'account'
     domain = {'name': name}
-    user = self.database.users.find_and_modify(
-      {'_id': self.user['_id']},
-      {action: {'account.custom_domains': domain}},
+    item = collection.find_and_modify(
+      {'_id': search_id},
+      {db_action: {'%s.custom_domains' % setting: domain}},
       new = False,
     )
-    account = user.get('account')
+    setting = item.get(setting)
     domains = \
-      account.get('custom_domains') if account is not None else ()
-    return next(filter(lambda d: d['name'] == name, domains), None), domain
+      setting.get('custom_domains') if setting is not None else ()
+    old, new = next(filter(lambda d: d['name'] == name, domains), None), domain
+    if action == 'add':
+      name = new.get('name', '')
+    else:
+      name = ''
+    if action == 'add' or old is not None:
+      self._custom_domain_notify(name, team = team)
+    return old, new
 
   @api('/user/account/custom_domains/<name>', method = 'PUT')
   @require_logged_in
   def user_account_domains_post_api(self, name):
-    old, new = self.__user_account_domains_edit(name, '$addToSet')
+    old, new = self._custom_domain_edit(name, 'add')
     if old is None:
       bottle.response.status = 201
-    self.notifier.notify_some(
-      notifier.MODEL_UPDATE,
-      message = {
-        'account': {
-          'custom_domain': new.get('name', ''),
-        }
-      },
-      recipient_ids = {self.user['_id']},
-      version = (0, 9, 37))
     return new
 
   @api('/user/account/custom_domains/<name>', method = 'DELETE')
   @require_logged_in
   def user_account_patch_api(self, name):
-    old, new = self.__user_account_domains_edit(name, '$pull')
+    old, new = self._custom_domain_edit(name, 'remove')
     if old is None:
       self.not_found({
         'reason': 'custom domain %s not found' % name,
         'custom-domain': name,
       })
-    self.notifier.notify_some(
-      notifier.MODEL_UPDATE,
-      message = {
-        'account': {
-          'custom_domain': '',
-        }
-      },
-      recipient_ids = {self.user['_id']},
-      version = (0, 9, 37))
     return new
 
   @api('/user/account', method = 'GET')
   @require_logged_in_fields(['account'])
   def user_account_get_api(self):
-    return self.user.get('account', {})
+    res = self.user.get('account', {})
+    team = Team.team_for_user(self, self.user)
+    if team:
+      team_settings = team.get('shared_settings', {})
+      custom_domains = team_settings.get('custom_domains', [])
+      res['custom_domains'] = custom_domains
+      res['default_background'] = team_settings.get('default_background', None)
+    return res
 
   @api('/user/account', method = 'POST')
   @require_logged_in
   def user_account_update_api(self, **kwargs):
+    if Team.team_for_user(self, self.user):
+      self.bad_request({
+        'error': 'user_in_team',
+        'reason': 'User is part of a team, use /team/shared_settings instead.'
+      })
     update = {}
     for field, premium in [
         ('default_background', True)
@@ -3662,7 +3756,10 @@ class Mixin:
   def user_send_invite(self,
                        destination: str,
                        message: str,
-                       ghost_code: str):
+                       ghost_code: str,
+                       invite_type = 'ghost', # plain, ghost or reminder.
+                       user_cancel = False,
+                       ):
     return {}
 
   def __mongo_id_to_base64(self, mongo_id: bson.ObjectId):
@@ -3698,7 +3795,10 @@ class Mixin:
         }
         update.update(self.__add_referrer_update_query(inviter, 'public_link'))
         self.database.users.update(
-          {'_id': user['_id']},
+          {
+            '_id': user['_id'],
+            '$or': [{'referred_by.id': {'$ne': inviter['_id']}}, {'referred_by': {'$exists': False}}],
+          },
           update,
         )
         # XXX: This is buggy because referred_by will be proceed twice.
@@ -3797,7 +3897,7 @@ class Mixin:
       new = True,
       fields = self.__referral_fields
     )
-    self._quota_updated_notification(user)
+    self._quota_updated_notify(user)
     return {}
 
   ## -------- ##
@@ -3824,10 +3924,21 @@ class Mixin:
   # referred'.
   @api('/user/referrees')
   @require_logged_in
-  def referred_users(self):
+  def referred_users_api(self):
+    return self.referred_users(self.user)
+
+  @api('/users/<identifier>/referrees')
+  @require_admin
+  def referred_users_admin_api(self, identifier):
+    user = self.user_from_identifier(identifier)
+    if user is None:
+      return self.not_found()
+    return self.referred_users(user)
+
+  def referred_users(self, user):
     # Plain invites.
     invites = self.database.invitations.find(
-      {'sender': self.user['_id']})
+      {'sender': user['_id']})
     invitees = {}
     for invitation in invites:
       invitees[str(invitation['recipient'])] = invitation
@@ -3839,15 +3950,16 @@ class Mixin:
       'email': 1,
     }
     res = self.database.users.aggregate([
-      {'$match': {'referred_by.id': self.user['_id']}},
+      {'$match': {'referred_by.id': user['_id']}},
       {
         '$project': {
           'id': '$_id',
           '_id': 0,
+          'blocked_referrer': {'$ifNull': ['$blocked_referrer', None]},
           'referred_by.date': 1,
           'referred_by.type': 1,
           'register_status': 1,
-          'has_logged_in': {'$gt': ["$last_connection", None]},
+          'has_logged_in': {'$gt': ['$last_connection', None]},
           'accounts.id': 1,
           'email': 1,
         }
@@ -3863,7 +3975,9 @@ class Mixin:
         return entry['email']
 
     def _status(invitees, entry):
-      if entry['register_status'] == 'ok':
+      if entry['blocked_referrer'] is not None:
+        return 'blocked'
+      elif entry['register_status'] == 'ok':
         return 'completed'
       elif invitees.get(str(entry['id'])) is None:
         return 'pending'
@@ -3898,7 +4012,7 @@ class Mixin:
       x, fields = self.__referral_fields),
                          referrals))
     for user in referrers + [new_user]:
-      self._quota_updated_notification(user)
+      self._quota_updated_notify(user)
 
   def __update_to_plus_if_needed(self, user):
     if self.eligible_for_plus(user):
@@ -3920,10 +4034,14 @@ class Mixin:
   ## Quotas ##
   ## ------ ##
 
-  def __quotas(self,
-               user):
+  def __quotas(self, user):
     # Get the user quota according to his plan or his custom account
     # limitations.
+    team = Team.team_for_user(self, user)
+    if team:
+      team_quotas = team.quotas
+    else:
+      team_quotas = None
     user_quotas = user.get('quotas', {})
     number_of_referred = self.__referred_by(user['_id'],
                                             registered_user = True).count()
@@ -3936,46 +4054,64 @@ class Mixin:
     facebook_linked = 'facebook' in set((account['type']
                                          for account in user['accounts']))
     def _send_to_self_quota(user):
-      send_to_self = user_plan['send_to_self']
-      bonuses = send_to_self['bonuses']
-      bonus = int(number_of_referred * bonuses['referrer'] + \
-                  int(user.get('has_avatar', False)) + \
-                  len(social_posts) * bonuses['social_post'] + \
-                  facebook_linked * bonuses['facebook_linked'])
-      if send_to_self['default_quota'] == None:
-        return None, bonus
-      quota = user_quotas.get('send_to_self', {}).get(
-        'quota',
-        send_to_self['default_quota'])
-      elle.log.debug('send to self quota before bonuses: %s' % quota)
-      if quota is None:
-        return quota, bonus
-      quota = int(quota)
-      elle.log.debug('send to self quota after bonuses: %s' % quota)
-      return quota + bonus, bonus
+      if team_quotas:
+        return team_quotas.get('send_to_self', {}).get('default_quota'), 0
+      else:
+        send_to_self = user_plan['send_to_self']
+        bonuses = send_to_self['bonuses']
+        bonus = int(number_of_referred * bonuses['referrer'] + \
+                    int(user.get('has_avatar', False)) + \
+                    len(social_posts) * bonuses['social_post'] + \
+                    facebook_linked * bonuses['facebook_linked'])
+        if send_to_self['default_quota'] == None:
+          return None, bonus
+        quota = user_quotas.get('send_to_self', {}).get(
+          'quota',
+          send_to_self['default_quota'])
+        elle.log.debug('send to self quota before bonuses: %s' % quota)
+        if quota is None:
+          return quota, bonus
+        quota = int(quota)
+        elle.log.debug('send to self quota after bonuses: %s' % quota)
+        return quota + bonus, bonus
 
     def _file_size_limit(user):
-      return user_quotas.get('p2p', {}).get(
-        'size_limit',
-        user_plan['p2p']['size_limit'])
+      if team_quotas:
+        return team_quotas.get('p2p', {}).get('size_limit')
+      else:
+        return user_quotas.get('p2p', {}).get(
+          'size_limit',
+          user_plan['p2p']['size_limit'])
 
     def _link_storage(user):
-      links = user_plan['links']
-      bonuses = links['bonuses']
-      # Plan default storage
-      # + (number of referred) * bonus
-      # + referred bonus if referred by someone
-      # + other bonuses.
-      storage = int(user_quotas.get('links', {}).get(
-        'storage',
-        links['default_storage']))
-      elle.log.debug('link storage before bonuses: %s' % storage)
-      bonus = int(number_of_referred * bonuses['referrer'] + \
-                  bonuses['referree'] * bool(len(user.get('referred_by', []))) + \
-                  len(social_posts) * bonuses['social_post'] + \
-                  facebook_linked * bonuses['facebook_linked'])
-      elle.log.debug('link storage after bonuses: %s' % storage)
-      return storage + bonus, bonus
+      if team_quotas:
+        links = team_quotas['links']
+        if links.get('default_storage'):
+          return links.get('default_storage'), 0
+        else:
+          return links.get('shared_storage'), 0
+      else:
+        links = user_plan['links']
+        bonuses = links['bonuses']
+        # Plan default storage
+        # + (number of referred) * bonus
+        # + referred bonus if referred by someone
+        # + other bonuses.
+        storage = int(user_quotas.get('links', {}).get(
+          'storage',
+          links['default_storage']))
+        elle.log.debug('link storage before bonuses: %s' % storage)
+        # Don't give referree bonus if there was cheating.
+        if user.get('blocked_referrer'):
+          was_referred = False
+        else:
+          was_referred = True if len(user.get('referred_by', [])) else False
+        bonus = int(number_of_referred * bonuses['referrer'] + \
+                    bonuses['referree'] * int(was_referred) + \
+                    len(social_posts) * bonuses['social_post'] + \
+                    facebook_linked * bonuses['facebook_linked'])
+        elle.log.debug('link storage after bonuses: %s' % storage)
+        return storage + bonus, bonus
 
     link_storage = _link_storage(user)
     assert isinstance(link_storage[0], (int, type(None)))
@@ -3998,3 +4134,86 @@ class Mixin:
         'limit': _file_size_limit(user),
       }
     }
+
+  @api('/users/<identifier>/pending-transactions')
+  @require_admin
+  def user_pending_transactions_admin_api(self, identifier : utils.identifier):
+    user = self.user_from_identifier(identifier)
+    if user is None:
+      return self.not_found({'reason': 'User not found'})
+    return self._user_pending_transactions(user)
+
+  # ------------------- #
+  # Payment Information #
+  # ------------------- #
+
+  @api('/invoices/<id>')
+  @require_logged_in_or_admin
+  def user_invoice_api(self, id):
+    invoice = self._stripe.invoice(id)
+    last_charge = None
+    if invoice is not None:
+      last_charge = self._stripe.charge(invoice['charge'])
+    return {'invoice': invoice, 'last_charge': last_charge}
+
+  @api('/user/invoices')
+  @require_logged_in
+  def user_invoices_api(self):
+    return self.__user_invoices(self.user)
+
+  @api('/users/<identifier>/invoices')
+  @require_admin
+  def user_invoices_admin_api(self, identifier : utils.identifier):
+    user = self.user_from_identifier(identifier)
+    if user is None:
+      return self.not_found()
+    return self.__user_invoices(user)
+
+  def __user_invoices(self, user):
+    customer = self._stripe.fetch_customer(user)
+    if customer is None:
+      return self.not_found({
+        'error': 'stripe_customer_not_found',
+        'reason': 'No stripe customer found for user.'})
+    invoices = self._stripe.invoices(customer)
+    charges = self._stripe.charges(customer)
+    res = []
+    for i in invoices:
+      last_charge = None
+      for c in charges:
+        if c['invoice'] == i['id']:
+          last_charge = c
+          break
+      res.append({'invoice': i, 'last_charge': last_charge})
+    return {'invoices': res}
+
+  @api('/user/receipts')
+  @require_logged_in
+  def user_receipts_api(self):
+    return self.__user_receipts(self.user)
+
+  @api('/users/<identifier>/receipts')
+  @require_admin
+  def user_receipts_admin_api(self, identifier : utils.identifier):
+    user = self.user_from_identifier(identifier)
+    if user is None:
+      return self.not_found()
+    return self.__user_receipts(user)
+
+  def __user_receipts(self, user):
+    customer = self._stripe.fetch_customer(user)
+    if customer is None:
+      return self.not_found({
+        'error': 'stripe_customer_not_found',
+        'reason': 'No stripe customer found for user.'})
+    receipts = self._stripe.receipts(customer)
+    charges = self._stripe.charges(customer)
+    res = []
+    for r in receipts:
+      last_charge = None
+      for c in charges:
+        if c['invoice'] == r['id']:
+          last_charge = c
+          break
+      res.append({'receipt': r, 'last_charge': last_charge})
+    return {'receipts': res}

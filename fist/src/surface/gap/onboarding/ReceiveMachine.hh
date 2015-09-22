@@ -71,7 +71,7 @@ namespace surface
         _update_meta_status(infinit::oracles::Transaction::Status) override;
         virtual
         bool
-        completed() const;
+        completed() const override;
         virtual
         void _pause(bool pause_action) override;
         ELLE_ATTRIBUTE(std::string, file_path);

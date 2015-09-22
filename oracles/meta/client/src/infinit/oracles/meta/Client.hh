@@ -147,7 +147,7 @@ namespace infinit
         std::string identity;
         boost::optional<std::string> email;
         boost::optional<std::string> facebook_id;
-        int remaining_invitations;
+        boost::optional<std::string> language;
         std::string token_generation_key;
         // std::list<boost::uuids::uuid> devices;
         std::list<std::string> devices;
@@ -279,7 +279,7 @@ namespace infinit
       public:
         CloudCredentialsGCS(elle::serialization::SerializerIn& s);
         void
-        serialize(elle::serialization::Serializer& s);
+        serialize(elle::serialization::Serializer& s) override;
         CloudCredentials*
         clone() const override;
         ELLE_ATTRIBUTE_R(std::string,  url);
@@ -302,7 +302,7 @@ namespace infinit
                             boost::posix_time::ptime server_time);
         CloudCredentialsAws(elle::serialization::SerializerIn& s);
         void
-        serialize(elle::serialization::Serializer& s);
+        serialize(elle::serialization::Serializer& s) override;
         CloudCredentials*
         clone() const override;
       };
@@ -514,7 +514,9 @@ namespace infinit
         void
         send_invite(std::string const& destination,
                     std::string const& message,
-                    std::string const& ghost_code) const;
+                    std::string const& ghost_code,
+                    std::string const& invite_type,
+                    bool user_cancel) const;
 
         void
         use_ghost_code(std::string const& code) const;

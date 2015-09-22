@@ -82,7 +82,6 @@ login_success_response(
                        "    \"public_key\": \"public_key\","
                        "    \"name\": \"FUUUUUUUUUUCK\","
                        "    \"accounts\": [],"
-                       "    \"remaining_invitations\": 0,"
                        "    \"token_generation_key\": \"token_generation_key\","
                        "    \"favorites\": [],"
                        "    \"connected_devices\": [\"%s\"],"
@@ -1084,27 +1083,29 @@ namespace invitations
     std::string destination("+33 6 10 15 00 65");
     std::string message("coucou");
     std::string ghost_code("aaaaa");
+    std::string invite_type("plain");
     s.register_route("/user/send_invite",
                      reactor::http::Method::POST,
-                     [destination, message, ghost_code] (
-                        HTTPServer::Headers const&,
-                        HTTPServer::Cookies const&,
-                        HTTPServer::Parameters const&,
-                        elle::Buffer const& body) -> std::string
+                     [&] (HTTPServer::Headers const&,
+                          HTTPServer::Cookies const&,
+                          HTTPServer::Parameters const&,
+                          elle::Buffer const& body) -> std::string
     {
       elle::IOStream stream(body.istreambuf());
       elle::serialization::json::SerializerIn input(stream, false);
-      std::string r_destination, r_message, r_ghost_code;
+      std::string r_destination, r_message, r_ghost_code, r_invite_type;
       input.serialize("destination", r_destination);
       input.serialize("message", r_message);
       input.serialize("ghost_code", r_ghost_code);
-      BOOST_CHECK(destination == r_destination);
-      BOOST_CHECK(message == r_message);
-      BOOST_CHECK(ghost_code == r_ghost_code);
+      input.serialize("invite_type", r_invite_type);
+      BOOST_CHECK_EQUAL(destination, r_destination);
+      BOOST_CHECK_EQUAL(message, r_message);
+      BOOST_CHECK_EQUAL(ghost_code, r_ghost_code);
+      BOOST_CHECK_EQUAL(invite_type, r_invite_type);
       return elle::sprintf("{}");
     });
     infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
-    c.send_invite(destination, message, ghost_code);
+    c.send_invite(destination, message, ghost_code, invite_type, false);
   }
 }
 

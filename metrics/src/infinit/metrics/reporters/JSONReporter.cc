@@ -303,6 +303,16 @@ namespace infinit
     }
 
     void
+    JSONReporter::_user_changed_device_id(std::string const& old_device_id)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] =
+        std::string("app/change_device_id");
+      data[this->_key_str(JSONKey::existing)] = old_device_id;
+      this->_send(this->_user_dest, data);
+    }
+
+    void
     JSONReporter::_user_proxy(reactor::network::ProxyType proxy_type)
     {
       elle::json::Object data;
@@ -491,6 +501,9 @@ namespace infinit
         std::string plan = Reporter::metric_sender_plan().empty()
                          ? "unknown" : Reporter::metric_sender_plan();
         data[this->_key_str(JSONKey::plan)] = plan;
+        std::string language = Reporter::metric_sender_language();
+        if (!language.empty())
+          data[this->_key_str(JSONKey::language)] = language;
         elle::json::Object feats;
         auto features = Reporter::metric_features();
         for (auto const& elem : Reporter::metric_features())
@@ -556,6 +569,8 @@ namespace infinit
           return "duration";
         case JSONKey::event:
           return "event";
+        case JSONKey::existing:
+          return "existing";
         case JSONKey::exit_reason:
           return "exit_reason";
         case JSONKey::fail_reason:
@@ -576,6 +591,8 @@ namespace infinit
           return "how_ended";
         case JSONKey::initialization_time:
           return "initialization_time";
+        case JSONKey::language:
+          return "language";
         case JSONKey::limit:
           return "limit";
         case JSONKey::message:

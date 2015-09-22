@@ -440,6 +440,9 @@ namespace surface
       Device const&
       device() const;
 
+      void
+      set_device_id(std::string const& device_id);
+
     private:
       ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_uuid);
       ELLE_ATTRIBUTE_P(std::unique_ptr<Device>, device, mutable);
@@ -824,8 +827,9 @@ namespace surface
       void
       send_invite(std::string const& destination,
                   std::string const& message,
-                  std::string const& ghost_code);
-
+                  std::string const& ghost_code,
+                  std::string const& invite_type,
+                  bool user_cancel);
 
     /*------------.
     | Ghost codes |

@@ -181,11 +181,12 @@ namespace infinit
       Self::serialize(elle::serialization::Serializer& s)
       {
         User::serialize(s);
+        s.serialize("devices", this->devices);
         s.serialize("email", this->email);
         s.serialize("facebook_id", this->facebook_id);
-        s.serialize("identity", this->identity);
-        s.serialize("devices", this->devices);
         s.serialize("favorites", this->favorites);
+        s.serialize("language", this->language);
+        s.serialize("identity", this->identity);
       }
 
       std::string
@@ -209,7 +210,7 @@ namespace infinit
 
       ServerStatus::ServerStatus(bool status_, std::string message_)
         : status(status_)
-        , message(std::move(message))
+        , message(std::move(message_))
       {}
 
       void
@@ -827,7 +828,9 @@ namespace infinit
       void
       Client::send_invite(std::string const& destination,
                           std::string const& message,
-                          std::string const& ghost_code) const
+                          std::string const& ghost_code,
+                          std::string const& invite_type,
+                          bool user_cancel) const
       {
         auto request = this->_request(
           "/user/send_invite",
@@ -840,6 +843,9 @@ namespace infinit
             output.serialize("message", const_cast<std::string&>(message));
             output.serialize("ghost_code",
                              const_cast<std::string&>(ghost_code));
+            output.serialize("invite_type",
+                             const_cast<std::string&>(invite_type));
+            output.serialize("user_cancel", user_cancel);
           });
       }
 

@@ -80,7 +80,7 @@ namespace surface
       , _recipient(std::move(recipient))
       , _accepted("accepted")
       , _rejected("rejected")
-      , _ghost_uploaded("rejected")
+      , _ghost_uploaded("ghost uploaded")
       , _frete()
       , _wait_for_accept_state(
         this->_machine.state_make(
@@ -392,8 +392,13 @@ namespace surface
           if (!this->concerns_this_device())
             this->gap_status(gap_transaction_failed);
           break;
-        case TransactionStatus::finished:
         case TransactionStatus::ghost_uploaded:
+          ELLE_DEBUG("%s: open ghost uploaded barrier", *this)
+            this->ghost_uploaded().open();
+          if (!this->concerns_this_device())
+            this->gap_status(gap_transaction_finished);
+          break;
+        case TransactionStatus::finished:
           ELLE_DEBUG("%s: open finished barrier", *this)
             this->finished().open();
           if (!this->concerns_this_device())

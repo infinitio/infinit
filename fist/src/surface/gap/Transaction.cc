@@ -245,8 +245,9 @@ namespace surface
           return gap_transaction_canceled;
         case Status::failed:
           return gap_transaction_failed;
-        case Status::finished:
         case Status::ghost_uploaded:
+          return gap_transaction_ghost_uploaded;
+        case Status::finished:
           return gap_transaction_finished;
         case Status::rejected:
           return gap_transaction_rejected;
@@ -320,7 +321,7 @@ namespace surface
             this->_data))
       {
         auto recipient = peer_data->recipient_id;
-        if (me == sender)
+        if (me == sender && device == sender_device)
         {
           if (this->_data->is_ghost && this->_data->status ==
             infinit::oracles::Transaction::Status::ghost_uploaded)
@@ -329,30 +330,14 @@ namespace surface
                        *this);
             return;
           }
-          if (me == recipient && device != sender_device)
-          {
-            if (this->_data->is_ghost)
-              ELLE_WARN("Impossible state, restoring a ghost transaction to self");
-            this->_machine.reset(
-              new PeerReceiveMachine(*this, this->_id, peer_data));
-          }
-          else if (device == sender_device)
-          {
-            ELLE_WARN("%s: can't restore peer send transaction from server (%s)",
-                      *this, *peer_data);
-            bool run_to_fail = true;
-            this->failure_reason(
-              "sender device missing peer transaction snapshot");
-            this->_machine.reset(
-              new PeerSendMachine(*this, this->_id, peer_data,
-                                  this->_authority, run_to_fail));
-          }
-          else
-          { // The sender is an other device
-            ELLE_DEBUG("%s: start send machine", *this);
-            this->_machine.reset(
-              new PeerSendMachine(*this, this->_id, peer_data, this->_authority));
-          }
+          ELLE_WARN("%s: can't restore peer send transaction from server (%s)",
+                    *this, *peer_data);
+          bool run_to_fail = true;
+          this->failure_reason(
+            "sender device missing peer transaction snapshot");
+          this->_machine.reset(
+            new PeerSendMachine(*this, this->_id, peer_data,
+                                this->_authority, run_to_fail));
         }
         else if (me == recipient)
         {
@@ -370,6 +355,12 @@ namespace surface
             this->_machine.reset(
               new PeerReceiveMachine(*this, this->_id, peer_data));
           }
+        }
+        else if (me == sender)
+        { // The sender is another device
+          ELLE_DEBUG("%s: start send machine", *this);
+          this->_machine.reset(
+            new PeerSendMachine(*this, this->_id, peer_data, this->_authority));
         }
         this->_snapshot_save();
       }
@@ -571,6 +562,23 @@ namespace surface
     Transaction::cancel(bool user_request)
     {
       ELLE_TRACE_SCOPE("%s: canceling transaction", *this);
+      // If we're the sender, it's not to ourself and the transaction is ghost
+      // uploaded, we can cancel it by just updating the status on Meta.
+      if (auto data =
+          std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
+            this->_data))
+      {
+        auto const& me = this->state().me().id;
+        auto const& device = this->state().device().id.repr();
+        if (this->status() == gap_transaction_ghost_uploaded &&
+            data->sender_id == me && data->recipient_id != device)
+        {
+          this->state().meta().update_transaction(
+            data->id,
+            infinit::oracles::Transaction::Status::canceled);
+          return;
+        }
+      }
       if (this->_machine == nullptr)
       {
         ELLE_WARN("%s: machine is empty (it doesn't concern your device)",

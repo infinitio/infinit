@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+
+import datetime
+
+from utils import *
+from infinit.oracles.meta import error
+
+def check_view(plan):
+  assert 'id' in plan
+  assert 'stripe' in plan
+  assert 'name' in plan
+
+# Disclaimer:
+# You can't user len(plans) because multiple tests can be running.
+
+# Use that to make sure plans are unique across machine running the tests.
+import random
+suffix = str(random.randint(1e9, 9e9))
+
+with Stripe() as stripe:
+  # Basic / Plus / Premium.
+  with Meta(stripe_api_key = Stripe.key,
+            force_admin = True) as meta:
+    admin = User(meta, 'admin@infinit.io')
+    admin.login()
+    for plan in ['basic', 'plus', 'premium']:
+      assertIn(plan, [p['name'] for p
+                      in admin.get('plans/full',
+                                   {'team_plans_only': False})['plans']])
+
+  # Creation / Update name / Deletion.
+  with Meta(stripe_api_key = Stripe.key,
+            force_admin = True) as meta:
+    admin = User(meta, 'admin@infinit.io')
+    admin.login()
+    plan_creation_query = {
+      'name': 'name with typo' + suffix,
+      'amount': 1200,
+      'body': {
+        'quotas': {
+          'links': {
+            'default_storage': int(100e9)
+          }
+        }
+      }
+    }
+    plan = admin.create_plan(stripe = stripe, **plan_creation_query)
+    check_view(plan)
+    assertIn(plan['id'], admin.get('plans')['plans'])
+    assertIn(plan['id'], [p['id'] for p in admin.get('plans/full')['plans']])
+    assertEq(plan, admin.get('plan/%s' % plan['id']))
+    throws(lambda: admin.create_plan(stripe = stripe, **plan_creation_query),
+           409)
+    plan_update_query = \
+      {'stripe_info': {'name': 'name without typo' + suffix}}
+    updated_plan = admin.put('plan/%s' % plan['id'],
+                             {'update': plan_update_query})
+    assertEq(updated_plan['stripe']['name'],
+             plan_update_query['stripe_info']['name'])
+    plan['name'] = updated_plan['name']
+    plan['stripe']['name'] = updated_plan['stripe']['name']
+    assertEq(updated_plan, plan)
+    deleted_plan = admin.delete('plan/%s' % plan['id'])
+    throws(lambda: admin.get('plan/%s' % plan['id']), 404)
+
+  # Name uniqueness.
+  with Meta(stripe_api_key = Stripe.key,
+            force_admin = True) as meta:
+    admin = User(meta, 'admin@infinit.io')
+    admin.login()
+    plan = admin.create_plan(
+      stripe = stripe, name = 'name' + suffix, body = {})
+    assertIn(plan['id'], admin.get('plans')['plans'])
+    throws(lambda: admin.create_plan(
+      stripe = stripe, name = 'name' + suffix, body = {}),
+           409)
+    new_name = 'bombarde' + suffix
+    new_plan = admin.create_plan(
+      stripe = stripe, name = new_name, body = {})
+    assertIn(new_plan['id'], admin.get('plans')['plans'])
+    throws(lambda: admin.put('plan/%s' % plan['id'],
+                             {
+                               'update': {
+                                 'stripe_info': {
+                                   'name': new_name
+                                 }
+                               }
+                            }),
+           409)
+
+  # Plan editing.
+  with Meta(stripe_api_key = Stripe.key,
+            force_admin = True) as meta:
+    admin = User(meta, 'admin@infinit.io')
+    admin.login()
+    throws(lambda: admin.put('plan/unknown_plan',
+                             {
+                               'update': {}
+                             }
+                            ),
+           404)
+    plan = admin.create_plan(
+      stripe = stripe, name = 'name' + suffix, body = {})
+    assertNin('castor', plan)
+    updated_plan = admin.put('plan/%s' % plan['id'],
+                             {
+                               'update': {'castor': 'polux'}
+                             })
+    assertIn('castor', updated_plan)
+    # Editing non editable data from stripe.
+    throws(lambda: admin.put('plan/unknown_plan',
+                             {
+                               'update': {
+                                 'stripe_info': {'amount': 10000000000}
+                               }
+                             }
+                            ),
+           403)
+    # Update quota.
+    plan = admin.put('plan/%s' % plan['id'],
+                     {
+                       'update': {
+                         'quotas': {'links': {'default_storage': int(1e12)}}
+                       }
+                     })
+    assertEq(plan['quotas']['links']['default_storage'], int(1e12))

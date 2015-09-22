@@ -385,30 +385,6 @@ class InfinitShell(cmd.Cmd):
             print(e)
 
     ###########################################################################
-    # Retreive remaining_invitations.
-    _remaining_invitations_argument_parser = make_simple_argument_parser(
-        prog = "remaining_invitations",
-        description = "get remaining invitations",
-        args = [],
-        )
-
-    def do_remaining_invitations(self, line):
-        """Print remaining_invitations."""
-        args = self._get_args(self._remaining_invitations_argument_parser, line)
-
-        if not args:
-            return
-
-        try:
-            remaining_invitations = self._state.remaining_invitations()
-            print(remaining_invitations)
-        except Exception as e:
-            print(e)
-
-    def help_remaining_invitations(self):
-        self._remaining_invitations_argument_parser.print_help()
-
-    ###########################################################################
     # Send files.
     _sendfiles_argument_parser = make_simple_argument_parser(
         prog = "sendfiles",

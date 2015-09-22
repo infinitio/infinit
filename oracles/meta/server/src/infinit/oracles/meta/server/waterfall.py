@@ -238,7 +238,7 @@ class Waterfall:
     res = None
     try:
       i = bson.ObjectId(user)
-      res = self._user_by_id(i, ensure_existence = False)
+      res = self.user_by_id(i, ensure_existence = False)
     except bson.errors.InvalidId:
       pass
     if res is None:

@@ -287,17 +287,19 @@ class Mixin:
           fields = {}, new = False)
     # Update transaction
     diff = {'status': transaction_status.FINISHED}
-    transaction = self.database.transactions.find_and_modify(
+    updated_transaction = self.database.transactions.find_and_modify(
       {'_id': tid},
       {'$set': diff},
-      new = False,
+      new = True,
     )
     if transaction['status'] != transaction_status.FINISHED:
       self.notifier.notify_some(
         notifier.PEER_TRANSACTION,
-        recipient_ids =
-          {transaction['sender_id'], transaction['recipient_id']},
-        message = self._transaction_view(transaction),
+        recipient_ids = {
+          transaction['sender_id'],
+          transaction['recipient_id']
+        },
+        message = self._transaction_view(updated_transaction),
       )
       return diff
     else:
@@ -1147,7 +1149,7 @@ class Mixin:
         )
         if transaction['sender_id'] == transaction['recipient_id'] and \
            status == transaction_status.FINISHED:
-          self._quota_updated_notification(sender, version = (0, 9, 40)) # XXX 41.
+          self._quota_updated_notify(sender, version = (0, 9, 40)) # XXX 41.
       return diff
 
   @api('/transaction/search')
@@ -1440,6 +1442,19 @@ class Mixin:
       "running_transactions": [self._transaction_view(t) for t in runnings],
       "final_transactions": [self._transaction_view(t) for t in finals],
     }
+
+  # Used for admin function in user which returns all of a user's pending
+  # transactions (user_pending_transactions_admin_api).
+  def _user_pending_transactions(self, user):
+    non_pending_states = transaction_status.final + [transaction_status.CREATED]
+    res = self.database.transactions.aggregate([
+      {'$match': {
+        'involved': user['_id'],
+        'status': {'$nin': non_pending_states}}
+      },
+      {'$sort': {'modification_time': DESCENDING}},
+      ])['result'][0]
+    return res
 
   # FIXME: fill and apply this everywhere relevant
   def _transaction_view(self, transaction):

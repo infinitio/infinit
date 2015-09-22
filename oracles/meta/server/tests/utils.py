@@ -404,7 +404,8 @@ def make_plan(name,
               send_to_self_quota,
               send_to_self_bonus,
               file_size_limit,
-              features = {}):
+              features = {},
+              team = False):
   return {
     'name': name,
     'quotas': {
@@ -430,6 +431,7 @@ def make_plan(name,
       }
     },
     'features': features,
+    'team': team,
   }
 
 class Meta:
@@ -472,32 +474,6 @@ class Meta:
     self.__mongo.__enter__()
     client = pymongo.MongoClient(port = self.__mongo.port)
     self.__database = client.meta
-    self.__database.plans.insert(
-      make_plan(name = 'basic',
-                default_storage = int(1e9),
-                storage_bonuses = (int(1e9), int(5e8), int(3e8), int(5e8)),
-                send_to_self_quota = 5,
-                send_to_self_bonus = (2, 1, 1),
-                file_size_limit = int(10e9),
-                features = {'nag': True}
-    ))
-    self.__database.plans.insert(
-      make_plan(name = 'plus',
-                default_storage = int(5e9),
-                storage_bonuses = (int(1e9), int(5e8), int(3e8), int(5e8)),
-                send_to_self_quota = None,
-                send_to_self_bonus = (2, 1, 1),
-                file_size_limit = None,
-    ))
-    self.__database.plans.insert(
-      make_plan(name = 'premium',
-                default_storage = int(1e11),
-                storage_bonuses = (int(1e9), int(5e8), int(3e8), int(5e8)),
-                send_to_self_quota = None,
-                send_to_self_bonus = (2, 1, 1),
-                file_size_limit = None,
-                features = {'turbo': True}
-    ))
     def run():
       try:
         self.__meta = InstrumentedMeta(
@@ -545,6 +521,10 @@ class Meta:
   def mailer(self, mailer):
     assert self.__meta is not None
     self.__meta.mailer = mailer
+
+  @property
+  def plans(self):
+    return {p: self.inner.plans[p].view for p in self.inner.plans}
 
   @property
   def invitation(self):
@@ -607,6 +587,26 @@ class Meta:
     else:
       return password
 
+  def create_plan(self,
+                  stripe,
+                  name,
+                  body,
+                  amount = 999):
+    previous_admin_state = self.inner._force_admin
+    self.inner._force_admin = True
+    plan = self.post('plans',
+                     {
+                       'body': body,
+                       'stripe_info': {
+                         'amount': amount,
+                         'name': name,
+                       }
+                     })
+    stripe.plans.add(plan['id'])
+    self.inner._force_admin = previous_admin_state
+    return plan
+
+
   @property
   def database(self):
     return self.__database
@@ -642,11 +642,18 @@ def random_email(N = 10):
   import string
   return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(N))
 
+class StripeTestException(Exception):
+  pass
+
 class Stripe():
   key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI'
 
   def __init__(self):
     self.emails = set()
+    self.plans = set()
+    # Ensure uniqueness for stripe.
+    from random import randint
+    self.__suffix = str(randint(1e9, 9e9))
 
   def __enter__(self):
     return self
@@ -654,9 +661,14 @@ class Stripe():
   def __exit__(self, *args, **kwargs):
     self.clear()
 
+  # Ensure uniqueness for stripe.
+  def suffix(self):
+    return self.__suffix
+
   def clear(self):
     import stripe
     stripe.api_key = Stripe.key
+    # Remove created users.
     cursor = None
     while True:
       if cursor:
@@ -665,10 +677,24 @@ class Stripe():
         users = stripe.Customer.all(limit = 100)
       for user in users['data']:
         cursor = user['id']
-        if user['email'] in self.emails:
+        if self.suffix() in user['email']:
           cu = stripe.Customer.retrieve(user['id'])
           cu.delete()
       if not users['has_more']:
+        break
+    # Remove created plans.
+    cursor = None
+    while True:
+      if cursor:
+        plans = stripe.Plan.all(limit = 100, starting_after = cursor)
+      else:
+        plans = stripe.Plan.all(limit = 100)
+      for plan in plans['data']:
+        cursor = plan['id']
+        if self.suffix() in plan['name']:
+          p = stripe.Plan.retrieve(plan['id'])
+          p.delete()
+      if not plans['has_more']:
         break
 
   def pay(self, email):
@@ -683,6 +709,52 @@ class Stripe():
                       auth = (Stripe.key, ''))
     return r.json()['id']
 
+  def customer_with_email(self, email):
+    import stripe
+    stripe.api_key = Stripe.key
+    cursor = None
+    while True:
+      if cursor:
+        users = stripe.Customer.all(limit = 100, starting_after = cursor)
+      else:
+        users = stripe.Customer.all(limit = 100)
+      if len(users['data']) == 0:
+        break
+      for user in users['data']:
+        cursor = user['id']
+        if user['email'] == email:
+          return user
+    raise StripeTestException('stripe user not found: %s' % email)
+
+  def check_plan(self,
+                 email,
+                 plan_id,
+                 amount = None,
+                 percent_off = None,
+                 canceled = False,
+                 quantity = None):
+    customer = self.customer_with_email(email)
+    data = customer['subscriptions']['data']
+    assertNeq(len(data), 0)
+    for sub in data:
+      if sub['plan']['id'] == plan_id:
+        if amount is not None:
+          assertEq(sub['plan']['amount'], amount)
+        if percent_off is not None:
+          assertEq(sub['discount']['coupon']['percent_off'], percent_off)
+        if canceled is True:
+          assertEq(sub['cancel_at_period_end'], True)
+        if quantity is not None:
+          assertEq(sub['quantity'], quantity)
+        return
+    raise StripeTestException(
+      'unable to find subscription with plan (%s) for %s' % (plan, email))
+
+  def check_no_plan(self, email):
+    customer = self.customer_with_email(email)
+    data = customer['subscriptions']['data']
+    assertEq(len(data), 0)
+
 class User(Client):
 
   def __init__(self,
@@ -693,7 +765,6 @@ class User(Client):
                version = None,
                **kwargs):
     super().__init__(meta, version)
-    self.plans = meta.inner.plans
     if not facebook:
       self.email = email is not None and email or random_email() + '@infinit.io'
       self.password, self.email_confirmation_token = \
@@ -820,6 +891,17 @@ class User(Client):
 
   def synchronize(self, init = False):
     return self.get('user/synchronize?init=%s' % (init and '1' or '0'))
+
+  def update_plan(self, plan, stripe_token = None, stripe_coupon = None):
+    body = {
+      'plan': plan,
+    }
+    if stripe_token:
+      body.update({'stripe_token': stripe_token})
+    if stripe_coupon:
+      body.update({'stripe_coupon': stripe_coupon})
+    return self.put('users/update', body)
+
 
   @property
   def device(self):
@@ -1028,6 +1110,58 @@ class User(Client):
                 'progress': 1,
                 'status': status,
               })
+
+  # Plans.
+  def create_plan(self,
+                  stripe,
+                  name,
+                  body,
+                  amount = 999):
+    plan = self.post('plans',
+                     {
+                       'body': body,
+                       'stripe_info': {
+                         'amount': amount,
+                         'name': name,
+                       }
+                     })
+    stripe.plans.add(plan['id'])
+    return plan
+
+  def create_team(self,
+                  name,
+                  stripe_token,
+                  plan = 'team',
+                  stripe_coupon = None):
+    body = {
+       'name': name,
+       'stripe_token': stripe_token,
+       'plan': plan,
+    }
+    if stripe_coupon:
+      body.update({'stripe_coupon': stripe_coupon})
+    return self.post('teams', body)
+
+  def invite_team_member(self, user_id):
+    return self.put('team/invitees/%s' % user_id)
+
+  def uninvite_team_member(self, user_id):
+    return self.delete('team/invitees/%s' % user_id)
+
+  def delete_team_member(self, user_id):
+    return self.delete('team/members/%s' % user_id)
+
+  def reject_invitation(self, team_id):
+    return self.post('teams/%s/reject' % team_id)
+
+  def join_team(self, team_id):
+    return self.post('teams/%s/join' % team_id)
+
+  def leave_team(self, password):
+    return self.post('team/leave', {'password': password})
+
+def user_in_team(team, user):
+  return bool(len([m for m in team['members'] if m['_id'] == user.id]))
 
 # Fake facebook.
 class Facebook:

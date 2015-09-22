@@ -21,6 +21,7 @@ namespace infinit
       device_id,
       duration,
       event,
+      existing,
       exit_reason,
       fail_reason,
       fallback,
@@ -32,6 +33,7 @@ namespace infinit
       http_status,
       how_ended,
       initialization_time,
+      language,
       limit,
       message,
       message_length,
@@ -183,6 +185,9 @@ namespace infinit
 
       void
       _user_first_launch() override;
+
+      void
+      _user_changed_device_id(std::string const& old_device_id) override;
 
       void
       _user_proxy(reactor::network::ProxyType proxy_type) override;

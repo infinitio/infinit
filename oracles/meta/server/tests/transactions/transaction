@@ -3,49 +3,53 @@
 from utils import *
 from bson import ObjectId
 
-with Meta() as meta:
-  alice = User(meta, "alice@infinit.io")
-  bob = User(meta, "bob@infinit.io")
+with Stripe() as stripe:
+  with Meta(stripe_api_key = Stripe.key) as meta:
 
-  bob.login()
+    test_suffix = stripe.suffix()
+    alice = User(meta, "alice_%s@infinit.io" % test_suffix)
+    bob = User(meta, "bob_%s@infinit.io" % test_suffix)
 
-  transaction, res = bob.sendfile(recipient = alice.id,
-                                  use_identifier = False)
-  transaction_id = res['created_transaction_id']
+    bob.login()
 
-  alice.login()
+    transaction, res = bob.sendfile(recipient = alice.id,
+                                    use_identifier = False)
+    transaction_id = res['created_transaction_id']
 
-  res = alice.get('transaction/%s' % transaction_id)
+    alice.login()
 
-  for key in transaction.keys():
-    if key in ['id_or_email', 'device_id']: # Special cases.
-      continue
-    assertEq(res[key], transaction[key])
-  assertEq(res['recipient_id'], transaction['recipient_id'])
+    res = alice.get('transaction/%s' % transaction_id)
 
-  # Over limit for basic user.
-  size_to_send = 20 * 1000 * 1000 * 1000
-  try:
-    transaction, res = alice.sendfile(recipient = bob.id,
-                                      total_size = size_to_send,
-                                      initialize = True)
-  except HTTPException as e:
-    assertEq(e.status, 402)
-    assertEq(e.content['error'], error.FILE_TRANSFER_SIZE_LIMITED[0])
-    assertEq(e.content['reason'], error.FILE_TRANSFER_SIZE_LIMITED[1])
-    assertEq(e.content['limit'], 10 * 1000 * 1000 * 1000)
+    for key in transaction.keys():
+      if key in ['id_or_email', 'device_id']: # Special cases.
+        continue
+      assertEq(res[key], transaction[key])
+    assertEq(res['recipient_id'], transaction['recipient_id'])
 
-  # Make sure send to self is blocked too.
-  throws(lambda: alice.sendfile(recipient = alice.id,
-                                total_size = size_to_send,
-                                initialize = True))
+    # Over limit for basic user.
+    size_to_send = 20 * 1000 * 1000 * 1000
+    try:
+      transaction, res = alice.sendfile(recipient = bob.id,
+                                        total_size = size_to_send,
+                                        initialize = True)
+    except HTTPException as e:
+      assertEq(e.status, 402)
+      assertEq(e.content['error'], error.FILE_TRANSFER_SIZE_LIMITED[0])
+      assertEq(e.content['reason'], error.FILE_TRANSFER_SIZE_LIMITED[1])
+      assertEq(e.content['limit'], 10 * 1000 * 1000 * 1000)
 
-  meta.meta.change_plan(bson.ObjectId(bob.id), 'premium')
-  bob.sendfile(recipient = alice.id,
-               total_size = size_to_send,
-               initialize = True)
+    # Make sure send to self is blocked too.
+    throws(lambda: alice.sendfile(recipient = alice.id,
+                                  total_size = size_to_send,
+                                  initialize = True))
 
-  # Make sure send to self works too.
-  bob.sendfile(recipient = bob.id,
-               total_size = size_to_send,
-               initialize = True)
+    res = bob.update_plan('premium', stripe_token = stripe.pay(bob.email))
+    assertEq(res['plan'], 'premium')
+    bob.sendfile(recipient = alice.id,
+                 total_size = size_to_send,
+                 initialize = True)
+
+    # Make sure send to self works too.
+    bob.sendfile(recipient = bob.id,
+                 total_size = size_to_send,
+                 initialize = True)

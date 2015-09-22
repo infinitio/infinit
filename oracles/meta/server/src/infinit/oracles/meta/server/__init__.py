@@ -48,9 +48,11 @@ from . import root
 from . import transaction
 from . import trophonius
 from . import user
+from . import team
 from . import waterfall
 from . import facebook
 from . import shortener
+from .stripe import Stripe
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.Meta'
 
@@ -83,8 +85,10 @@ class Meta(bottle.Bottle,
            device.Mixin,
            features.Mixin,
            trophonius.Mixin,
+           team.Mixin,
            apertus.Mixin,
            waterfall.Waterfall,
+           plans.Mixin,
            link_generation.Mixin,
          ):
 
@@ -122,8 +126,8 @@ class Meta(bottle.Bottle,
     system_logger = os.getenv("META_LOG_SYSTEM")
     if system_logger is not None:
       elle.log.set_logger(elle.log.SysLogger(system_logger))
-    self.__force_admin = force_admin
-    if self.__force_admin:
+    self._force_admin = force_admin
+    if self._force_admin:
       elle.log.warn('%s: running in force admin mode' % self)
     if mongo_replica_set is not None:
       with elle.log.log(
@@ -149,6 +153,7 @@ class Meta(bottle.Bottle,
     bottle.Bottle.__init__(self)
     link_generation.Mixin.__init__(self)
     user.Mixin.__init__(self)
+    plans.Mixin.__init__(self)
     self.catchall = debug
     bottle.debug(debug)
     # Plugins.
@@ -215,26 +220,12 @@ class Meta(bottle.Bottle,
     # Emailing
     self.__emailer = emailer or infinit.oracles.emailer.NoopEmailer()
     self.__stripe_api_key = stripe_api_key
+    self._stripe = Stripe(self)
     self.__metrics = metrics
     self.__gcs = gcs
     # Show deprecation warnings. How is this not the default ...
     import warnings
     warnings.simplefilter('default', DeprecationWarning)
-    # Plans.
-    if self.database.plans.count() == 0:
-      self.database.plans.insert(plans.basic)
-      self.database.plans.insert(plans.plus)
-      self.database.plans.insert(plans.premium)
-
-  @property
-  def plans(self):
-    # XXX: Could be cached.
-    plans = {}
-    for plan in self.database.plans.find():
-      plans[plan['name']] = plan
-    # XXX: Dirty.
-    plans[None] = plans['basic']
-    return plans
 
   @property
   def gcs(self):
@@ -359,6 +350,12 @@ class Meta(bottle.Bottle,
     #---------------------------------------------------------------------------
     self.__database.plans.ensure_index([('name', 1)], unique = True)
 
+    #---------------------------------------------------------------------------
+    # Teams.
+    #---------------------------------------------------------------------------
+    self.__database.teams.ensure_index([('members.id', 1)], unique = True)
+
+
   @property
   def mailer(self):
     return self.__mailer
@@ -457,8 +454,8 @@ class Meta(bottle.Bottle,
   @property
   def admin(self):
     source = bottle.request.environ.get('REMOTE_ADDR')
-    force = self.__force_admin or \
-      (self.__force_admin is not False and source == '127.0.0.1')
+    force = self._force_admin or \
+      (self._force_admin is not False and source == '127.0.0.1')
     return force or (hasattr(bottle.request, 'certificate') and bottle.request.certificate in [
       'antony.mechin@infinit.io',
       'baptiste.fradin@infinit.io',

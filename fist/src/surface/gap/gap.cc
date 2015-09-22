@@ -413,7 +413,9 @@ gap_Status
 gap_send_invite(gap_State* state,
                 std::string const& destination,
                 std::string const& message,
-                std::string const& ghost_code)
+                std::string const& ghost_code,
+                std::string const& invite_type,
+                bool user_cancel)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -421,7 +423,8 @@ gap_send_invite(gap_State* state,
     "send invite",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.send_invite(destination, message, ghost_code);
+      state.send_invite(
+        destination, message, ghost_code, invite_type, user_cancel);
       return gap_ok;
     });
 }
@@ -769,6 +772,20 @@ gap_self_device_id(gap_State* state)
     [&] (surface::gap::State& state) -> std::string
     {
       return boost::lexical_cast<std::string>(state.device().id);
+    });
+}
+
+gap_Status
+gap_set_device_id(gap_State* state, std::string const& device_id)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "set device id",
+    [&] (surface::gap::State& state)
+    {
+      state.set_device_id(device_id);
+      return gap_ok;
     });
 }
 

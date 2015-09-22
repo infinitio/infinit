@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+
+import datetime
+
+from utils import *
+from infinit.oracles.meta import error
+
+with Stripe() as stripe:
+  # Custom domains.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    with Trophonius(meta) as tropho:
+
+      def check_account(account, domain):
+        assertEq(account['custom_domain'], domain)
+
+      def check_for_domain(user, domain):
+        while len(user.notifications):
+          notif = user.next_notification()
+          if notif.get('account', {}).get('custom_domain'):
+            check_account(notif['account'], domain)
+            break;
+        res = user.get('user/synchronize?init=1')
+        check_account(res['account'], domain)
+        while len(user.notifications):
+          user.next_notification()
+
+      admin = User(meta, 'julien_%s@infinit.io' % stripe.suffix())
+      admin.login(trophonius = tropho)
+      team = admin.create_team(
+        name = 'infinit',
+        stripe_token = stripe.pay(admin.email))
+      jean = User(meta, 'jean_%s@infinit.io' % stripe.suffix())
+      jean.login(trophonius = tropho)
+      res = jean.get('user/synchronize?init=1')
+      assertEq(res['account']['custom_domain'], '')
+      # Set user domain.
+      user_domain = 'user'
+      jean.put('user/account/custom_domains/%s' % user_domain)
+      notif = jean.next_notification()
+      assertEq(notif['account']['custom_domain'], user_domain)
+      res = jean.get('user/synchronize?init=1')
+      assertEq(res['account']['custom_domain'], user_domain)
+      # Add team member.
+      admin.invite_team_member(jean.id)
+      jean.join_team(team['id'])
+      # Team member can't change team domain.
+      throws(lambda: jean.put('team/custom_domains/bob'), 403)
+      # Team member can't set own domain.
+      throws(lambda: jean.put('user/account/custom_domains/bob'), 403)
+      # Set team custom domain.
+      team_domain = 'team'
+      admin.put('team/custom_domains/%s' % team_domain)
+      check_for_domain(admin, team_domain)
+      check_for_domain(jean, team_domain)
+      # Delete team domain.
+      admin.delete('team/custom_domains/%s' % team_domain)
+      check_for_domain(admin, '')
+      check_for_domain(jean, '')
+      # User has original domain when removed from the team.
+      admin.delete_team_member(jean.id)
+      check_for_domain(jean, user_domain)

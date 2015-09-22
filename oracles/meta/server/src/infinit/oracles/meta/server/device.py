@@ -12,7 +12,7 @@ from .utils import *
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Device'
 
-# We use UUID for typechecking but they are all cast into str represnetation.
+# We use UUID for typechecking but they are all cast into str representation.
 # The reason is because the (py)mongo store them as BinData, making them
 # impossible to search from mongo shell.
 class Mixin:
@@ -57,7 +57,7 @@ class Mixin:
     else:
       if self.user is None:
         return None
-      user = self._user_by_id(self.user['_id'], fields = ['devices'])
+      user = self.user_by_id(self.user['_id'], fields = ['devices'])
       devices = list(filter(lambda x: x['id'] == device, user['devices']))
       if len(devices):
         device = devices[0]
@@ -203,7 +203,7 @@ class Mixin:
   def devices_users_api(self, user):
     fields = ['devices']
     if isinstance(user, bson.ObjectId):
-      user = self._user_by_id(user, fields = fields)
+      user = self.user_by_id(user, fields = fields)
     else:
       user = self.user_by_id_or_email(user, fields = fields)
     if not self.admin and user['_id'] != self.user['_id']:
@@ -224,17 +224,23 @@ class Mixin:
     # error.Error concept.
     try:
       if self.admin:
-        guard = {}
-      else:
-        guard = {
-          'owner': self.user['_id'],
+        users = []
+        device = self.device(id = id, include_passport = True)
+        for user in self.database.users.find({'devices.id': str(id)},
+                                             {'_id': True, 'email': True}):
+          users.append({'id': user['_id'], 'email': user['email']})
+        return {
+          'users': users,
+          'device': self.device_view(device)
         }
-      # FIXME: this 404's even if the device exists but is not
-      # ours. Replace with a 403.
-      device = self.device(id = id,
-                           include_passport = True,
-                           **guard)
-      return self.device_view(device)
+      else:
+        guard = {'owner': self.user['_id']}
+        # FIXME: this 404's even if the device exists but is not
+        # ours. Replace with a 403.
+        device = self.device(id = id,
+                             include_passport = True,
+                             **guard)
+        return self.device_view(device)
     except error.Error:
       self.not_found({
         'reason': 'device %s does not exist' % id,
@@ -275,6 +281,7 @@ class Mixin:
           conf.INFINIT_AUTHORITY_PATH,
           conf.INFINIT_AUTHORITY_PASSWORD
         ),
+        'created': self.now,
       }
       if OS is not None:
         device['os'] = OS
@@ -327,7 +334,7 @@ class Mixin:
                       bson.ObjectId)
     if device_id is not None:
       assert isinstance(device_id, uuid.UUID)
-      user = self._user_by_id(user_id)
+      user = self.user_by_id(user_id)
       if str(device_id) not in map(lambda x: x['id'], user['devices']):
         raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
       return self.device(id = str(device_id),

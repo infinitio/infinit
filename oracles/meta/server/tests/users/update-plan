@@ -2,154 +2,242 @@
 
 from utils import *
 import bson
-import stripe
 import random
 
-email = 'tests.stripe%s' % random.randint(1e9, 9e9) + '@infinit.io'
-
-# XXX: Someday, we'll need to fake the stripe's api to save us hours.
-# Right now, the test takes around 2 mins.
-
-# Recently created user has 'basic' plan by default.
-with Meta(stripe_api_key = Stripe.key) as meta:
-  user = User(meta, email)
-  user.login()
-  assertEq(user.me['plan'], 'basic')
-
-# Old user might have no plan.
-with Meta(stripe_api_key = Stripe.key) as meta:
-  user = User(meta, email)
-  res = meta.database.users.update(
-    {'_id': bson.ObjectId(user.id)},
-    {'$set': {'plan': None}})
-  assertEq(res['n'], 1)
-  user.login()
-  assertEq(user.me['plan'], 'basic')
-
-# Bad requests.
-with Meta(stripe_api_key = Stripe.key) as meta:
-  user = User(meta, email)
-  user.login()
-  throws(lambda: user.put('users/%s' % user.id, {'plan': 'Q'}), 400)
-  throws(lambda: user.put('users/%s' % user.id, {'plan': 'premium'}), 400)
-
-def create_user(meta):
-  user = User(meta, email)
-  user.login()
-  return user
-
-def check_basic_quotas(user):
-  assertNeq(user.me['quotas']['send_to_self']['quota'], None)
-  assertNeq(user.me['quotas']['p2p']['limit'], None)
-
-def check_plus_quotas(user):
-  assertEq(user.me['quotas']['send_to_self']['quota'], None)
-  assertEq(user.me['quotas']['p2p']['limit'], None)
-
-def check_premium_quotas(user):
-  assertEq(user.me['quotas']['send_to_self']['quota'], None)
-  assertEq(user.me['quotas']['p2p']['limit'], None)
-
-def update_plan(user, plan, stripe_token = None, stripe_coupon = None,
-                previous_plan = 'basic', check_new_plan = True):
-  assertEq(user.me['plan'], previous_plan)
-  globals()['check_' + previous_plan + '_quotas'](user)
-  res = user.put('users/%s' % user.id, {
-    'plan': plan,
-    'stripe_token': stripe_token,
-    'stripe_coupon': stripe_coupon})
-  if check_new_plan:
-    if plan is None:
-      plan = previous_plan
-    assertEq(res['plan'], plan)
-    assertEq(user.me['plan'], plan)
-    globals()['check_' + plan + '_quotas'](user)
-  return res
-
 with Stripe() as stripe:
+  def check_basic_quotas(user):
+    res = user.me
+    assertEq(res['plan'], 'basic')
+    assertNeq(res['quotas']['send_to_self']['quota'], None)
+    assertNeq(res['quotas']['p2p']['limit'], None)
+
+  def check_plus_quotas(user):
+    res = user.me
+    assertEq(res['plan'], 'plus')
+    assertEq(res['quotas']['send_to_self']['quota'], None)
+    assertEq(res['quotas']['p2p']['limit'], None)
+
+  def check_premium_quotas(user):
+    res = user.me
+    assertEq(res['plan'], 'premium')
+    assertEq(res['quotas']['send_to_self']['quota'], None)
+    assertEq(res['quotas']['p2p']['limit'], None)
+
+  # Recently created user has 'basic' plan by default.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    user = User(meta, 'jean_%s@infinit.io' % stripe.suffix())
+    user.login()
+    assertEq(user.me['plan'], 'basic')
+
+  # Old user might have no plan.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    user = User(meta, 'jean_%s@infinit.io' % stripe.suffix())
+    res = meta.database.users.update(
+      {'_id': bson.ObjectId(user.id)},
+      {'$set': {'plan': None}})
+    assertEq(res['n'], 1)
+    user.login()
+    assertEq(user.me['plan'], 'basic')
+
+  # Bad requests.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    user = User(meta, 'jean_%s@infinit.io' % stripe.suffix())
+    user.login()
+    throws(lambda: user.put('users/%s' % user.id, {'plan': 'Q'}), 404)
+    throws(lambda: user.put('users/%s' % user.id, {'plan': 'premium'}), 400)
+
   # Update from basic to premium.
   with Meta(stripe_api_key = Stripe.key, force_admin = True) as meta:
-    user = create_user(meta)
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
     previous_quotas = user.me['quotas']
-    res = update_plan(user, 'premium', stripe_token = stripe.pay(email))
+    res = user.update_plan('premium', stripe_token = stripe.pay(user.email))
+    assertEq(res['plan'], 'premium')
     assertEq(res['amount'], 999)
     quotas = user.me['quotas']
     assertGT(quotas['links']['quota'],
              previous_quotas['links']['quota'])
+    check_premium_quotas(user)
+    stripe.check_plan(user.email, 'premium', 999)
 
   # Bad requests.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    user = create_user(meta)
-    # No op.
-    update_plan(user, None)
-    throws(lambda: update_plan(user, None, stripe_coupon = 'bite'), 400)
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    throws(lambda: user.update_plan(None, stripe_token = 'bite'), 400)
 
-  # Update from premium to null.
+  # Add coupon to existing subscription.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    user = create_user(meta)
-    res = update_plan(user, 'premium', stripe_token = stripe.pay(email))
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    res = user.update_plan('premium', stripe_token = stripe.pay(user.email))
     assertEq(res['amount'], 999)
-    # No op.
-    update_plan(user, None, previous_plan = 'premium')
-    res = update_plan(user, None, stripe_coupon = 'coupon_30', previous_plan = 'premium')
+    stripe.check_plan(user.email, 'premium', 999)
+    res = user.update_plan('premium', stripe_coupon = 'coupon_30')
     assertEq(res['amount'], 0.7 * 999)
+    stripe.check_plan(user.email, 'premium', 999, percent_off = 30)
 
   # Update from basic to plus.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    user = create_user(meta)
-    res = update_plan(user, 'plus', stripe_token = stripe.pay(email))
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    res = user.update_plan('plus', stripe_token = stripe.pay(user.email))
     assertEq(res['amount'], 699)
+    check_plus_quotas(user)
+    stripe.check_plan(user.email, 'plus', 699)
 
   # Update from basic to plus to premium.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    user = create_user(meta)
-    update_plan(user, 'plus', stripe_token = stripe.pay(email))
-    update_plan(user, 'premium', previous_plan = 'plus')
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    user.update_plan('plus', stripe_token = stripe.pay(user.email))
+    check_plus_quotas(user)
+    stripe.check_plan(user.email, 'plus', 699)
+    user.update_plan('premium')
+    check_premium_quotas(user)
+    stripe.check_plan(user.email, 'premium', 999)
 
   # Update from basic to premium to basic.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    user = create_user(meta)
-    update_plan(user, 'premium', stripe_token = stripe.pay(email))
-    update_plan(user, 'basic', previous_plan = 'premium')
-    # Make sure credentials has been cached.
-    update_plan(user, 'premium', previous_plan = 'basic')
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    res = user.update_plan('premium', stripe_token = stripe.pay(user.email))
+    assertEq(res['plan'], 'premium')
+    check_premium_quotas(user)
+    stripe.check_plan(user.email, 'premium', 999)
+    res = user.update_plan('basic')
+    assertEq(res['plan'], 'basic')
+    check_basic_quotas(user)
+    stripe.check_plan(user.email, 'premium', 999, canceled = True)
 
   # Update from basic to premium to plus.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    user = create_user(meta)
-    update_plan(user, 'premium', stripe_token = stripe.pay(email))
-    update_plan(user, 'plus', previous_plan = 'premium')
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    user.update_plan('premium', stripe_token = stripe.pay(user.email))
+    check_premium_quotas(user)
+    stripe.check_plan(user.email, 'premium', 999)
+    user.update_plan('plus')
+    check_plus_quotas(user)
+    stripe.check_plan(user.email, 'plus', 699)
 
   # Getting premium (then getting eligible for plus by referral) then go back to
   # 'basic'.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    user = create_user(meta)
-    update_plan(user, 'premium', stripe_token = stripe.pay(email))
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    user.update_plan('premium', stripe_token = stripe.pay(user.email))
+    stripe.check_plan(user.email, 'premium', 999)
+    check_premium_quotas(user)
     User(meta, 'user1@infinit.io', referral_code = user.referral_code).login()
     User(meta, 'user2@infinit.io', referral_code = user.referral_code).login()
-    res = update_plan(user, 'basic', previous_plan = 'premium', check_new_plan = False)
+    check_premium_quotas(user) # User is still premium as they're still paying.
+    res = user.update_plan('basic')
     assertEq(res['plan'], 'plus')
     assertEq(user.me['plan'], 'plus')
+    check_plus_quotas(user)
+    stripe.check_plan(user.email, 'premium', canceled = True)
 
   # Using coupons.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    user = create_user(meta)
-    res = update_plan(user, 'premium', stripe_token = stripe.pay(email),
-                      stripe_coupon = 'coupon_30')
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    res = user.update_plan('premium',
+                           stripe_token = stripe.pay(user.email),
+                           stripe_coupon = 'coupon_30')
     assertEq(res['amount'], 999 * 0.70)
+    check_premium_quotas(user)
+    stripe.check_plan(user.email, 'premium', 999, percent_off = 30)
 
   # Using coupons on different plans.
   with Meta(stripe_api_key = Stripe.key) as meta:
-    user = create_user(meta)
-    res = update_plan(user, 'plus', stripe_token = stripe.pay(email),
-                      stripe_coupon = 'coupon_30')
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    res = user.update_plan('plus',
+                           stripe_token = stripe.pay(user.email),
+                           stripe_coupon = 'coupon_30')
     assertEq(res['amount'], 699 * 0.7)
+    check_plus_quotas(user)
+    stripe.check_plan(user.email, 'plus', 699, percent_off = 30)
     # No coupon.
-    res = update_plan(user, 'premium', stripe_token = stripe.pay(email),
-                      previous_plan = 'plus')
+    res = user.update_plan('premium')
     # XXX: This should work. Right now, coupons aren't 'deleted' when changing
     # plans.
     # assertEq(res['amount'], 999)
-    res = update_plan(user, 'premium', stripe_token = stripe.pay(email),
-                      previous_plan = 'premium', stripe_coupon = 'coupon_50')
+    # stripe.check_plan(user.email, 'premium', 999)
+    check_premium_quotas(user)
+    res = user.update_plan('premium', stripe_coupon = 'coupon_50')
     assertEq(res['amount'], 999 * 0.5)
+    check_premium_quotas(user)
+    stripe.check_plan(user.email, 'premium', 999, percent_off = 50)
+
+  # Delete user account.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    user.update_plan('premium', stripe_token = stripe.pay(user.email))
+    check_premium_quotas(user)
+    stripe.check_plan(user.email, 'premium', 999)
+    user.delete('user')
+    stripe.check_plan(user.email, 'premium', 999, canceled = True)
+
+  # Change email address.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    # Pasted from auxiliary_emails
+    class MailService(NoOpMailer):
+
+      def __init__(self):
+        self.change_email = {}
+        super().__init__(True)
+
+      def template_message(self, template_message, message):
+        merges = {}
+        for entry in message['merge_vars'][0]['vars']:
+          merges[entry['name']] = entry['content']
+        if template_message == 'change-email-address':
+           self.change_email.update(
+             {
+               merges['new_email_address']: merges['hash']
+             })
+
+    def get_keys(emails, size):
+      assertEq(len(emails), size)
+      keys = {}
+      for email in emails:
+        keys[email.variables['email']] = email.variables['confirm_token']
+      return keys
+
+    test_suffix = stripe.suffix()
+    original_email = 'serge_jean_%s@infinit.io' % test_suffix
+    jean = User(meta, original_email)
+    jean.login()
+    meta.mailer = MailService()
+    jean.update_plan('premium', stripe_token = stripe.pay(jean.email))
+    check_premium_quotas(jean)
+    stripe.check_plan(jean.email, 'premium', 999)
+    new_email = 'serge_jean_pierre_%s@infinit.io' % test_suffix
+    jean.put('user/accounts/%s' % new_email)
+    keys = get_keys(meta.emailer.emails, 1)
+    jean.post(
+      'users/%s/accounts/%s/confirm' % (jean.email, new_email),
+      {'confirm_token': keys[new_email.lower()]})
+    jean.get('users/%s' % new_email)
+    jean.post('user/accounts/%s/make_primary' % new_email, {
+      'password': jean.password
+    })
+    stripe.check_plan(new_email, 'premium', 999)
+    # Add email address to stripe list for cleanup.
+    stripe.emails.add(new_email)
+    throws(lambda: stripe.customer_with_email(original_email), StripeTestException)
+

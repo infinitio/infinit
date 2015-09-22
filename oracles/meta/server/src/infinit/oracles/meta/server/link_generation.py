@@ -11,6 +11,7 @@ import requests
 from pymongo import errors, DESCENDING
 from .utils import api, require_logged_in, require_logged_in_fields, require_admin, json_value, date_time
 from . import cloud_buffer_token, cloud_buffer_token_gcs, error, notifier, regexp, conf, invitation, mail, transaction_status
+from .team import Team
 
 #
 # Link Generation
@@ -216,7 +217,8 @@ class Mixin:
         self.require_premium()
       link_size = __link_size_from_file_list(files)
       self._link_check_quota(user, link_size)
-      self._quota_updated_notification(user, extra_link_size = link_size)
+      team = Team.team_for_user(self, user)
+      self._quota_updated_notify(user, team = team, extra_link_size = link_size)
       creation_time = self.now
       # Maintain a list of all elements in document here.
       # Do not add a None hash as this causes problems with concurrency.
@@ -445,7 +447,7 @@ class Mixin:
                                 ( r.status_code, link['_id'], r.content))
                 # The delete can fail if on aws and there was a partial
                 # upload, or if on gcs if nothing was uploaded at all.
-            else: #status = FINISHED
+            elif not link.get('quota_counted', False): #status = FINISHED but quota not yet counted
               # Get effective size
               head = self._generate_op_url(link, 'HEAD')
               r = requests.head(head)
@@ -477,8 +479,9 @@ class Mixin:
         {'$set': update},
         new = True,
       )
-      if 'status' in update and user is not None:
-        self._quota_updated_notification(user)
+      # Only update the user's quota when the quota has been counted
+      if user and status and link.get('quota_counted', False):
+        self._quota_updated_notify(user, team = Team.team_for_user(self, user))
       self.notifier.notify_some(
         notifier.LINK_TRANSACTION,
         recipient_ids = {link['sender_id']},
@@ -586,12 +589,16 @@ class Mixin:
         fields = ['plan',
                   'account.custom_domains',
                   'account.default_background'])
+      team = Team.team_for_user(self, owner)
       if custom_domain is not None:
-        self.require_premium(owner)
-        account = owner.get('account')
+        if team:
+          settings = team.get('shared_settings')
+        else:
+          self.require_premium(owner)
+          settings = owner.get('account')
         domains = (d['name']
-                   for d in (account.get('custom_domains', ())
-                             if account is not None else ()))
+                   for d in (settings.get('custom_domains', ())
+                             if settings is not None else ()))
         if custom_domain not in domains:
           self.payment_required({
             'reason': 'invalid custom domain: %s' % custom_domain,
@@ -669,8 +676,11 @@ class Mixin:
         message = owner_link,
       )
       if web_link.get('background') is None:
-        web_link['background'] = \
-          owner.get('account', {}).get('default_background')
+        if team:
+          background = team.get('shared_settings', {}).get('default_background')
+        else:
+          background = owner.get('account', {}).get('default_background')
+        web_link['background'] = background
       return web_link
 
   @api('/links')
@@ -757,19 +767,23 @@ class Mixin:
       multi = True)
 
   def __link_usage(self, user):
-    res = self.database.links.aggregate([
-      {
-        '$match': {
-          'sender_id': user['_id'],
-          'status': transaction_status.FINISHED,
-          'quota_counted': True,
-        }
-      },
-      {
-        '$group': {'_id': None, 'total':{'$sum': '$file_size'}}
-      }])['result']
-    total = res[0]['total'] if len(res) else 0
-    return int(total)
+    team = Team.team_for_user(self, user)
+    if team:
+      return team.storage_used
+    else:
+      res = self.database.links.aggregate([
+        {
+          '$match': {
+            'sender_id': user['_id'],
+            'status': transaction_status.FINISHED,
+            'quota_counted': True,
+          }
+        },
+        {
+          '$group': {'_id': None, 'total':{'$sum': '$file_size'}}
+        }])['result']
+      total = res[0]['total'] if len(res) else 0
+      return int(total)
 
   # Generate url on storage for given HTTP operation
   def _generate_op_url(self, link, op):

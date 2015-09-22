@@ -64,6 +64,7 @@ with Meta() as meta:
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login()
+  original_quota = alice.me['quotas']
 
   invitees = [
     'castor@infinit.io',
@@ -72,7 +73,6 @@ with Meta() as meta:
     'poil@infinit.io',
     'bob@infinit.io',
     'serge@infinit.io',
-    'encule@infinit.io',
   ]
 
   alice.post('user/invite', {'identifier': invitees[0]})
@@ -145,17 +145,6 @@ with Meta() as meta:
   eve = User(meta, eve, referral_code = alice.referral_code)
   assertEq(len(alice.referrees), 6)
 
-  # Someone who is going to try to cheat.
-  encule = invitees[6]
-  encule = User(meta, encule, referral_code = alice.referral_code)
-  assertEq(len(alice.referrees), 7)
-  old_quota = alice.me['quotas']
-  encule.login(device_id = alice.devices[0]['id'])
-  res = meta.database.users.find_one({'_id': bson.ObjectId(encule.id)})
-  assertEq(str(res['blocked_referrer']), alice.id)
-  new_quota = alice.me['quotas']
-  assertEq(old_quota, new_quota)
-
   # Check if all the invites are listed.
   assertEq(set([entry['recipient'] for entry in alice.referrees]),
            set(invitees))
@@ -204,18 +193,40 @@ with Meta() as meta:
   assertGT(jean_luc.link_quota, previous)
   assertEq(len(jean_luc.referrees), len(referrees) + 1)
 
-# Deleted users.
+  # Someone who is going to try to cheat.
+  encule = 'encule@infinit.io'
+  encule = User(meta, encule, referral_code = alice.referral_code)
+  assertEq(len(alice.referrees), 8)
+  original_alice_quota = alice.me['quotas']
+  encule.login(device_id = alice.devices[0]['id'])
+  assertEq(alice.referrees[-1]['status'], 'blocked')
+  res = meta.database.users.find_one({'_id': bson.ObjectId(encule.id)})
+  assertEq(str(res['blocked_referrer']), alice.id)
+  alice_quota = alice.me['quotas']
+  assertEq(original_alice_quota, alice_quota)
+  encule_quota = encule.me['quotas']
+  assertEq(original_quota, encule_quota)
+  encule.logout()
+  # Turns out he actually just registered on a friend's device and then logs in
+  # on another device.
+  from uuid import uuid4
+  encule.login(device_id = str(uuid4()))
+  assertEq(alice.referrees[-1]['status'], 'completed')
+  res = meta.database.users.find_one({'_id': bson.ObjectId(encule.id)})
+  assertEq(res.get('blocked_referrer'), None)
+  assertGT(encule.me['quotas']['links']['quota'],
+           original_quota['links']['quota'])
+
+# Referree deleted.
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login()
-  alice.post('user/invite', {'identifier': 'bob@infinit.io'})
-  bob = User(meta, 'bob@infinit.io')
-  assertEq(len(alice.referrees), 1)
+  original_quotas = alice.me['quotas']
+  bob = User(meta, 'bob@infinit.io', referral_code = alice.referral_code)
   bob.login()
-  assertEq(len(alice.referrees), 1)
+  post_invite_quotas = alice.me['quotas']
+  assertGT(post_invite_quotas['links']['quota'],
+           original_quotas['links']['quota'])
   bob.delete('user')
-  assertEq(len(alice.referrees), 1)
-  assertEq(alice.referrees[0]['recipient'], 'deleted')
-  alice.post('user/invite', {'identifier': 'eve@infinit.io'})
-  User(meta, 'eve@infinit.io').login()
-  assertEq(len(alice.referrees), 2)
+  post_delete_quota = alice.me['quotas']
+  assertEq(post_invite_quotas, post_delete_quota)

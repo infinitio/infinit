@@ -63,6 +63,46 @@ namespace surface
       return *this->_device;
     }
 
+    void
+    State::set_device_id(std::string const& device_id)
+    {
+      if (this->logged_in_to_meta())
+      {
+        ELLE_WARN("%s: not able to change device id when already logged in",
+                  *this);
+        return;
+      }
+      boost::uuids::uuid old_device_id = this->_device_uuid;
+      ELLE_LOG("%s: change device_id from %s to %s", *this,
+               old_device_id, device_id);
+      try
+      {
+        if (boost::lexical_cast<std::string>(old_device_id) == device_id)
+          return;
+        boost::uuids::uuid uuid =
+          boost::lexical_cast<boost::uuids::uuid>(device_id);
+        this->_device_uuid = uuid;
+        infinit::metrics::Reporter::metric_device_id(
+          boost::lexical_cast<std::string>(this->device_uuid()));
+        std::string path = this->local_configuration().device_id_path();
+        std::ofstream file(path);
+        if (!file.good())
+        {
+          ELLE_ERR("%s: unable to create device.uuid at %s", *this, path);
+          return;
+        }
+        file << this->device_uuid() << std::endl;
+        if (this->metrics_reporter())
+          this->metrics_reporter()->user_changed_device_id(
+            boost::lexical_cast<std::string>(old_device_id));
+      }
+      catch (boost::bad_lexical_cast const&)
+      {
+        ELLE_ERR("%s: unable to set device_id, invalid id: %s",
+                 *this, device_id);
+      }
+    }
+
     papier::Passport const&
     State::passport() const
     {

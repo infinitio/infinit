@@ -90,7 +90,12 @@ namespace infinit
 
       static
       void
-      metric_features(std::unordered_map<std::string, std::string> const& features);
+      metric_sender_language(std::string const& language);
+
+      static
+      void
+      metric_features(
+        std::unordered_map<std::string, std::string> const& features);
 
     /// Transaction metrics.
     public:
@@ -272,6 +277,9 @@ namespace infinit
       user_first_launch();
 
       void
+      user_changed_device_id(std::string const& old_device_id);
+
+      void
       user_proxy(reactor::network::ProxyType proxy_type);
 
       void
@@ -344,6 +352,10 @@ namespace infinit
       virtual
       void
       _user_first_launch();
+
+      virtual
+      void
+      _user_changed_device_id(std::string const& old_device_id);
 
       virtual
       void
@@ -440,6 +452,10 @@ namespace infinit
 
       static
       std::string
+      metric_sender_language();
+
+      static
+      std::string
       user_agent();
 
     /// Static class attributes.
@@ -455,6 +471,9 @@ namespace infinit
 
       static
       std::string _metric_sender_plan;
+
+      static
+      std::string _metric_sender_language;
 
       static
       std::unordered_map<std::string, std::string>
