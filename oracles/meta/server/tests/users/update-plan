@@ -219,14 +219,14 @@ with Stripe() as stripe:
       return keys
 
     test_suffix = stripe.suffix()
-    original_email = 'jean_%s@infinit.io' % test_suffix
+    original_email = 'serge_jean_%s@infinit.io' % test_suffix
     jean = User(meta, original_email)
     jean.login()
     meta.mailer = MailService()
     jean.update_plan('premium', stripe_token = stripe.pay(jean.email))
     check_premium_quotas(jean)
     stripe.check_plan(jean.email, 'premium', 999)
-    new_email = 'jean_pierre_%s@infinit.io' % test_suffix
+    new_email = 'serge_jean_pierre_%s@infinit.io' % test_suffix
     jean.put('user/accounts/%s' % new_email)
     keys = get_keys(meta.emailer.emails, 1)
     jean.post(
