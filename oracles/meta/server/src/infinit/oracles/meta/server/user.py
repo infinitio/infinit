@@ -3793,7 +3793,7 @@ class Mixin:
         self.database.users.update(
           {
             '_id': user['_id'],
-            'referred_by.id': {'$ne': inviter['_id']},
+            '$or': [{'referred_by.id': {'$ne': inviter['_id']}}, {'referred_by': {'$exists': False}}],
           },
           update,
         )
