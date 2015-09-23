@@ -168,8 +168,16 @@ def configure(production_build,
   python += drake.copy(sendwithus.nodes, build_python_path,
                        drake.Path('../..') / sendwithus.root)
   meta = drake.python.Package('python', build_python_path, python)
+
   build << python
   build_binary = drake.copy(drake.node('meta'), 'bin')
+  pymongo = drake.PythonModule(
+    'pymongo', version = '2.8',
+    python_path = drake.path_build('lib/python',
+                                   absolute = True),
+    dependencies = ['gridfs', 'bson'])
+  build_binary.dependencies_add(pymongo.targets())
+
   build << build_binary
   build << drake.copy(templates, 'share/infinit/meta/server')
   build << drake.copy(resources, 'share/infinit/meta/server')
