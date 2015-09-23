@@ -3912,6 +3912,7 @@ class Mixin:
     query = {
       'referred_by.id': referrer,
       'blocked_referrer' : {'$ne': referrer},
+      '_id': {'$ne': referrer},
     }
     if registered_user:
       query['last_connection'] = {'$exists': True}
@@ -4105,7 +4106,11 @@ class Mixin:
         if user.get('blocked_referrer'):
           was_referred = False
         else:
-          was_referred = True if len(user.get('referred_by', [])) else False
+          referred_by = user.get('referred_by', [])
+          was_referred = bool(len(list(
+            filter(lambda x: x['id'] != user['_id'] if isinstance(x, dict)
+                             else x != user['_id'],
+                   referred_by))))
         bonus = int(number_of_referred * bonuses['referrer'] + \
                     bonuses['referree'] * int(was_referred) + \
                     len(social_posts) * bonuses['social_post'] + \

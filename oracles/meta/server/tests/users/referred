@@ -230,3 +230,24 @@ with Meta() as meta:
   bob.delete('user')
   post_delete_quota = alice.me['quotas']
   assertEq(post_invite_quotas, post_delete_quota)
+
+def get_keys(emails, size):
+  assertEq(len(emails), size)
+  keys = {}
+  for email in emails:
+    if email.template == 'Confirm New Email Address':
+      keys[email.variables['email']] = email.variables['confirm_token']
+  return keys
+
+# Refer yourself.
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  original_quotas = alice.me['quotas']
+  alice.post('user/invite', {'identifier': 'alice2@infinit.io'})
+  alice.put('user/accounts/alice2@infinit.io')
+  keys = get_keys(meta.emailer.emails, 2)
+  alice.post(
+    'users/%s/accounts/%s/confirm' % (alice.email, 'alice2@infinit.io'),
+    {'confirm_token': keys['alice2@infinit.io']})
+  assertEq(original_quotas, alice.me['quotas'])
