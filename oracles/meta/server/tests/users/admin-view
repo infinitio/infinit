@@ -12,6 +12,7 @@ def view(as_admin):
     assertEq('plan' in res, as_admin)
     assertEq('email' in res, as_admin)
     assertEq('accounts' in res, as_admin)
+    assertEq('referrees' in res, as_admin)
 
     assert 'stripe' not in res
     user.put('users/%s' % user.id, {

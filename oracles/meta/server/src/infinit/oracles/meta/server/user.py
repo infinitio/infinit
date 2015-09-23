@@ -85,6 +85,8 @@ class Mixin:
       if 'stripe_id' in user:
         with self._stripe:
           user['stripe'] = self._stripe.fetch_customer(user).get('subscriptions', {})
+      user['referrees'] = list(sorted(self.__referred_by(user['id']),
+                                      key = lambda u: u['register_status']))
     return user
 
   def __sent_to_self(self, user):
