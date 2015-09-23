@@ -11,6 +11,13 @@ def get_quota(user):
 def get_used(user):
   return user.me['quotas']['send_to_self']['used']
 
+def wait(condition, duration):
+  for i in range(10):
+    if condition():
+      return
+    import time
+    time.sleep(duration / 10)
+
 def send_to_self(user, failure_expected = False):
   try:
     # Always make sure synchronize returns the same quota.
@@ -21,6 +28,7 @@ def send_to_self(user, failure_expected = False):
     del user.notifications[:]
     user.transaction_update(res['created_transaction_id'],
                             transaction_status.FINISHED)
+    wait(lambda: len(user.notifications) == 2, 1)
     notifications = user.notifications
     assertEq(len(notifications), 2) # Transaction + quota.
     notifications.sort()
