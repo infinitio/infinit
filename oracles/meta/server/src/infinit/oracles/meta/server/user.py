@@ -179,6 +179,7 @@ class Mixin:
         'os',
         'total_link_size',
         'stripe_id',
+        'referred_by',
       ] + self.__referral_fields
     return res
 
