@@ -5,7 +5,7 @@ from utils import *
 
 def view(as_admin):
   with Stripe() as stripe, Meta(stripe_api_key = Stripe.key, force_admin = as_admin) as meta:
-    user = User(meta, 'alice@infinit.io')
+    user = User(meta, 'alice+%s@infinit.io' % stripe.suffix())
     user.login()
     res = meta.get('users/' + user.id)
     assertEq('quotas' in res, as_admin)
