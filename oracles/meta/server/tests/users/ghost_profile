@@ -83,9 +83,9 @@ with Meta(enable_emails = True,
     _, res1 = bob.sendfile(email, initialize = True)
     _, res2 = bob.sendfile(bob.swaggers[0], initialize = True)
 
-    assert 'ghost_profile' not in res0['recipient']
-    assert 'ghost_profile' not in res1['recipient']
-    assert 'ghost_profile' not in res2['recipient']
+    assert 'ghost_profile' in res0['recipient']
+    assert 'ghost_profile' in res1['recipient']
+    assert 'ghost_profile' in res2['recipient']
 
     recipient = res0['recipient']
     t0 = res0['created_transaction_id']
