@@ -972,7 +972,7 @@ def configure(cxx_toolkit = None,
 
     # Top-level tests
     python_env = {
-      'PYTHONPATH': 'oracles/lib/python:lib/python',
+      'PYTHONPATH': 'oracles/lib/python:lib/python:oracles/meta/server/lib/python',
       'LC_ALL': 'en_US.UTF-8',
       'DUMPS': str(drake.path_source('tests/dumps')),
     }
