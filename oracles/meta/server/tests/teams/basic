@@ -710,8 +710,8 @@ with Stripe() as stripe:
     admin.invite_team_member(bob.email)
     bob.login()
     bob.join_team(team['id'])
-    throws(lambda: admin.update_plan(plan = 'basic'), 400)
-    throws(lambda: bob.update_plan(plan = 'basic'), 400)
+    throws(lambda: admin.update_plan(plan = 'basic'), 403)
+    throws(lambda: bob.update_plan(plan = 'basic'), 403)
 
   # XXX: Add tests for all admin functions calls.
 
