@@ -41,4 +41,4 @@ with Meta() as meta:
   ghost = meta.get('users/%s' % email_recipient['id'])
   assert 'phone_number' not in ghost
   assert 'ghost_code' not in ghost
-  assert 'ghost_profile' not in ghost
+  assert 'ghost_profile' in ghost # Used by iOS client for native email reminders.
