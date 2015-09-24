@@ -591,12 +591,16 @@ class Meta:
                   stripe,
                   name,
                   body,
-                  amount = 999):
+                  amount = 999,
+                  interval = 'month',
+                  interval_count = 1):
     previous_admin_state = self.inner._force_admin
     self.inner._force_admin = True
     plan = self.post('plans',
                      {
                        'body': body,
+                       'interval': interval,
+                       'interval_count': interval_count,
                        'stripe_info': {
                          'amount': amount,
                          'name': name,
@@ -1116,10 +1120,14 @@ class User(Client):
                   stripe,
                   name,
                   body,
-                  amount = 999):
+                  amount = 999,
+                  interval = 'mounth',
+                  interval_count = 1):
     plan = self.post('plans',
                      {
                        'body': body,
+                       'interval': interval,
+                       'interval_count': interval_count,
                        'stripe_info': {
                          'amount': amount,
                          'name': name,

@@ -1,0 +1,60 @@
+#! /usr/bin/env python3
+
+from utils import *# User, Meta, Sprite
+
+import random
+suffix = str(random.randint(1e9, 9e9))
+
+test_key = Stripe.key
+
+with Stripe() as stripe:
+
+    # Create a year plan.
+    with Meta(stripe_api_key = test_key, force_admin = True) as meta:
+        admin = User(meta, 'admin@infinit.io')
+        admin.login()
+        plan_creation_query = {
+          'name':  'year' + suffix,
+          'amount': 99900,
+          'interval': 'year',
+          'body': {
+            'quotas': {
+              'links': {
+              'default_storage': int(100e9)
+              }
+            }
+          }
+        }
+
+        year_plan = admin.create_plan(stripe = stripe, **plan_creation_query)
+        assertIn(year_plan['id'], admin.get('plans')['plans'])
+        assertEq(admin.get('plan/%s' % year_plan['id'])['stripe']['interval'], 'year')
+        assertEq(admin.get('plan/%s' % year_plan['id'])['stripe']['interval_count'], 1)
+        delete_plan = admin.delete('plan/%s' % year_plan['id'])
+
+    # Create a team with the year plan.
+    with Meta(stripe_api_key = test_key, force_admin = True) as meta:
+        # The setup.
+        admin = User(meta, 'admin@infinit.io')
+        admin.login()
+        plan_creation_query = {
+          'name':  'year' + suffix,
+          'amount': 99900,
+          'interval': 'year',
+          'body': {
+            'quotas': {
+              'links': {
+              'default_storage': int(100e9)
+              }
+            }
+          }
+        }
+        year_plan = admin.create_plan(stripe = stripe, **plan_creation_query)
+        # The actual test.
+        team_name = 'infinit_%s' % suffix
+        team = admin.create_team(
+            name = team_name, stripe_token = stripe.pay(admin.email),
+            plan = year_plan['id'])
+        stripe.check_plan(admin.email, year_plan['id'], quantity = 1)
+        # The cleanup.
+        delete_plan = admin.delete('plan/%s' % year_plan['id'])

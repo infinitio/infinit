@@ -4,6 +4,8 @@ class BuiltInPlans:
   def basic():
     return {
       'name': 'basic',
+      'interval': 'mounth',
+      'interval_count': 1,
       'quotas': {
         'p2p': {
           'size_limit': int(1e10),
@@ -32,6 +34,8 @@ class BuiltInPlans:
   def plus():
     return {
       'name': 'plus',
+      'interval': 'mounth',
+      'interval_count': 1,
       'quotas': {
         'p2p': {
           'size_limit': None,
@@ -60,6 +64,8 @@ class BuiltInPlans:
   def premium():
     return {
       'name': 'premium',
+      'interval': 'mounth',
+      'interval_count': 1,
       'quotas': {
         'p2p': {
           'size_limit': None,
@@ -88,6 +94,8 @@ class BuiltInPlans:
   def team():
     return {
       'name': 'team',
+      'interval': 'mounth',
+      'interval_count': 1,
       'team': True,
       'quotas': {
         'p2p': {
