@@ -900,7 +900,7 @@ class User(Client):
       body.update({'stripe_token': stripe_token})
     if stripe_coupon:
       body.update({'stripe_coupon': stripe_coupon})
-    return self.put('users/update', body)
+    return self.put('user/update', body)
 
 
   @property
