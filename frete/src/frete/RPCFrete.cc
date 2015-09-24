@@ -1,4 +1,4 @@
-#include <elle/Version.hh>
+#include <elle/VersionSerialization.hxx>
 
 #include <protocol/ChanneledStream.hh>
 #include <protocol/RPC.hh>
