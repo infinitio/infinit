@@ -74,10 +74,12 @@ class Mixin:
       if 'ghost_code' in user:
         if 'phone_number' not in user:
           del user['ghost_code']
+          ghost_type = 'email'
         else:
-          user['ghost_profile'] = user.get(
-            'shorten_ghost_profile_url',
-            self.__ghost_profile_url(user, type = 'phone'))
+          ghost_type = 'phone'
+        user['ghost_profile'] = user.get(
+          'shorten_ghost_profile_url',
+          self.__ghost_profile_url(user, type = ghost_type))
         if 'shorten_ghost_profile_url' in user:
           del user['shorten_ghost_profile_url']
     if self.admin:
