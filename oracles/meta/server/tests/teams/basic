@@ -698,6 +698,21 @@ with Stripe() as stripe:
     __check_left_email(
       meta.emailer.template('Left')[0], admin.email, admin, team, alice)
 
+  # Team members cannot change their plan.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    admin = User(meta, 'boss_%s@infinit.io' % test_suffix)
+    admin.login()
+    team = admin.create_team(
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(admin.email))
+    bob = User(meta, 'bob_%s@infinit.io' % test_suffix)
+    admin.invite_team_member(bob.email)
+    bob.login()
+    bob.join_team(team['id'])
+    throws(lambda: admin.update_plan(plan = 'basic'), 400)
+    throws(lambda: bob.update_plan(plan = 'basic'), 400)
+
   # XXX: Add tests for all admin functions calls.
 
   # # Infinit administration.
