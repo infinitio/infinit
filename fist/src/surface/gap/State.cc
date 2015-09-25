@@ -1237,16 +1237,16 @@ namespace surface
                 else
                   ELLE_DEBUG("ignore finalized transaction %s", t.second);
               }
-           this->_synchronize_response.reset(
-             new infinit::oracles::meta::SynchronizeResponse{this->meta().synchronize(false)});
-           this->_account(this->_synchronize_response->account);
-           this->_devices(this->_synchronize_response->devices);
-           this->_external_accounts(
-             this->_synchronize_response->external_accounts);
+            this->_synchronize_response.reset(
+              new infinit::oracles::meta::SynchronizeResponse{this->meta().synchronize(false)});
+            this->_account(this->_synchronize_response->account);
+            this->_devices(this->_synchronize_response->devices);
+            this->_external_accounts(
+              this->_synchronize_response->external_accounts);
+            // This is never the first call to _user_resync as the function is
+            // called in login.
+            this->_user_resync(this->_synchronize_response->swaggers, false);
           }
-          // This is never the first call to _user_resync as the function is
-          // called in login.
-          this->_user_resync(this->_synchronize_response->swaggers, false);
           this->_peer_transaction_resync(
             this->_synchronize_response->transactions, first_connection);
           this->_link_transaction_resync(
