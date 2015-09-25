@@ -60,10 +60,13 @@ namespace tests
   std::string
   User::json() const
   {
-    elle::Buffer serialized =
-      elle::serialization::json::serialize(
-        static_cast<infinit::oracles::meta::User>(*this));
-    return serialized.string();
+    std::stringstream ss;
+    {
+      elle::serialization::json::SerializerOut output(ss, false);
+      auto meta_user = static_cast<infinit::oracles::meta::User>(*this);
+      meta_user.serialize(output);
+    }
+    return ss.str();
   }
 
   Client::Client(Server& server,

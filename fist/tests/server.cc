@@ -139,7 +139,7 @@ namespace tests
         std::stringstream res;
         {
           namespace meta_ns = infinit::oracles::meta;
-          elle::serialization::json::SerializerOut output(res);
+          elle::serialization::json::SerializerOut output(res, false);
           std::vector<meta_ns::User> swaggers;
           for (auto const& u: user.swaggers)
             swaggers.emplace_back(*u);
@@ -566,7 +566,7 @@ namespace tests
           socket->write(transaction_notification);
         std::stringstream res;
         {
-          elle::serialization::json::SerializerOut output(res);
+          elle::serialization::json::SerializerOut output(res, false);
           output.serialize("updated_transaction_id", tr.id);
           if (t.status == infinit::oracles::Transaction::Status::accepted)
           {
@@ -791,7 +791,7 @@ namespace tests
         }
         std::stringstream res;
         {
-          elle::serialization::json::SerializerOut output(res);
+          elle::serialization::json::SerializerOut output(res, false);
           output.serialize("updated_transaction_id", tr.id);
           if (tr.status == infinit::oracles::Transaction::Status::accepted)
           {
@@ -822,7 +822,7 @@ namespace tests
             "", "", "", "region", "bucket", "folder", tomorrow, now));
         std::stringstream res;
         {
-          elle::serialization::json::SerializerOut output(res);
+          elle::serialization::json::SerializerOut output(res, false);
           output.serialize_forward(creds);
         }
         (*this->_transactions.find(id))->cloud_credentials() = std::move(creds);

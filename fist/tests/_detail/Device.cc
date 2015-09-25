@@ -27,9 +27,12 @@ namespace tests
   std::string
   Device::json() const
   {
-    elle::Buffer serialized =
-      elle::serialization::json::serialize(
-        static_cast<infinit::oracles::meta::Device>(*this));
-    return serialized.string();
+    std::stringstream ss;
+    {
+      elle::serialization::json::SerializerOut output(ss, false);
+      auto meta_device = static_cast<infinit::oracles::meta::Device>(*this);
+      meta_device.serialize(output);
+    }
+    return ss.str();
   }
 }

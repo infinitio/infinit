@@ -138,10 +138,14 @@ namespace tests
   std::string
   Trophonius::json() const
   {
-    elle::Buffer serialized =
-      elle::serialization::json::serialize(
-        static_cast<infinit::oracles::meta::LoginResponse::Trophonius>(*this));
-    return serialized.string();
+    std::stringstream ss;
+    {
+      elle::serialization::json::SerializerOut output(ss, false);
+      auto meta_tropho =
+        static_cast<infinit::oracles::meta::LoginResponse::Trophonius>(*this);
+      meta_tropho.serialize(output);
+    }
+    return ss.str();
   }
 }
 

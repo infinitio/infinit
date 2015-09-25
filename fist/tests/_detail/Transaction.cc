@@ -32,12 +32,12 @@ namespace tests
   std::string
   Transaction::json()
   {
-    std::stringstream notification_stream;
+    std::stringstream ss;
     {
-      typename elle::serialization::json::SerializerOut output(notification_stream);
+      elle::serialization::json::SerializerOut output(ss, false);
       this->serialize(output);
     }
-    return notification_stream.str();
+    return ss.str();
   }
 
   std::string const&
