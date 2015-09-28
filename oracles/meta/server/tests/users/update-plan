@@ -192,6 +192,34 @@ with Stripe() as stripe:
     user.delete('user')
     stripe.check_plan(user.email, 'premium', 999, canceled = True)
 
+  # Create a coupon and use it.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    from stripe import Coupon
+    Coupon.create(
+      api_key = Stripe.key,
+      percent_off=100,
+      duration='once',
+      max_redemptions = 1,
+      id=stripe.suffix())
+    test_suffix = stripe.suffix()
+    user = User(meta, 'coupon_%s@infinit.io' % test_suffix)
+    user.login()
+    p = user.update_plan('premium', stripe_token = stripe.pay(user.email), stripe_coupon = stripe.suffix())
+    check_premium_quotas(user)
+    data = stripe.check_plan(user.email, 'premium', 999)
+    coupon = data[0]['discount']['coupon']
+    assert coupon['max_redemptions'] == 1
+    assert coupon['times_redeemed'] == 1
+    user.delete('user')
+    data = stripe.check_plan(user.email, 'premium', 999, canceled = True)
+    coupon = data[0]['discount']['coupon']
+    assert coupon['max_redemptions'] == 1
+    assert coupon['times_redeemed'] == 1
+    user2 = User(meta, 'coupon_2_%s@infinit.io' % test_suffix)
+    user2.login()
+    throws(lambda: user2.update_plan('premium', stripe_token = stripe.pay(user2.email), stripe_coupon = stripe.suffix()),
+           403)
+
   # Change email address.
   with Meta(stripe_api_key = Stripe.key) as meta:
     # Pasted from auxiliary_emails

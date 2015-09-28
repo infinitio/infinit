@@ -187,16 +187,15 @@ class Stripe:
     """
     return self.__fetch_invoices(customer, before, after, paid_only = True)
 
-  def set_plan(self, customer, subscription, plan, coupon):
+  def set_plan(self, customer, subscription, plan):
     elle.log.trace(
-      'set plan (customer: %s, subscription: %s, plan: %s, coupon: %s)'
-      % (customer, subscription, plan, coupon))
+      'set plan (customer: %s, subscription: %s, plan: %s)'
+      % (customer, subscription, plan))
     assert self.__in_with >= 0
     if subscription is None:
       elle.log.trace('create subscription')
       subscription = customer.subscriptions.create(
-        plan = plan, coupon = coupon)
-      coupon = None
+        plan = plan)
     else:
       elle.log.debug('update subscription')
       subscription.plan = plan
@@ -212,7 +211,8 @@ class Stripe:
                    % (customer, plan, coupon))
     subscription = self.subscription(customer)
     if plan is not None:
-      subscription = self.set_plan(customer, subscription, plan, coupon)
+      # Coupon will be applied after.
+      subscription = self.set_plan(customer, subscription, plan)
     else:
       if coupon is None:
         if subscription is not None:

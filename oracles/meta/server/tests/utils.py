@@ -682,6 +682,7 @@ class Stripe():
           cu.delete()
       if not users['has_more']:
         break
+
     # Remove created plans.
     cursor = None
     while True:
@@ -695,6 +696,21 @@ class Stripe():
           p = stripe.Plan.retrieve(plan['id'])
           p.delete()
       if not plans['has_more']:
+        break
+
+    # Remove coupons.
+    cursor = None
+    while True:
+      if cursor:
+        coupons = stripe.Coupon.all(limit = 100, starting_after = cursor)
+      else:
+        coupons = stripe.Coupon.all(limit = 100)
+      for coupon in coupons['data']:
+        cursor = coupon['id']
+        if self.suffix() in coupon['id']:
+          p = stripe.Coupon.retrieve(coupon['id'])
+          p.delete()
+      if not coupons['has_more']:
         break
 
   def pay(self, email):
@@ -746,7 +762,7 @@ class Stripe():
           assertEq(sub['cancel_at_period_end'], True)
         if quantity is not None:
           assertEq(sub['quantity'], quantity)
-        return
+        return data
     raise StripeTestException(
       'unable to find subscription with plan (%s) for %s' % (plan, email))
 
