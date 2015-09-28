@@ -236,7 +236,7 @@ _change_synchronize_route(tests::Server& server,
       {
         namespace meta_ns = infinit::oracles::meta;
         typedef std::vector<int> EmptyList;
-        elle::serialization::json::SerializerOut output(res);
+        elle::serialization::json::SerializerOut output(res, false);
         output.serialize("swaggers", EmptyList{});
         output.serialize("running_transactions", EmptyList{});
         output.serialize("final_transactions", EmptyList{});
