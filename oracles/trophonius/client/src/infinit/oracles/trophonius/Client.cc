@@ -245,17 +245,17 @@ namespace infinit
           }
           case NotificationType::peer_transaction:
           {
-            elle::serialization::json::SerializerIn input(json);
+            elle::serialization::json::SerializerIn input(json, false);
             return elle::make_unique<PeerTransactionNotification>(input);
           }
           case NotificationType::link_transaction:
           {
-            elle::serialization::json::SerializerIn input(json);
+            elle::serialization::json::SerializerIn input(json, false);
             return elle::make_unique<LinkTransactionNotification>(input);
           }
           case NotificationType::user_status:
           {
-            elle::serialization::json::SerializerIn input(json);
+            elle::serialization::json::SerializerIn input(json, false);
             return elle::make_unique<UserStatusNotification>(input);
           }
           case NotificationType::model_update:
@@ -264,22 +264,22 @@ namespace infinit
           }
           case NotificationType::paused:
           {
-            elle::serialization::json::SerializerIn input(json);
+            elle::serialization::json::SerializerIn input(json, false);
             return elle::make_unique<PausedNotification>(input);
           }
           case NotificationType::message:
           {
-            elle::serialization::json::SerializerIn input(json);
+            elle::serialization::json::SerializerIn input(json, false);
             return elle::make_unique<MessageNotification>(input);
           }
           case NotificationType::new_swagger:
           {
-            elle::serialization::json::SerializerIn input(json);
+            elle::serialization::json::SerializerIn input(json, false);
             return elle::make_unique<NewSwaggerNotification>(input);
           }
           case NotificationType::deleted_swagger:
           {
-            elle::serialization::json::SerializerIn input(json);
+            elle::serialization::json::SerializerIn input(json, false);
             return elle::make_unique<DeletedSwaggerNotification>(input);
           }
           default:
