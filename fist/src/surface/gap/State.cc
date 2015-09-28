@@ -1585,7 +1585,7 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: apply configuration: %s", *this, json);
       if (json.find("features") != json.end())
         this->_configuration.features.clear();
-      elle::serialization::json::SerializerIn input(json);
+      elle::serialization::json::SerializerIn input(json, false);
       input.partial(true);
       this->_configuration.serialize(input);
       infinit::metrics::Reporter::metric_features(
@@ -1648,7 +1648,7 @@ namespace surface
       elle::With<elle::AtomicFile::Write>(snapshot.write())
         << [&] (elle::AtomicFile::Write& write)
       {
-        elle::serialization::json::SerializerOut output(write.stream());
+        elle::serialization::json::SerializerOut output(write.stream(), false);
         output.serialize("codes", this->_ghost_codes);
       };
     }
