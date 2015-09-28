@@ -143,7 +143,9 @@ namespace tests
 
 class SleepyServer : public Server
   {
-    virtual void _maybe_sleep() override;
+    virtual
+    void
+    _maybe_sleep() override;
   public:
     reactor::Barrier started_blocking;
   };
