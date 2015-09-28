@@ -124,7 +124,7 @@ namespace surface
       uint64_t file_size = boost::filesystem::file_size(file_path);
       using reactor::http::StatusCode;
       using reactor::http::Request;
-      std::vector<StatusCode> transient = {
+      static const std::vector<StatusCode> transient = {
         StatusCode::Request_Timeout,
         StatusCode::Internal_Server_Error,
         StatusCode::Bad_Gateway,
@@ -132,12 +132,13 @@ namespace surface
         StatusCode::Gateway_Timeout
       };
       int attempt = 0;
-      auto status_check = [&](reactor::http::StatusCode s, Request& r) -> bool
+      auto status_check = [&](Request& r) -> bool
       {
-        if ((int)s != 308 && ((int)s/100) != 2)
+        auto status = r.status();
+        if ((int)status != 308 && ((int)status/100) != 2)
         {
-          ELLE_WARN("GCS error status %s: %s", s, r.response());
-          if (std::find(transient.begin(), transient.end(), r.status())
+          ELLE_WARN("GCS error status %s: %s", status, r.response());
+          if (std::find(transient.begin(), transient.end(), status)
             == transient.end())
           {
             // the error is fatal
@@ -163,7 +164,7 @@ namespace surface
           Request::Configuration conf;
           conf.header_add("Content-Length", "0");
           conf.header_add("Content-Range",
-                          "bytes */*"/* + boost::lexical_cast<std::string>(file_size)*/);
+                          "bytes */*");
           Request r(url, reactor::http::Method::PUT, conf);
           reactor::wait(r);
           auto h = r.headers();
@@ -173,7 +174,7 @@ namespace surface
             ELLE_TRACE("%s: Upload reported finished", *this);
             return;
           }
-          else if (!status_check(r.status(), r))
+          else if (!status_check(r))
             continue;
           uint64_t position = 0;
           auto it = h.find("Range");
@@ -193,6 +194,7 @@ namespace surface
           // We can use huge chunks, an abort mid-chunk will still save the
           // part that was uploaded.
           static const int chunk_factor = 262144 * 50;
+          bool upload_successful = true;
           while (position < file_size)
           {
             bool last = false;
@@ -225,13 +227,14 @@ namespace surface
                     buffer.size());
             r.finalize();
             reactor::wait(r);
-            if (!status_check(r.status(), r))
+            upload_successful = status_check(r);
+            if (!upload_successful)
               break;
             else
               position = end;
           }
-          // end reached
-          break;
+          if (upload_successful) // end reached.
+            break;
         }
         catch(reactor::network::Exception const& e)
         {

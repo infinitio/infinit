@@ -3005,6 +3005,11 @@ class Mixin:
                                  stripe_token = None,
                                  stripe_coupon = None,
                                  ):
+    if Team.team_for_user(self, self.user):
+      return self.forbidden({
+        'error': 'user_in_team',
+        'reason': 'User cannot change plan when part of a team.'
+      })
     return self._user_update(self.user,
                              plan = plan,
                              stripe_token = stripe_token,

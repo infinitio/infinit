@@ -334,36 +334,39 @@ namespace surface
           std::unique(user.connected_devices.begin(),
                       user.connected_devices.end()),
           user.connected_devices.end());
-        auto res = compare<elle::UUID>(
-          old_user.connected_devices, user.connected_devices);
+        if (!login)
+        {
+          auto res = compare<elle::UUID>(
+            old_user.connected_devices, user.connected_devices);
 
-        ELLE_DEBUG("%s: %s newly connected device(s): %s",
-                   this, res.first.size(), res.first)
-          for (auto const& device: init ? swagger.connected_devices : res.first)
-          {
-            ELLE_DEBUG("%s: updating device %s", *this, device);
-            std::unique_ptr<trophonius::UserStatusNotification> notif{new
-                trophonius::UserStatusNotification};
-            notif->user_id = user.id;
-            notif->user_status = user.online();
-            notif->device_id = device;
-            notif->device_status = true;
-            this->handle_notification(std::move(notif));
-          }
+          ELLE_DEBUG("%s: %s newly connected device(s): %s",
+                     this, res.first.size(), res.first)
+            for (auto const& device: init ? swagger.connected_devices : res.first)
+            {
+              ELLE_DEBUG("%s: updating device %s", *this, device);
+              std::unique_ptr<trophonius::UserStatusNotification> notif{new
+                  trophonius::UserStatusNotification};
+              notif->user_id = user.id;
+              notif->user_status = user.online();
+              notif->device_id = device;
+              notif->device_status = true;
+              this->handle_notification(std::move(notif));
+            }
 
-        ELLE_DEBUG("%s: %s disconnected device(s): %s",
-                   this, res.second.size(), res.second)
-          for (auto const& device: res.second)
-          {
-            ELLE_DEBUG("%s: updating device %s", *this, device);
-            std::unique_ptr<trophonius::UserStatusNotification> notif{new
-                trophonius::UserStatusNotification};
-            notif->user_id = user.id;
-            notif->user_status = user.online();
-            notif->device_id = device;
-            notif->device_status = false;
-            this->handle_notification(std::move(notif));
-          }
+          ELLE_DEBUG("%s: %s disconnected device(s): %s",
+                     this, res.second.size(), res.second)
+            for (auto const& device: res.second)
+            {
+              ELLE_DEBUG("%s: updating device %s", *this, device);
+              std::unique_ptr<trophonius::UserStatusNotification> notif{new
+                  trophonius::UserStatusNotification};
+              notif->user_id = user.id;
+              notif->user_status = user.online();
+              notif->device_id = device;
+              notif->device_status = false;
+              this->handle_notification(std::move(notif));
+            }
+        }
       }
 
       for (std::string const& user_id: this->me().favorites)
