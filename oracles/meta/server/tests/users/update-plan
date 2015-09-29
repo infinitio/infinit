@@ -278,4 +278,3 @@ with Stripe() as stripe:
     # Add email address to stripe list for cleanup.
     stripe.emails.add(new_email)
     throws(lambda: stripe.customer_with_email(original_email), StripeTestException)
-
