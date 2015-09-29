@@ -359,27 +359,31 @@ class Mixin:
     ret_msg = {'code': error[0], 'message': error[1]}
     response(403, ret_msg)
 
-  def remove_current_session(self, user = None, device = None):
-    for key in ['identifier', 'email']:
-      if key in bottle.request.session:
-        # Web sessions have no device.
-        if 'device' in bottle.request.session:
-          self.database.users.update(
-            {'devices.id': bottle.request.session['device']},
-            {'$unset': {'devices.$.push_token': True}},
-          )
-          del bottle.request.session['device']
-        if 'facebook_access_token' in bottle.request.session:
-          del bottle.request.session['facebook_access_token']
-        del bottle.request.session[key]
-        return True
-    return False
+  def remove_current_session(self):
+    with elle.log.debug('remove current session'):
+      for key in ['identifier', 'email']:
+        if key in bottle.request.session:
+          elle.log.debug('remove %s from session %s' % (
+            key, bottle.request.session))
+          # Web sessions have no device.
+          if 'device' in bottle.request.session:
+            self.database.users.update(
+              {'devices.id': bottle.request.session['device']},
+              {'$unset': {'devices.$.push_token': True}},
+            )
+            del bottle.request.session['device']
+          if 'facebook_access_token' in bottle.request.session:
+            del bottle.request.session['facebook_access_token']
+          del bottle.request.session[key]
+          return True
+      return False
 
   def remove_session(self, user, device = None):
-    query = ({'identifier': {'$in': [user.get('email'), user['_id']]}})
-    if device:
-      query.update({'device': device['id']})
-    self.sessions.remove(query)
+    with elle.log.debug('remove session for %s' % user['_id']):
+      query = ({'identifier': {'$in': [user.get('email'), user['_id']]}})
+      if device:
+        query.update({'device': device['id']})
+      self.sessions.remove(query)
 
   def _login(self,
              email: utils.enforce_as_email_address,
@@ -780,6 +784,8 @@ class Mixin:
   def kickout(self, reason, user = None):
     if user is None:
       user = self.user
+    # Remove sessions.
+    self.remove_session(user)
     with elle.log.trace('kickout %s: %s' % (user['_id'], reason)):
       self.remove_session(user)
       self.notifier.notify_some(
@@ -1689,52 +1695,61 @@ class Mixin:
     for arg, validator in _validators:
       res = validator(arg)
       if res != 0:
-        return self.fail(res)
+        return self.bad_request(
+          {
+            'code': res[0],
+            'reason': res[1],
+          })
     user = self.user
-    if 'email' not in user:
-      self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
-    if user['password'] != hash_password(old_password):
-      return self.fail(error.PASSWORD_NOT_VALID)
-    # Invalidate credentials.
-    self.remove_session(user)
-    # Kick them out of the app.
-    self.notifier.notify_some(
-      notifier.INVALID_CREDENTIALS,
-      recipient_ids = {self.user['_id']},
-      message = {'response_details': 'user password changed'})
-    self.logout()
-    # Cancel transactions as identity will change.
-    self.cancel_transactions(user)
+    with elle.log.trace('%s: change password' % user['_id']):
+      if 'email' not in user:
+        self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
+      if user['password'] != hash_password(old_password):
+        return self.bad_request(
+          {
+            'code': error.PASSWORD_NOT_VALID[0],
+            'reason': error.PASSWORD_NOT_VALID[1]
+          })
+      # Invalidate credentials.
+      self.remove_session(user)
+      # Kick them out of the app.
+      self.notifier.notify_some(
+        notifier.INVALID_CREDENTIALS,
+        recipient_ids = {self.user['_id']},
+        message = {'response_details': 'user password changed'})
+      self.logout()
+      # Cancel transactions as identity will change.
+      self.cancel_transactions(user)
 
-    assert 'email' in user
-    with elle.log.trace('generate identity'):
-      identity, public_key = papier.generate_identity(
-        str(user['_id']),  # Unique ID.
-        user['email'],    # Description.
-        new_password,     # Password.
-        conf.INFINIT_AUTHORITY_PATH,
-        conf.INFINIT_AUTHORITY_PASSWORD
+      assert 'email' in user
+      with elle.log.trace('generate identity'):
+        identity, public_key = papier.generate_identity(
+          str(user['_id']),  # Unique ID.
+          user['email'],    # Description.
+          new_password,     # Password.
+          conf.INFINIT_AUTHORITY_PATH,
+          conf.INFINIT_AUTHORITY_PASSWORD
+        )
+      operation = {
+        '$set': {
+          'password': hash_password(new_password),
+          'identity': identity,
+          'public_key': public_key
+        }
+      }
+      if new_password_hash is not None:
+        operation['$set'].update({
+          'password_hash': utils.password_hash(new_password_hash)
+        })
+      else:
+        operation['$unset'] = {
+          'password_hash': True
+        }
+      self.database.users.update(
+        {'_id': user['_id']},
+        operation
       )
-    operation = {
-      '$set': {
-        'password': hash_password(new_password),
-        'identity': identity,
-        'public_key': public_key
-      }
-    }
-    if new_password_hash is not None:
-      operation['$set'].update({
-        'password_hash': utils.password_hash(new_password_hash)
-      })
-    else:
-      operation['$unset'] = {
-        'password_hash': True
-      }
-    self.database.users.update(
-      {'_id': user['_id']},
-      operation
-    )
-    return self.success()
+      return self.success()
 
   ## ------ ##
   ## Delete ##
@@ -3197,14 +3212,12 @@ class Mixin:
     self.check_signature(
       {'action': 'reset-password', 'email': email},
       reset_token)
-    # Remove sessions.
-    self.remove_session(user)
     # Cancel all the current transactions.
     self.cancel_transactions(user)
     # Remove all the devices from the user because they are based on
     # his old public key.
-    self.remove_devices(user)
     self.kickout('account was reset', user = user)
+    self.remove_devices(user)
     import papier
     identity, public_key = papier.generate_identity(
       str(user['_id']),

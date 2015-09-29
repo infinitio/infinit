@@ -779,22 +779,29 @@ class User(Client):
                device_name = 'device',
                facebook = False,
                version = None,
+               user_to_copy = None,
                **kwargs):
     super().__init__(meta, version)
-    if not facebook:
-      self.email = email is not None and email or random_email() + '@infinit.io'
-      self.password, self.email_confirmation_token = \
-        meta.create_user(self.email,
-                         get_confirmation_code = True,
-                         **kwargs)
-      self.__id = meta.get('users/%s' % self.email)['id']
+    if user_to_copy is None:
+      if not facebook:
+        self.email = email is not None and email or random_email() + '@infinit.io'
+        self.password, self.email_confirmation_token = \
+          meta.create_user(self.email,
+                           get_confirmation_code = True,
+                           **kwargs)
+        self.__id = meta.get('users/%s' % self.email)['id']
+      else:
+        self.__id = None
     else:
-      self.__id = None
+      self.email = user_to_copy.email
+      self.password = user_to_copy.password
+      self.__id = user_to_copy.id
     self.device_id = uuid4()
     self.trophonius = None
     self.__version = version or \
                      infinit.oracles.meta.server.Meta.extract_version(
                        Version.version, '')
+
 
   def on_other_device(self):
     from copy import copy
