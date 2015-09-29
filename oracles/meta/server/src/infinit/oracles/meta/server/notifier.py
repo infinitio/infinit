@@ -257,49 +257,64 @@ class Notifier:
       elle.log.trace('Android notification: %s' % r.content)
 
   def prepare_notification(self, notification_type, device, owner, message, os):
+    alert = None
     content_available = False
-    badge = 0
+    badge = None
     sound = None
     if notification_type == PEER_TRANSACTION:
       sender_id = str(message['sender_id'])
       recipient_id = str(message['recipient_id'])
       status = int(message['status'])
-      if (str(owner) == sender_id) and (device == message['sender_device_id']):
-        if status not in [transaction_status.REJECTED, transaction_status.FINISHED]:
+      is_sender = \
+        (str(owner) == sender_id) and (device == message['sender_device_id'])
+      is_recipient = str(owner) == recipient_id
+      if is_sender:
+        sender_statuses = [
+          transaction_status.REJECTED,
+          transaction_status.FINISHED,
+        ]
+        if status not in sender_statuses:
           return None
-      elif str(owner) == recipient_id:
-        if status not in [transaction_status.INITIALIZED]:
+      elif is_recipient:
+        recipient_statuses = [
+          transaction_status.INITIALIZED,
+          transaction_status.ACCEPTED,
+          transaction_status.REJECTED,
+          transaction_status.FAILED,
+        ]
+        if status not in recipient_statuses:
           return None
-        badge = 1
-        sound = 'default'
       else:
         return None
       if sender_id == recipient_id:
         to_self = True
       else:
         to_self = False
-      alert = None
       if message['files_count'] == 1:
         files = 'file'
       else:
         files = 'files'
-      if status is transaction_status.INITIALIZED: # Only sent to recipient
-        if to_self:
-          if message['recipient_device_id'] == device:
-            alert = 'Open Infinit for the transfer to begin'
-          elif message['recipient_device_id'] == '':
-            alert = 'Accept transfer from another device'
-        else:
-          alert = 'Accept transfer from %s' % message['sender_fullname']
-      elif status is transaction_status.REJECTED: # Only sent to sender
-        if not to_self:
-          alert = 'Canceled by %s' % message['recipient_fullname']
-      elif status is transaction_status.FINISHED:
-        if to_self:
-          alert = 'Transfer received'
-        else:
-          alert = 'Transfer received by %s' % message['recipient_fullname']
-      if alert is None:
+      if is_recipient:
+        badge = self._user_device_receivable_transactions_count(owner, device)
+        if status is transaction_status.INITIALIZED:
+          sound = 'default'
+          if to_self:
+            if message['recipient_device_id'] == device:
+              alert = 'Open Infinit for the transfer to begin'
+            elif message['recipient_device_id'] == '':
+              alert = 'Accept transfer from another device'
+          else:
+            alert = 'Accept transfer from %s' % message['sender_fullname']
+      elif is_sender:
+        if status is transaction_status.REJECTED:
+          if not to_self:
+            alert = 'Canceled by %s' % message['recipient_fullname']
+        elif status is transaction_status.FINISHED:
+          if to_self:
+            alert = 'Transfer received'
+          else:
+            alert = 'Transfer received by %s' % message['recipient_fullname']
+      if alert is None and badge is None:
         return None
       if os == 'iOS':
         return apns.Payload(alert = alert,
@@ -324,3 +339,14 @@ class Notifier:
         return {'title': 'Infinit', 'message': alert}
     else:
       return None
+
+  def _user_device_receivable_transactions_count(self, user, device):
+    user_id = user['_id'] if isinstance(user, dict) else user
+    device_id = device['id'] if isinstance(device, dict) else device
+    from pymongo import DESCENDING
+    res = self.database.transactions.find({
+      'recipient_id': bson.ObjectId(user_id),
+      'status': transaction_status.INITIALIZED,
+      'recipient_device_id': {'$in': ['', device_id]}
+    }).count()
+    return res
