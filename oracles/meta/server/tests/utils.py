@@ -1144,6 +1144,10 @@ class User(Client):
     stripe.plans.add(plan['id'])
     return plan
 
+  @property
+  def invoices(self):
+    return self.get('user/invoices')
+
   def create_team(self,
                   name,
                   stripe_token,

@@ -220,6 +220,16 @@ with Stripe() as stripe:
     throws(lambda: user2.update_plan('premium', stripe_token = stripe.pay(user2.email), stripe_coupon = stripe.suffix()),
            403)
 
+  # Invoices.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    throws(lambda: user.invoices, 404)
+    res = user.update_plan('premium', stripe_token = stripe.pay(user.email))
+    invoices = user.invoices['invoices']
+    assert len(invoices) == 1
+
   # Change email address.
   with Meta(stripe_api_key = Stripe.key) as meta:
     # Pasted from auxiliary_emails
