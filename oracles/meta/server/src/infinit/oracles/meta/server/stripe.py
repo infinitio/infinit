@@ -187,7 +187,7 @@ class Stripe:
     """
     return self.__fetch_invoices(customer, before, after, paid_only = True)
 
-  def set_plan(self, customer, subscription, plan):
+  def set_plan(self, customer, subscription, plan, coupon):
     elle.log.trace(
       'set plan (customer: %s, subscription: %s, plan: %s)'
       % (customer, subscription, plan))
@@ -195,7 +195,7 @@ class Stripe:
     if subscription is None:
       elle.log.trace('create subscription')
       subscription = customer.subscriptions.create(
-        plan = plan)
+        plan = plan, coupon = coupon)
     else:
       elle.log.debug('update subscription')
       subscription.plan = plan
@@ -210,9 +210,11 @@ class Stripe:
     elle.log.trace('update subscription (customer: %s, plan: %s, coupon: %s)'
                    % (customer, plan, coupon))
     subscription = self.subscription(customer)
+    coupon_used = False
     if plan is not None:
-      # Coupon will be applied after.
-      subscription = self.set_plan(customer, subscription, plan)
+      subscription = self.set_plan(customer, subscription, plan, coupon = coupon)
+      if coupon is not None:
+        coupon_used = True
     else:
       if coupon is None:
         if subscription is not None:
@@ -224,7 +226,8 @@ class Stripe:
           'reason': 'cannot use a coupon on basic plan',
         })
       elle.log.debug('set coupon (%s)' % coupon)
-      subscription.coupon = coupon
+      if not coupon_used:
+        subscription.coupon = coupon
     if subscription:
       elle.log.debug('save subscription: %s' % subscription)
       subscription = subscription.save()
