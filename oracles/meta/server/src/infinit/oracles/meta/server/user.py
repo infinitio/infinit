@@ -1695,21 +1695,13 @@ class Mixin:
     for arg, validator in _validators:
       res = validator(arg)
       if res != 0:
-        return self.bad_request(
-          {
-            'code': res[0],
-            'reason': res[1],
-          })
+        return self.fail(res)
     user = self.user
     with elle.log.trace('%s: change password' % user['_id']):
       if 'email' not in user:
         self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
       if user['password'] != hash_password(old_password):
-        return self.bad_request(
-          {
-            'code': error.PASSWORD_NOT_VALID[0],
-            'reason': error.PASSWORD_NOT_VALID[1]
-          })
+        return self.fail(error.PASSWORD_NOT_VALID)
       # Invalidate credentials.
       self.remove_session(user)
       # Kick them out of the app.
