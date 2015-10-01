@@ -746,9 +746,11 @@ class Stripe():
                  email,
                  plan_id,
                  amount = None,
-                 percent_off = None,
+                 percent_off = 0,
                  canceled = False,
-                 quantity = None):
+                 quantity = None,
+                 check_next_invoice = False):
+    check_next_invoice = check_next_invoice and not canceled
     customer = self.customer_with_email(email)
     data = customer['subscriptions']['data']
     assertNeq(len(data), 0)
@@ -756,7 +758,11 @@ class Stripe():
       if sub['plan']['id'] == plan_id:
         if amount is not None:
           assertEq(sub['plan']['amount'], amount)
-        if percent_off is not None:
+          if check_next_invoice:
+            from stripe import Invoice
+            invoice = Invoice.upcoming(customer=customer['id'])
+            assertEq(invoice['amount_due'], int(amount * (1 - percent_off / 100)))
+        if sub and 'discount' in sub and sub['discount'] is not None:
           assertEq(sub['discount']['coupon']['percent_off'], percent_off)
         if canceled is True:
           assertEq(sub['cancel_at_period_end'], True)
