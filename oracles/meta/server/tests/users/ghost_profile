@@ -2,7 +2,6 @@
 
 from utils import *
 from utils import throws
-from pprint import pprint
 
 from bson.objectid import ObjectId
 from infinit.oracles.meta import error
@@ -24,7 +23,6 @@ def clear_url(url, _type = None):
   query = parse_qs(parsed_url.query)
   query = {k: query[k][0] for k in query.keys()}
   if _type is not None:
-    print(query['utm_source'], _type)
     assert query['utm_source'] == _type
   url = parsed_url.path + '?key=%s' % query['key']
   return url
@@ -42,6 +40,13 @@ def check_merge(meta, db_recipient, ghost_profile, _type = None):
   assert len(recipients) == 1
   id = recipients.pop()
   assert id == str(ghost['_id'])
+  # Check that the referrers field is filled and that referrers have the correct
+  # fields.
+  referrers = res['referrers']
+  assertGT(len(referrers), 0)
+  for referrer in referrers:
+    assertNeq(referrer.get('id'), None)
+    assertNeq(referrer.get('fullname'), None)
 
   # Merge ghost into eve.
   eve = User(meta, 'eve@infinit.io')

@@ -1385,9 +1385,11 @@ class Mixin:
     user_id -- The ghost id.
     """
     with elle.log.trace("get ghost page %s" % user_id):
+      fields = self.__user_view_fields + \
+        ['ghost_code_expiration', 'referred_by']
       account = self.__user_fetch(
         {'_id': user_id},
-        fields = self.__user_view_fields + ['ghost_code_expiration'])
+        fields = fields)
       if account is None:
         return self.not_found({
           'reason': 'User not found',
@@ -1407,8 +1409,17 @@ class Mixin:
       ))
       # Add the key 'id' (== '_id')
       transactions = [dict(i, id = i['_id']) for i in transactions]
+      referrers = []
+      for referrer in account.get('referred_by', []):
+        referrer_user = self.user_from_identifier(referrer['id'],
+                                                  fields = ['_id', 'fullname'])
+        referrers.append({
+          'fullname': referrer_user['fullname'],
+          'id': referrer_user['_id'],
+        })
       return {
-        'transactions': transactions
+        'transactions': transactions,
+        'referrers': referrers
       }
 
   @api('/users/<user>/accounts')
