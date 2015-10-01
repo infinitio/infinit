@@ -56,5 +56,16 @@ with Stripe() as stripe:
             name = team_name, stripe_token = stripe.pay(admin.email),
             plan = year_plan['id'])
         stripe.check_plan(admin.email, year_plan['id'], quantity = 1)
-        # The cleanup.
+
+        # Update a user with a year plan
+        # The setup.
+        bob = User(meta, 'bob%s@infinit.io' % suffix)
+        bob.login()
+        # The actual test.
+
+        bob.update_plan('team', interval = 'year', stripe_token = stripe.pay(\
+                bob.email))
+        print('Update bob plan to a yearly one', res)
+
+        # The cleanup (previous test created a plan)
         delete_plan = admin.delete('plan/%s' % year_plan['id'])

@@ -90,6 +90,28 @@ with Stripe() as stripe:
     check_plus_quotas(user)
     stripe.check_plan(user.email, 'plus', 699)
 
+  # Update from basic to plus_year.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    res = user.update_plan('plus', stripe_token = stripe.pay(user.email),
+            interval = 'year')
+    assertEq(res['amount'], 9999)
+    check_plus_quotas(user)
+    stripe.check_plan(user.email, 'plus_year', 9999)
+
+  # Update from basic to premium_year.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    res = user.update_plan('premium', stripe_token = stripe.pay(user.email),
+            interval = 'year')
+    assertEq(res['amount'], 19999)
+    check_premium_quotas(user)
+    stripe.check_plan(user.email, 'premium_year', 19999)
+
   # Update from basic to plus to premium.
   with Meta(stripe_api_key = Stripe.key) as meta:
     test_suffix = stripe.suffix()

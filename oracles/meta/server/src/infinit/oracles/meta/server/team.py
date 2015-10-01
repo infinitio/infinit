@@ -17,6 +17,8 @@ class Team(dict):
     admin,
     name,
     plan,
+    interval = 'month',
+    step = 1
   ):
     name = name.strip()
     self.__meta = meta
@@ -30,6 +32,8 @@ class Team(dict):
     self['invitees'] = []
     self['creation_time'] = now
     self['modification_time'] = now
+    self['interval'] = interval
+    self['step'] = step
 
   @staticmethod
   def from_data(meta, team_db):
@@ -135,7 +139,8 @@ class Team(dict):
     self['id'] = self.__id
     return self
 
-  def register_to_stripe(self, stripe_token, stripe_coupon = None):
+  def register_to_stripe(self, stripe_token, interval = None, step = None,
+                         stripe_coupon = None):
     """Stripe needs an email address so the admin will be used as the
     subscription"""
     elle.log.trace('register to stripe %s (coupon: %s)' % (
@@ -145,7 +150,7 @@ class Team(dict):
     elle.log.debug('plan: %s' % self.plan_id)
     return self.__meta._user_update(
       admin, plan = self.plan_id, stripe_token = stripe_token,
-      stripe_coupon = stripe_coupon)
+      stripe_coupon = stripe_coupon, interval = interval, step = step)
 
   def __update_stripe_quantity(self, quantity):
     elle.log.trace('update subscrition quantity to %s' % quantity)
@@ -470,12 +475,14 @@ class Mixin:
   def __create_team(self, owner, name,
                     stripe_token,
                     plan,
+                    interval = 'month',
+                    step = 1,
                     stripe_coupon = None):
     elle.log.trace('create team %s (plan: %s)' % (name, plan))
     Plan.find(self, plan, ensure_existence = True)
-    team = Team(self, owner, name, plan).db_insert()
+    team = Team(self, owner, name, plan, interval, step).db_insert()
     assert team is not None
-    team.register_to_stripe(stripe_token, stripe_coupon)
+    team.register_to_stripe(stripe_token, interval, step, stripe_coupon)
     return team
 
   @api('/teams', method = 'POST')
@@ -484,6 +491,8 @@ class Mixin:
                   name,
                   stripe_token,
                   plan : Plan.translate_in,
+                  interval = 'month',
+                  step = 1,
                   stripe_coupon = None):
     user = self.user
     team = Team.team_for_user(self, user)
@@ -493,12 +502,15 @@ class Mixin:
           'error': 'already_in_a_team',
           'reason': 'You already are in team %s.' % team['name'],
         })
+    elle.log.debug('create_team: plan: %s, name: %s, stripe_token: %s' %
+        (plan, name, stripe_token))
     if plan is None or name is None or stripe_token is None:
       return self.bad_request({
         'error': 'missing_fields',
         'reason': 'Plan, name or stripe_token missing.'})
     return self.__create_team(user, name, stripe_token = stripe_token,
-                              plan = plan, stripe_coupon = stripe_coupon)
+                              plan = plan, interval = interval, step = step,
+                              stripe_coupon = stripe_coupon)
 
   # ============================================================================
   # Deletion.

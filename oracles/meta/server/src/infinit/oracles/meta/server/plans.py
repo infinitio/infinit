@@ -76,10 +76,10 @@ class Plan(dict):
       stripe_info,
       team = True,
       interval = 'month',
-      interval_count = 1):
+      step = 1):
     """
         self['interval'] can be 'month' or 'year'
-        self['interval_count'] is a positive integer.
+        self['step'] is a positive integer.
             if self['interval'] is 'month' then value < 12
             if self['interval'] is 'year' then value is 1
     """
@@ -91,7 +91,7 @@ class Plan(dict):
     self.__stripe_info['name'] = self.__stripe_info['name'].strip()
     # Add plan interval support for genericity
     self.__stripe_info['interval'] = interval
-    self.__stripe_info['interval_count'] = interval_count if interval == 'month' else 1
+    self.__stripe_info['interval_count'] = step if interval == 'month' else 1
     if self.__stripe_info['name'] in Plan.prohibited_names:
       return self.conflict(meta, 'none')
     self['team'] = team
@@ -408,10 +408,10 @@ class Mixin:
   @api('/plans', method = 'POST')
   @require_admin
   def create_plan(self, body, stripe_info, team_plan : bool = True,
-                  interval = 'month', interval_count = 1):
+                  interval = 'month', step = 1):
     return Plan(self, stripe_info = stripe_info, body = body,
                 team = team_plan, interval = interval,
-                interval_count = interval_count).save().view
+                step = step).save().view
 
   # ---------- #
   # Get plans. #
@@ -472,7 +472,6 @@ class Mixin:
     self.database.plans.save(BuiltInPlans.plus())
     self.database.plans.save(BuiltInPlans.premium())
     self.database.plans.save(BuiltInPlans.team())
-
 
   def __check_plans_integrity(self):
     # Explore sub dictionnaries.

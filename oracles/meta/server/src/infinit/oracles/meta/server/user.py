@@ -2992,7 +2992,7 @@ class Mixin:
                                                new = True)
     self._quota_updated_notify(user)
     return {
-      'plan': new_plan_name or 'basic'
+      'plan': new_plan_name or 'basic',
     }
 
   # DEPRECATED: (0.9.43) in favour of /user/update.
@@ -3019,6 +3019,8 @@ class Mixin:
   @require_logged_in
   def user_update_api(self,
                       plan = None,
+                      interval = None,
+                      step = None,
                       stripe_token = None,
                       stripe_coupon = None,
                       ):
@@ -3027,8 +3029,12 @@ class Mixin:
         'error': 'user_in_team',
         'reason': 'User cannot change plan when part of a team.'
       })
+    elle.log.trace('plan: %s, interval: %s, step: %s'\
+            % (plan, interval, step))
     return self._user_update(self.user,
                              plan = plan,
+                             interval = interval,
+                             step = step,
                              stripe_token = stripe_token,
                              stripe_coupon = stripe_coupon)
 
@@ -3037,6 +3043,8 @@ class Mixin:
   def user_update_admin_api(self,
                             identifier,
                             plan = None,
+                            interval = None,
+                            step = None,
                             stripe_token = None,
                             stripe_coupon = None):
     user = self.user_from_identifier(identifier)
@@ -3045,12 +3053,28 @@ class Mixin:
         {'reason': 'No user with identifier: %s' % identifier})
     return self._user_update(user,
                              plan = plan,
+                             interval = interval,
+                             step = step,
                              stripe_token = stripe_token,
                              stripe_coupon = stripe_coupon)
+
+  def _postfixes_for_stripe(self, plan, interval, step):
+    """
+    Postfixes plan name for Stripe.
+    """
+    if interval is None:
+      return plan
+    if interval == 'month' and step is not None:
+      return plan if step == 1 else "%s_%s_%s" % (plan, interval, step)
+    else:
+      plan = '%s_%s' % (plan, interval) 
+      return plan if step is None or step == 1 else '%s_%s' % (plan, step)
 
   def _user_update(self,
                    user,
                    plan = None,
+                   interval = None,
+                   step = None,
                    stripe_token = None,
                    stripe_coupon = None,
                    force_prorata = False,
@@ -3086,13 +3110,17 @@ class Mixin:
         if team_member or (plan is None) or (plan['name'] in free_plans):
           stripe_plan = None
         else:
-          stripe_plan = plan.stripe_id if plan is not None else None
+          # Convert the plan id according to interval and step.
+          elle.log.debug('int: %s, step: %s' % (interval, step))
+          stripe_plan = self._postfixes_for_stripe(plan.stripe_id, interval,
+                  step) if plan is not None else None
         sub = self._stripe.update_subscription(customer, stripe_plan,
           coupon = stripe_coupon, at_period_end = not force_prorata)
         if sub:
           res.update(_build_response(sub))
     if plan is not None and user.get('plan_id') != plan.id:
       res.update(self._change_plan(user, plan.id))
+    elle.log.debug('res: %s' % res)
     return res
 
   @api('/user/contacts', method='PUT')

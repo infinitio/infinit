@@ -593,14 +593,14 @@ class Meta:
                   body,
                   amount = 999,
                   interval = 'month',
-                  interval_count = 1):
+                  step = 1):
     previous_admin_state = self.inner._force_admin
     self.inner._force_admin = True
     plan = self.post('plans',
                      {
                        'body': body,
                        'interval': interval,
-                       'interval_count': interval_count,
+                       'step': step,
                        'stripe_info': {
                          'amount': amount,
                          'name': name,
@@ -752,7 +752,7 @@ class Stripe():
           assertEq(sub['quantity'], quantity)
         return
     raise StripeTestException(
-      'unable to find subscription with plan (%s) for %s' % (plan, email))
+      'unable to find subscription with plan (%s) for %s' % (plan_id, email))
 
   def check_no_plan(self, email):
     customer = self.customer_with_email(email)
@@ -896,7 +896,8 @@ class User(Client):
   def synchronize(self, init = False):
     return self.get('user/synchronize?init=%s' % (init and '1' or '0'))
 
-  def update_plan(self, plan, stripe_token = None, stripe_coupon = None):
+  def update_plan(self, plan, interval = None, step = None,
+          stripe_token = None, stripe_coupon = None):
     body = {
       'plan': plan,
     }
@@ -904,6 +905,10 @@ class User(Client):
       body.update({'stripe_token': stripe_token})
     if stripe_coupon:
       body.update({'stripe_coupon': stripe_coupon})
+    if interval:
+      body.update({'interval': interval})
+    if step:
+      body.update({'step': step})
     return self.put('user/update', body)
 
 
@@ -1121,13 +1126,13 @@ class User(Client):
                   name,
                   body,
                   amount = 999,
-                  interval = 'mounth',
-                  interval_count = 1):
+                  interval = 'month',
+                  step = 1):
     plan = self.post('plans',
                      {
                        'body': body,
                        'interval': interval,
-                       'interval_count': interval_count,
+                       'interval_count': step,
                        'stripe_info': {
                          'amount': amount,
                          'name': name,
@@ -1140,11 +1145,15 @@ class User(Client):
                   name,
                   stripe_token,
                   plan = 'team',
+                  interval = 'month',
+                  step = 1,
                   stripe_coupon = None):
     body = {
        'name': name,
        'stripe_token': stripe_token,
        'plan': plan,
+       'interval': interval,
+       'step': step
     }
     if stripe_coupon:
       body.update({'stripe_coupon': stripe_coupon})

@@ -75,6 +75,53 @@ with Stripe() as stripe:
     assertNeq(res['quotas']['send_to_self']['quota'], None)
     assertNeq(res['quotas']['p2p']['limit'], None)
 
+  # Create and deleting a team_year.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    plan_id = 'team'
+    admin = User(meta, 'boss_%s@infinit.io' % test_suffix)
+    admin.login()
+    # Create team with yearly billings.
+    team_name = 'infinit_%s' % test_suffix
+    team = admin.create_team(
+      name = team_name, stripe_token = stripe.pay(admin.email),
+      plan = plan_id, interval = 'year')
+    throws(lambda: admin.create_team(
+           name = 'fail', stripe_token = stripe.pay(admin.email)), 403)
+    team = admin.get('team')
+    assertEq(team['name'], team_name)
+    assertEq(team['admin']['id'], admin.id)
+    assertEq(len(team['members']), 1)
+    assertEq(team['members'][0]['id'], admin.id)
+    stripe.check_plan(admin.email, 'team_year', quantity = 1)
+    # Add member.
+    bob = User(meta, 'bob_%s@infinit.io' % test_suffix)
+    bob.login()
+    admin.invite_team_member(bob.email)
+    bob.join_team(team['id'])
+    team = admin.get('team')
+    assertEq(len(team['members']), 2)
+    stripe.check_plan(admin.email, 'team_year', quantity = 2)
+    # Fail delete team.
+    throws(lambda: admin.delete('team'), 403)
+    # Delete team.
+    admin.delete('team', {'password': admin.password})
+    throws(lambda: admin.get('team'), 404)
+    stripe.check_plan(admin.email, 'team_year', canceled = True)
+    assertEq(
+      meta.inner.database.teams.find({'_id': bson.ObjectId(team['id'])}).count(),
+      0)
+    res = admin.me
+    assertEq(res['plan'], 'basic')
+    assertNeq(res['quotas']['send_to_self']['quota'], None)
+    assertNeq(res['quotas']['p2p']['limit'], None)
+    bob.logout()
+    bob.login()
+    res = bob.me
+    assertEq(res['plan'], 'basic')
+    assertNeq(res['quotas']['send_to_self']['quota'], None)
+    assertNeq(res['quotas']['p2p']['limit'], None)
+
   # Team uniqueness.
   with Meta(stripe_api_key = Stripe.key) as meta:
     test_suffix = stripe.suffix()
