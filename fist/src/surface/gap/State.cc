@@ -266,11 +266,12 @@ namespace surface
         // cannot be reset inside the _clean_up or logout functions as these
         // can be run by Trophonius's threads.
         this->_cleanup();
-        this->_trophonius.reset();
-        this->logout();
-        this->_metrics_reporter->stop();
         if (this->_login_thread)
           this->_login_thread->terminate_now();
+        this->_trophonius.reset();
+        this->logout();
+        this->_cleanup();
+        this->_metrics_reporter->stop();
       }
       catch (std::runtime_error const&)
       {
