@@ -804,8 +804,45 @@ with Stripe() as stripe:
       assertEq(invoice['amount_due'],
                1200 * number_of_members)
 
-  # XXX: Add tests for all admin functions calls.
+  # Plan specif coupons.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    from random import randint
+    def coupon(metadata):
+      from stripe import Coupon
+      coupon_id = 'coupon_%s_%s' % (test_suffix, str(randint(1e9, 9e9)))
+      Coupon.create(
+        api_key = Stripe.key,
+        percent_off= 20,
+        duration='once',
+        id=coupon_id,
+        metadata = metadata)
+      return coupon_id
+    def new_user():
+      user = User(meta, '%s_sergio_%s@infinit.io' % (
+        str(randint(1e9, 9e9)), test_suffix))
+      user.login()
+      return user
+    def team_name():
+      return 'team_%s_%s' % (str(randint(1e9, 9e9)), test_suffix)
+    user = new_user()
+    user.create_team(
+      name = team_name(),
+      stripe_token = stripe.pay(user.email),
+      stripe_coupon = coupon({'type_of_plan': 'team'}))
+    user = new_user()
+    throws(lambda: user.create_team(
+      name = team_name(),
+      stripe_token = stripe.pay(user.email),
+      stripe_coupon = coupon({'type_of_plan': 'premium'})),
+           403)
+    throws(lambda: user.create_team(
+      name = team_name(),
+      stripe_token = stripe.pay(user.email),
+      stripe_coupon = coupon({'interval': 'year'})),
+           403)
 
+  # XXX: Add tests for all admin functions calls.
   # # Infinit administration.
   # with Meta(stripe_api_key = Stripe.key) as meta:
   #   test_suffix = stripe.suffix()

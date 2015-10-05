@@ -193,6 +193,10 @@ class Stripe:
       'set plan (customer: %s, subscription: %s, plan: %s, coupon: %s)'
       % (customer['email'], subscription, plan, coupon))
     assert self.__in_with >= 0
+    if coupon is not None and not self.coupon_applicable(plan_id = plan,
+                                                         coupon_id = coupon):
+      raise stripe.StripeError(
+        message = 'coupon %s cannot be used for this plan' % coupon)
     if subscription is None:
       elle.log.trace('create subscription')
       subscription = customer.subscriptions.create(plan = plan, coupon = coupon)
@@ -236,21 +240,50 @@ class Stripe:
       api_key = self.__meta.stripe_api_key)
     return coupon
 
+  def __coupon_applicable(self, plan, coupon):
+    """
+    Check if the given coupon can be applied to plan.
+    plan -- The plan object.
+    coupon -- The coupon object.
+    """
+    interval = plan.interval
+    if 'type_of_plan' in coupon.metadata:
+      if plan.id not in coupon.metadata['type_of_plan']:
+        return False
+    if 'interval' in coupon.metadata:
+      return interval == coupon.metadata['interval']
+    return True
+
+  def coupon_applicable(self, plan_id, coupon_id):
+    """
+    Check if the given coupon can be applied to plan.
+    plan_id -- The plan id.
+    coupon_id -- The coupon id.
+    """
+    return self.__coupon_applicable(self.plan(plan_id),
+                                    self.coupon(coupon_id))
+
   @staticmethod
-  def apply_coupon(subscription, coupon):
-    if coupon is not None:
+  def apply_coupon(subscription, coupon_id):
+    """
+    Apply a coupon to the subscription if not already used.
+    subscription - The current subscription.
+    coupon - The coupon id.
+    """
+    if coupon_id is not None:
       number_of_coupons = 0
       if 'coupons' in subscription.metadata:
         number_of_coupons = int(subscription.metadata['coupons'])
         previous_coupons = [subscription.metadata['coupon_%s' % coupon]
                             for coupon in range(1, number_of_coupons + 1)]
-        if coupon in previous_coupons:
-          raise stripe.StripeError(message = 'coupon %s already used' % coupon)
+        if coupon_id in previous_coupons:
+          raise stripe.StripeError(
+            message = 'coupon %s already used' % coupon_id)
       subscription.metadata.update({
         'coupons': number_of_coupons + 1,
-        'coupon_%s' % (number_of_coupons + 1): coupon,
+        'coupon_%s' % (number_of_coupons + 1): coupon_id,
       })
-      subscription.coupon = coupon
+      subscription.coupon = coupon_id
 
   def update_subscription(self, customer, plan, coupon, at_period_end = False):
     elle.log.trace('update subscription (customer: %s, plan: %s, coupon: %s)'
