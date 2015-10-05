@@ -940,7 +940,6 @@ class User(Client):
       body.update({'step': step})
     return self.put('user/update', body)
 
-
   @property
   def device(self):
     assert self.device_id is not None
@@ -1161,7 +1160,7 @@ class User(Client):
                      {
                        'body': body,
                        'interval': interval,
-                       'interval_count': step,
+                       'step': step,
                        'stripe_info': {
                          'amount': amount,
                          'name': name,
