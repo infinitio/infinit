@@ -3074,7 +3074,7 @@ class Mixin:
     if interval == 'month' and step is not None:
       return plan if step == 1 else "%s_%s_%s" % (plan, interval, step)
     else:
-      plan = '%s_%s' % (plan, interval) 
+      plan = '%s_%s' % (plan, interval)
       return plan if step is None or step == 1 else '%s_%s' % (plan, step)
 
   def _user_update(self,
