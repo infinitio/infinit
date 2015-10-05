@@ -110,9 +110,9 @@ with Stripe() as stripe:
     user.login()
     res = user.update_plan('premium', stripe_token = stripe.pay(user.email),
             interval = 'year')
-    assertEq(res['amount'], 19999)
+    assertEq(res['amount'], 10000)
     check_premium_quotas(user)
-    stripe.check_plan(user.email, 'premium_year', 19999)
+    stripe.check_plan(user.email, 'premium_year', 10000)
 
   # Update from basic to plus to premium.
   with Meta(stripe_api_key = Stripe.key) as meta:
