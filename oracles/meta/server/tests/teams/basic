@@ -795,9 +795,14 @@ with Stripe() as stripe:
       member.login()
       admin.invite_team_member(member.email)
       member.join_team(team['id'])
+      invoices = admin.invoices['invoices']
+      number_of_members = users.index(user) + 2
+      assertEq(len(invoices), number_of_members)
+      assertEq(sum([invoice['invoice']['amount_due'] for invoice in invoices]),
+               1200 * number_of_members * 0.5)
       invoice = Invoice.upcoming(customer=customer['id'])
       assertEq(invoice['amount_due'],
-               1200 + ((1 + discount) * 1200) * (users.index(user) + 1))
+               1200 * number_of_members)
 
   # XXX: Add tests for all admin functions calls.
 

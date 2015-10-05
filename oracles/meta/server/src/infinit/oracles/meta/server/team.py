@@ -156,11 +156,16 @@ class Team(dict):
     elle.log.trace('update subscrition quantity to %s' % quantity)
     admin = self.__meta.user_from_identifier(self['admin'])
     with self.__meta._stripe:
+      customer = self.__meta._stripe.fetch_customer(admin)
       subscription = self.__meta._stripe.subscription(
-        self.__meta._stripe.fetch_customer(admin))
+        customer
+        )
       if quantity != subscription.quantity:
         subscription.quantity = quantity
-        subscription.save()
+        subscription = subscription.save()
+        self.__meta._stripe.pay(
+          customer,
+          description = "%s: change quantity to %s" % (self, quantity))
 
   def __cancel_stripe_subscription(self):
     elle.log.trace('cancel subscription for team: %s' % self.id)
