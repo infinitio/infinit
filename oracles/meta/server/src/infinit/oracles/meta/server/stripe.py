@@ -253,3 +253,17 @@ class Stripe:
       elle.log.debug('save subscription: %s' % subscription)
       subscription = subscription.save()
     return subscription
+
+  def pay(self, customer, description = ""):
+    """
+    Pay the amount due for current month.
+    customer - The customer object.
+    description - An optional description.
+    """
+    from stripe import Invoice
+    invoice = Invoice.create(
+      customer = customer['id'],
+      api_key = self.__meta.stripe_api_key,
+      description = description,
+    )
+    invoice.pay()
