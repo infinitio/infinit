@@ -2,7 +2,7 @@
 
 import datetime
 
-from utils import HTTPException, Meta, User
+from utils import *
 from bson import ObjectId
 from functools import reduce
 import sys
@@ -125,3 +125,63 @@ with Meta() as meta:
 
   res = bob.get('user/synchronize?init=0')
   assert len(res['links']) == 0
+
+# Test referral actions in synchronize response
+with Meta() as meta:
+
+  def referral_actions(user, init = 0):
+    return user.get('user/synchronize?init=%s' % init)['account']['referral_actions']
+
+  def check_referral_actions(referral_actions,
+                             has_avatar = False,
+                             fb_posts = 0,
+                             twitter_posts = 0,
+                             referrals = 0):
+    assertEq(len(referral_actions['referrals']), referrals)
+    assertEq(referral_actions['has_avatar'], has_avatar)
+    assertEq(referral_actions['facebook_posts'], fb_posts)
+    assertEq(referral_actions['twitter_posts'], twitter_posts)
+
+  bob = User(meta, 'bob@infinit.io')
+  bob.login()
+  res = referral_actions(bob, init = 1)
+  check_referral_actions(res)
+  alice_email = 'alice@infinit.io'
+  # Invite a user.
+  bob.sendfile(alice_email, initialize = True)
+  res = referral_actions(bob)
+  check_referral_actions(res, referrals = 1)
+  assertEq(res['referrals'][0]['identifier'], alice_email)
+  assertEq(res['referrals'][0]['status'], 'pending')
+  assertEq(res['referrals'][0]['method'], 'ghost_invite')
+  # User joins.
+  alice = User(meta, alice_email)
+  res = referral_actions(bob)
+  assertEq(res['referrals'][0]['identifier'], alice_email)
+  assertEq(res['referrals'][0]['status'], 'completed')
+  assertEq(res['referrals'][0]['method'], 'ghost_invite')
+  assertEq(res['referrals'][0]['has_logged_in'], False)
+  # User is blocked.
+  alice.login(device_id = bob.devices[0]['id'])
+  res = referral_actions(bob)
+  assertEq(res['referrals'][0]['identifier'], alice_email)
+  assertEq(res['referrals'][0]['status'], 'blocked')
+  assertEq(res['referrals'][0]['method'], 'ghost_invite')
+  assertEq(res['referrals'][0]['has_logged_in'], True)
+  # Unblock user.
+  alice.logout()
+  from uuid import uuid4
+  alice.login(device_id = str(uuid4()))
+  res = referral_actions(bob)
+  assertEq(res['referrals'][0]['identifier'], alice_email)
+  assertEq(res['referrals'][0]['status'], 'completed')
+  assertEq(res['referrals'][0]['method'], 'ghost_invite')
+  assertEq(res['referrals'][0]['has_logged_in'], True)
+  # Perform social posts.
+  bob.post('user/social_posts/%s' % 'facebook')
+  res = referral_actions(bob)
+  check_referral_actions(res, referrals = 1, fb_posts = 1)
+  bob.post('user/social_posts/%s' % 'twitter')
+  res = referral_actions(bob)
+  check_referral_actions(res, referrals = 1, fb_posts = 1, twitter_posts = 1)
+
