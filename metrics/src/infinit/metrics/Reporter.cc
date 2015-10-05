@@ -375,6 +375,13 @@ namespace infinit
     }
 
     void
+    Reporter::user_added_ghost_code(std::string const& code, bool link)
+    {
+      this->_push(std::bind(&Reporter::_user_added_ghost_code,
+                            this, code, link));
+    }
+
+    void
     Reporter::user_used_ghost_code(bool success,
                                    std::string const& code,
                                    bool link,
@@ -389,11 +396,12 @@ namespace infinit
     Reporter::user_sent_invitation_message(bool success,
                                            std::string const& code,
                                            std::string const& method,
-                                           std::string const& fail_reason)
+                                           std::string const& fail_reason,
+                                           bool reminder)
     {
       this->_push(std::bind(
         &Reporter::_user_sent_invitation_message, this, success, code, method,
-        fail_reason));
+        fail_reason, reminder));
     }
 
     void
@@ -425,6 +433,12 @@ namespace infinit
     {
       this->_push(
         std::bind(&Reporter::_ghost_download_limit_reached, this, ghost_id));
+    }
+
+    void
+    Reporter::performed_social_post(std::string const& medium)
+    {
+      this->_push(std::bind(&Reporter::_performed_social_post, this, medium));
     }
 
     void
@@ -656,6 +670,10 @@ namespace infinit
     {}
 
     void
+    Reporter::_user_added_ghost_code(std::string const& code, bool link)
+    {}
+
+    void
     Reporter::_user_used_ghost_code(bool success,
                                     std::string const& code,
                                     bool link,
@@ -666,7 +684,8 @@ namespace infinit
     Reporter::_user_sent_invitation_message(bool success,
                                             std::string const& code,
                                             std::string const& method,
-                                            std::string const& fail_reason)
+                                            std::string const& fail_reason,
+                                            bool reminder)
     {}
 
     void
@@ -686,6 +705,10 @@ namespace infinit
 
     void
     Reporter::_ghost_download_limit_reached(std::string const& ghost_id)
+    {}
+
+    void
+    Reporter::_performed_social_post(std::string const& medium)
     {}
 
     /*--------------------------.

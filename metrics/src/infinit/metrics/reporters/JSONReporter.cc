@@ -343,6 +343,16 @@ namespace infinit
     }
 
     void
+    JSONReporter::_user_added_ghost_code(std::string const& code, bool link)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("app/add_ghost_code");
+      data[this->_key_str(JSONKey::ghost_code)] = code;
+      data[this->_key_str(JSONKey::ghost_code_link)] = link;
+      this->_send(this->_user_dest, data);
+    }
+
+    void
     JSONReporter::_user_used_ghost_code(bool success,
                                         std::string const& code,
                                         bool link,
@@ -362,7 +372,8 @@ namespace infinit
       bool success,
       std::string const& code,
       std::string const& method,
-      std::string const& fail_reason)
+      std::string const& fail_reason,
+      bool reminder)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
@@ -371,6 +382,8 @@ namespace infinit
       data[this->_key_str(JSONKey::method)] = method;
       data[this->_key_str(JSONKey::fail_reason)] = fail_reason;
       data[this->_key_str(JSONKey::status)] = this->_status_string(success);
+      if (reminder)
+        data[this->_key_str(JSONKey::reminder)] = reminder;
       this->_send(this->_user_dest, data);
     }
 
@@ -416,6 +429,15 @@ namespace infinit
       data[this->_key_str(JSONKey::event)] =
         std::string("app/ghost_download_limited");
       data[this->_key_str(JSONKey::ghost)] = ghost_id;
+      this->_send(this->_user_dest, data);
+    }
+
+    void
+    JSONReporter::_performed_social_post(std::string const& medium)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("app/social_post");
+      data[this->_key_str(JSONKey::medium)] = medium;
       this->_send(this->_user_dest, data);
     }
 
@@ -536,7 +558,7 @@ namespace infinit
       ELLE_TRACE_SCOPE("%s: send event to %s", *this, url);
       ELLE_DUMP("%s: data: %s", *this, data);
       reactor::http::Request::Configuration cfg(
-        10_sec, {}, reactor::http::Version::v11, this->proxy());
+        10_sec, {}, reactor::http::Version::v11, true, this->proxy());
       cfg.expected_status(this->_expected_status);
       cfg.header_add("User-Agent", Reporter::user_agent());
       reactor::http::Request r(
@@ -595,6 +617,8 @@ namespace infinit
           return "language";
         case JSONKey::limit:
           return "limit";
+        case JSONKey::medium:
+          return "medium";
         case JSONKey::message:
           return "message";
         case JSONKey::message_length:
@@ -615,6 +639,8 @@ namespace infinit
           return "recipient";
         case JSONKey::referral_code:
           return "referral_code";
+        case JSONKey::reminder:
+          return "reminder";
         case JSONKey::screenshot:
           return "screenshot";
         case JSONKey::sender_id:

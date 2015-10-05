@@ -292,7 +292,11 @@ namespace infinit
       user_sent_invitation_message(bool success,
                                    std::string const& code,
                                    std::string const& method,
-                                   std::string const& fail_reason);
+                                   std::string const& fail_reason,
+                                   bool reminder);
+
+      void
+      user_added_ghost_code(std::string const& code, bool link);
 
       void
       user_used_ghost_code(bool success,
@@ -311,6 +315,9 @@ namespace infinit
 
       void
       ghost_download_limit_reached(std::string const& ghost_id);
+
+      void
+      performed_social_post(std::string const& medium);
 
     /// User metrics implementation.
     protected:
@@ -371,6 +378,10 @@ namespace infinit
 
       virtual
       void
+      _user_added_ghost_code(std::string const& code, bool link);
+
+      virtual
+      void
       _user_used_ghost_code(bool success,
                             std::string const& code,
                             bool link,
@@ -381,7 +392,8 @@ namespace infinit
       _user_sent_invitation_message(bool success,
                                     std::string const& code,
                                     std::string const& method,
-                                    std::string const& fail_reason);
+                                    std::string const& fail_reason,
+                                    bool reminder);
 
       virtual
       void
@@ -398,6 +410,10 @@ namespace infinit
       virtual
       void
       _ghost_download_limit_reached(std::string const& ghost_id);
+
+      virtual
+      void
+      _performed_social_post(std::string const& medium);
 
       /// UI metrics.
     public:

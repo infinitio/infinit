@@ -345,6 +345,14 @@ namespace infinit
     }
 
     void
+    CompositeReporter::_user_added_ghost_code(std::string const& code,
+                                              bool link)
+    {
+      this->_dispatch(std::bind(&Reporter::_user_added_ghost_code,
+                      std::placeholders::_1, code, link));
+    }
+
+    void
     CompositeReporter::_user_used_ghost_code(bool success,
                                              std::string const& code,
                                              bool link,
@@ -359,14 +367,16 @@ namespace infinit
       bool success,
       std::string const& code,
       std::string const& method,
-      std::string const& fail_reason)
+      std::string const& fail_reason,
+      bool reminder)
     {
       this->_dispatch(std::bind(&Reporter::_user_sent_invitation_message,
                                 std::placeholders::_1,
                                 success,
                                 code,
                                 method,
-                                fail_reason));
+                                fail_reason,
+                                reminder));
     }
 
     void
@@ -392,6 +402,14 @@ namespace infinit
       this->_dispatch(std::bind(&Reporter::_ghost_download_limit_reached,
                                 std::placeholders::_1,
                                 ghost_id));
+    }
+
+    void
+    CompositeReporter::_performed_social_post(std::string const& medium)
+    {
+      this->_dispatch(std::bind(&Reporter::_performed_social_post,
+                                std::placeholders::_1,
+                                medium));
     }
 
     void

@@ -145,6 +145,9 @@ namespace infinit
       _user_changed_download_dir(bool fallback) override;
 
       void
+      _user_added_ghost_code(std::string const& code, bool link) override;
+
+      void
       _user_used_ghost_code(bool success,
                             std::string const& code,
                             bool link,
@@ -154,7 +157,8 @@ namespace infinit
       _user_sent_invitation_message(bool success,
                                     std::string const& code,
                                     std::string const& method,
-                                    std::string const& fail_reason) override;
+                                    std::string const& fail_reason,
+                                    bool reminder) override;
 
       void
       _link_quota_exceeded(uint64_t size,
@@ -170,6 +174,9 @@ namespace infinit
 
       void
       _ghost_download_limit_reached(std::string const& ghost_id) override;
+
+      void
+      _performed_social_post(std::string const& medium) override;
 
       /// UI metrics:
       void
