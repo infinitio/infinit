@@ -441,6 +441,11 @@ class Team(dict):
       'storage_used': self.storage_used,
     }
 
+  def __str__(self):
+    admin_user = self.admin_user
+    return "Team(%s / %s) administrated by %s" % (self.id, self.name, (admin_user['email'],
+                                                                       admin_user['_id']))
+
 class Mixin:
   # ============================================================================
   # Helpers.
