@@ -673,49 +673,34 @@ class Stripe():
     import stripe
     stripe.api_key = Stripe.key
     # Remove created users.
-    cursor = None
-    while True:
-      if cursor:
-        users = stripe.Customer.all(limit = 100, starting_after = cursor)
-      else:
-        users = stripe.Customer.all(limit = 100)
-      for user in users['data']:
-        cursor = user['id']
-        if self.suffix() in user['email']:
-          cu = stripe.Customer.retrieve(user['id'])
-          cu.delete()
-      if not users['has_more']:
-        break
+    def is_old(object, field):
+      # Garbage old items.
+      import re
+      p = re.compile('.*\d{%s}.*' % len(self.__suffix))
+      from datetime import datetime, timedelta
+      import calendar
+      yesterday = calendar.timegm((datetime.utcnow() - timedelta(days = 1)).timetuple())
+      return p.match(object.get(field)) and object['created'] < yesterday
 
-    # Remove created plans.
-    cursor = None
-    while True:
-      if cursor:
-        plans = stripe.Plan.all(limit = 100, starting_after = cursor)
-      else:
-        plans = stripe.Plan.all(limit = 100)
-      for plan in plans['data']:
-        cursor = plan['id']
-        if self.suffix() in plan['name']:
-          p = stripe.Plan.retrieve(plan['id'])
-          p.delete()
-      if not plans['has_more']:
-        break
+    def cleanup(Collection, field):
+      cursor = None
+      while True:
+        if cursor:
+          items = Collection.all(limit = 100, starting_after = cursor)
+        else:
+          items = Collection.all(limit = 100)
+        for item in items['data']:
+          if self.suffix() in item[field] or is_old(item, field):
+            i = Collection.retrieve(item['id'])
+            i.delete()
+          else:
+            cursor = item['id']
+        if not items['has_more']:
+          break
 
-    # Remove coupons.
-    cursor = None
-    while True:
-      if cursor:
-        coupons = stripe.Coupon.all(limit = 100, starting_after = cursor)
-      else:
-        coupons = stripe.Coupon.all(limit = 100)
-      for coupon in coupons['data']:
-        cursor = coupon['id']
-        if self.suffix() in coupon['id']:
-          p = stripe.Coupon.retrieve(coupon['id'])
-          p.delete()
-      if not coupons['has_more']:
-        break
+    cleanup(stripe.Customer, 'email')
+    cleanup(stripe.Plan, 'name')
+    cleanup(stripe.Coupon, 'id')
 
   def pay(self, email):
     self.emails.add(email)
