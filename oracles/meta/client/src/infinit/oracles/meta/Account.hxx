@@ -18,6 +18,36 @@ namespace elle
       infinit::oracles::meta::AccountPlanType
       convert(std::string& repr);
     };
+
+    typedef infinit::oracles::meta::Account::ReferralActions::Referral::ReferralMethod ReferralMethod;
+    template <>
+    struct Serialize<ReferralMethod>
+    {
+      typedef std::string Type;
+
+      static
+      std::string
+      convert(ReferralMethod& referral_method);
+
+      static
+      ReferralMethod
+      convert(std::string& repr);
+    };
+
+    typedef infinit::oracles::meta::Account::ReferralActions::Referral::ReferralStatus ReferralStatus;
+    template <>
+    struct Serialize<ReferralStatus>
+    {
+      typedef std::string Type;
+
+      static
+      std::string
+      convert(ReferralStatus& referral_status);
+
+      static
+      ReferralStatus
+      convert(std::string& repr);
+    };
   }
 }
 

@@ -24,6 +24,94 @@ namespace infinit
       struct Account
         : public elle::Printable
       {
+        struct ReferralActions
+          : public elle::Printable
+        {
+          struct Referral
+            : public elle::Printable
+          {
+            typedef enum
+              : unsigned int
+            {
+              ReferralStatus_Pending = 0,
+              ReferralStatus_Complete,
+              ReferralStatus_Blocked,
+            } ReferralStatus;
+
+            typedef enum
+              : unsigned int
+            {
+              ReferralMethod_Ghost = 0,
+              ReferralMethod_Plain,
+              ReferralMethod_Link,
+            } ReferralMethod;
+
+          /*-------------.
+          | Construction |
+          `-------------*/
+          public:
+            Referral(elle::serialization::SerializerIn& s);
+            Referral();
+            virtual
+            ~Referral() = default;
+
+          /*--------------.
+          | Serialization |
+          `--------------*/
+          public:
+            void
+            serialize(elle::serialization::Serializer& s);
+
+          /*-----------.
+          | Attributes |
+          `-----------*/
+          public:
+            bool has_logged_in;
+            boost::optional<std::string> identifier;
+            ReferralMethod method;
+            ReferralStatus status;
+
+          /*----------.
+          | Printable |
+          `----------*/
+          protected:
+            void
+            print(std::ostream& stream) const override;
+          };
+
+        /*-------------.
+        | Construction |
+        `-------------*/
+        public:
+          ReferralActions(elle::serialization::SerializerIn& s);
+          ReferralActions();
+          virtual
+          ~ReferralActions() = default;
+
+        /*--------------.
+        | Serialization |
+        `--------------*/
+        public:
+          void
+          serialize(elle::serialization::Serializer& s);
+
+        /*-----------.
+        | Attributes |
+        `-----------*/
+        public:
+          bool has_avatar;
+          uint32_t facebook_posts;
+          uint32_t twitter_posts;
+          std::vector<Referral> referrals;
+
+        /*----------.
+        | Printable |
+        `----------*/
+        protected:
+          void
+          print(std::ostream& stream) const override;
+        };
+
         struct Quotas
           : public elle::Printable
         {
@@ -135,6 +223,7 @@ namespace infinit
         das::Variable<std::string> link_format;
         das::Variable<AccountPlanType> plan;
         das::Variable<Quotas> quotas;
+        das::Variable<ReferralActions> referral_actions;
 
         Account&
         operator =(Account const& rhs);
@@ -168,7 +257,7 @@ namespace infinit
 
 DAS_MODEL(
   infinit::oracles::meta::Account,
-  (custom_domain, link_format, plan, quotas),
+  (custom_domain, link_format, plan, quotas, referral_actions),
   DasAccount);
 DAS_MODEL_DEFAULT(infinit::oracles::meta::Account, DasAccount);
 
