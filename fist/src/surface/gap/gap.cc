@@ -1877,7 +1877,8 @@ gap_invitation_message_sent_metric(gap_State* state,
                                    bool success,
                                    std::string const& code,
                                    gap_InviteMessageMethod method,
-                                   std::string const& fail_reason)
+                                   std::string const& fail_reason,
+                                   bool reminder)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -1888,20 +1889,29 @@ gap_invitation_message_sent_metric(gap_State* state,
       std::string method_str;
       switch (method)
       {
-        case gap_invite_message_email:
+        case gap_invite_message_meta_email:
           method_str = "email";
           break;
-        case gap_invite_message_native:
+        case gap_invite_message_native_email:
+          method_str = "native email";
+          break;
+        // XXX: Historically we only sent SMSes from the device so 'native'
+        // meant this.
+        case gap_invite_message_native_sms:
           method_str = "native";
           break;
         case gap_invite_message_whatsapp:
           method_str = "whatsapp";
           break;
       }
-      state.metrics_reporter()->user_sent_invitation_message(success,
-                                                             code,
-                                                             method_str,
-                                                             fail_reason);
+      if (state.metrics_reporter())
+      {
+        state.metrics_reporter()->user_sent_invitation_message(success,
+                                                               code,
+                                                               method_str,
+                                                               fail_reason,
+                                                               reminder);
+      }
       return gap_ok;
     });
 }
@@ -2095,6 +2105,20 @@ gap_add_facebook_account(gap_State* state, std::string const& facebook_token)
     [&] (surface::gap::State& state) -> gap_Status
     {
       state.add_facebook_account(facebook_token);
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_performed_social_post(gap_State* state, std::string const& medium)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "performed social post",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.performed_social_post(medium);
       return gap_ok;
     });
 }

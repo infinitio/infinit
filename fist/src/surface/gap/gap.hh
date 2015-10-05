@@ -133,6 +133,7 @@ gap_plain_invite_contact(gap_State* state,
                          std::string const& identifier,
                          surface::gap::PlainInvitation& res);
 
+/// Invite message was either cancelled by user or failed. Forward it to Meta.
 gap_Status
 gap_send_invite(gap_State* state,
                 std::string const& destination,
@@ -511,7 +512,8 @@ gap_invitation_message_sent_metric(gap_State* state,
                                    bool success,
                                    std::string const& code,
                                    gap_InviteMessageMethod method,
-                                   std::string const& fail_reason);
+                                   std::string const& fail_reason,
+                                   bool reminder);
 
 /// Sent when UI blocks action preemptively.
 gap_Status
@@ -575,5 +577,8 @@ typedef infinit::oracles::meta::AddressBookContact AddressBookContact;
 gap_Status
 gap_upload_address_book(gap_State* state,
                         std::vector<AddressBookContact> const& contacts);
+
+gap_Status
+gap_performed_social_post(gap_State* state, std::string const& medium); // facebook/twitter
 
 #endif
