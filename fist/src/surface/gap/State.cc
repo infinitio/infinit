@@ -1646,6 +1646,7 @@ namespace surface
       ELLE_DEBUG_SCOPE("%s: register ghost codes: %s", *this, code);
       this->_ghost_codes.push_back(GhostCode{code, was_link});
       this->_ghost_code_snapshot();
+      this->metrics_reporter()->user_added_ghost_code(code, was_link);
       if (this->_logged_in)
         this->_ghost_code_use();
     }
