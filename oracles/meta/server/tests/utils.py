@@ -923,7 +923,7 @@ class User(Client):
       body.update({'interval': interval})
     if step:
       body.update({'step': step})
-    return self.put('user/update', body)
+    return self.put('team', body) if team else self.put('user/update', body)
 
   @property
   def device(self):
