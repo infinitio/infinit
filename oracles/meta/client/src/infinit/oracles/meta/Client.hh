@@ -686,6 +686,9 @@ namespace infinit
         void
         upload_address_book(std::vector<AddressBookContact> contacts) const;
 
+        void
+        performed_social_post(std::string const& medium) const;
+
       /*----------.
       | Printable |
       `----------*/

@@ -1690,6 +1690,15 @@ namespace infinit
           content_type);
       }
 
+      void
+      Client::performed_social_post(std::string const& medium) const
+      {
+        std::string url = elle::sprintf("/user/social_posts/%s", medium);
+        reactor::http::Request request =
+          this->_request(url, Method::POST, false);
+        this->_handle_errors(request);
+      }
+
       /*--------.
       | Helpers |
       `--------*/
