@@ -207,6 +207,16 @@ with Meta() as meta:
   encule_quota = encule.me['quotas']
   assertEq(original_quota, encule_quota)
   encule.logout()
+  # Ensure that we block referral if he logs in again.
+  encule.login(device_id = alice.devices[0]['id'])
+  assertEq(alice.referrees[-1]['status'], 'blocked')
+  res = meta.database.users.find_one({'_id': bson.ObjectId(encule.id)})
+  assertEq(str(res['blocked_referrer']), alice.id)
+  alice_quota = alice.me['quotas']
+  assertEq(original_alice_quota, alice_quota)
+  encule_quota = encule.me['quotas']
+  assertEq(original_quota, encule_quota)
+  encule.logout()
   # Turns out he actually just registered on a friend's device and then logs in
   # on another device.
   from uuid import uuid4
