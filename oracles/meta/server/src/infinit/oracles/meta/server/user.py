@@ -2931,8 +2931,35 @@ class Mixin:
       # 0.9.40.
       'link_size_quota': quotas['links']['quota'],
       'link_size_used': quotas['links']['used'],
+      'referral_actions': self._referral_actions(user),
     }
     res.update({'quotas': quotas})
+    return res
+
+  def _referral_actions(self, user):
+    fb_posts = []
+    twitter_posts = []
+    for post in user.get('social_posts', []):
+      if post['medium'] == 'facebook':
+        fb_posts.append(post)
+      elif post['medium'] == 'twitter':
+        twitter_posts.append(post)
+    referrals = []
+    for referral in self.referred_users(user)['referrees']:
+      item = {
+        'status': referral['status'],
+        'method': referral['type'],
+        'has_logged_in': referral['has_logged_in'],
+      }
+      if referral.get('recipient', None):
+        item.update({'identifier': referral['recipient']})
+      referrals.append(item)
+    res = {
+      'has_avatar': user.get('has_avatar', False),
+      'facebook_posts': len(fb_posts),
+      'twitter_posts': len(twitter_posts),
+      'referrals': referrals,
+    }
     return res
 
   def _user_plan_name(self, user):
@@ -2961,6 +2988,7 @@ class Mixin:
         # 0.9.40.
         'link_size_used': quotas['links']['used'] + extra_link_size,
         'link_size_quota': quotas['links']['quota'],
+        'referral_actions': self._referral_actions(user),
       }
     }
     message['account'].update({'quotas': quotas})
@@ -3645,6 +3673,12 @@ class Mixin:
         reply_to = user['email'],
         variables = variables,
         )
+    message = {'account': {'referral_actions': self._referral_actions(user)}}
+    self.notifier.notify_some(
+      notifier.MODEL_UPDATE,
+      message = message,
+      recipient_ids = {user['_id']},
+      version = (0, 9, 43))
     return {
       'identifier': identifier,
       'ghost_code': ghost_code,
