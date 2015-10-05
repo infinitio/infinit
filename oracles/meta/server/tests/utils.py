@@ -911,7 +911,7 @@ class User(Client):
     return self.get('user/synchronize?init=%s' % (init and '1' or '0'))
 
   def update_plan(self, plan, interval = None, step = None,
-          stripe_token = None, stripe_coupon = None):
+                  stripe_token = None, stripe_coupon = None, team = False):
     body = {
       'plan': plan,
     }
