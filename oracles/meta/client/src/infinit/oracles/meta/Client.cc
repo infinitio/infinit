@@ -891,7 +891,7 @@ namespace infinit
         std::pair<std::string, User> res;
         res.first = boost::any_cast<std::string>(json.at("email"));
         {
-          elle::serialization::json::SerializerIn input(json_);
+          elle::serialization::json::SerializerIn input(json_, false);
           res.second = User(input);
         }
         return res;
