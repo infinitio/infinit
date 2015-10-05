@@ -195,18 +195,35 @@ class Stripe:
     if subscription is None:
       elle.log.trace('create subscription')
       subscription = customer.subscriptions.create(plan = plan, coupon = coupon)
+      if coupon:
+        subscription.metadata = {'coupons': '1', 'coupon_1': coupon}
       elle.log.debug('newly created subscription: %s' % subscription)
     else:
       elle.log.debug('update subscription')
       subscription.plan = plan
-      if coupon:
-        subscription.coupon = coupon
+      Stripe.apply_coupon(subscription, coupon)
     return subscription
 
   def remove_plan(self, subscription, at_period_end = True):
     subscription.delete(at_period_end = at_period_end)
     subscription = None
     return subscription
+
+  @staticmethod
+  def apply_coupon(subscription, coupon):
+    if coupon is not None:
+      number_of_coupons = 0
+      if 'coupons' in subscription.metadata:
+        number_of_coupons = int(subscription.metadata['coupons'])
+        previous_coupons = [subscription.metadata['coupon_%s' % coupon]
+                            for coupon in range(1, number_of_coupons + 1)]
+        if coupon in previous_coupons:
+          raise stripe.StripeError(message = 'coupon %s already used' % coupon)
+      subscription.metadata.update({
+        'coupons': number_of_coupons + 1,
+        'coupon_%s' % (number_of_coupons + 1): coupon,
+      })
+      subscription.coupon = coupon
 
   def update_subscription(self, customer, plan, coupon, at_period_end = False):
     elle.log.trace('update subscription (customer: %s, plan: %s, coupon: %s)'
@@ -231,7 +248,7 @@ class Stripe:
         })
       if not coupon_used:
         elle.log.debug('set coupon (%s)' % coupon)
-        subscription.coupon = coupon
+        Stripe.apply_coupon(subscription, coupon)
     if subscription:
       elle.log.debug('save subscription: %s' % subscription)
       subscription = subscription.save()

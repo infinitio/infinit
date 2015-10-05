@@ -352,20 +352,47 @@ with Stripe() as stripe:
                            stripe_coupon = coupon_id)
     invoices = user.invoices['invoices']
     last_charge = invoices[0]['last_charge']
-    print(last_charge)
     from stripe import Invoice
     next_invoice = Invoice.upcoming(customer=stripe.customer_with_email(
       user.email))
-    print(next_invoice)
     assertEq(next_invoice['amount_due'], 999)
     throws(lambda: user.update_plan(
       'premium', stripe_token = stripe.pay(user.email),
-      stripe_coupon = coupon2_id))
+      stripe_coupon = coupon_id)
+    )
     user2 = User(meta, 'pierre_%s@infinit.io' % test_suffix)
     user2.login()
     # Make sure coupon is still valid.
     res = user2.update_plan('premium', stripe_token = stripe.pay(user2.email),
                             stripe_coupon = coupon_id)
+
+  # Make sure it works with tones of coupons.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    coupons = ['coupon_%s_reusable_%s' % (n, test_suffix) for
+               n in range(0, 10)]
+    from stripe import Coupon
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    user2 = User(meta, 'pierre_%s@infinit.io' % test_suffix)
+    user2.login()
+    for coupon in coupons:
+      Coupon.create(
+        api_key = Stripe.key,
+        percent_off = 90,
+        duration='repeating',
+        duration_in_months = 1,
+        max_redemptions = 2,
+        id=coupon)
+      res = user.update_plan('premium', stripe_token = stripe.pay(user.email),
+                             stripe_coupon = coupon)
+      throws(lambda: user.update_plan(
+        'premium', stripe_token = stripe.pay(user.email),
+        stripe_coupon = coupon_id)
+      )
+      # Make sure coupon is still valid.
+      res = user2.update_plan('premium', stripe_token = stripe.pay(user2.email),
+                              stripe_coupon = coupon)
 
   # Change email address.
   with Meta(stripe_api_key = Stripe.key) as meta:
