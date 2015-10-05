@@ -479,6 +479,9 @@ namespace surface
       Account
       account() const;
 
+      void
+      performed_social_post(std::string const& medium); // facebook/twitter
+
     private:
       void
       _account(Account const& account);

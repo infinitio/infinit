@@ -1451,6 +1451,18 @@ namespace surface
     }
 
     void
+    State::performed_social_post(std::string const& medium)
+    {
+      ELLE_LOG_SCOPE("%s: performed social post on medium: %s", *this, medium);
+      if (medium != "facebook" && medium != "twitter")
+      {
+        ELLE_ERR("%s: invalid medium: %s", *this, medium);
+        return;
+      }
+      this->meta().performed_social_post(medium);
+    }
+
+    void
     State::_account(Account const& account)
     {
       ELLE_TRACE_SCOPE("reset %s with %s", this->_model, account);
