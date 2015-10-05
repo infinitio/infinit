@@ -9,6 +9,7 @@ class Stripe:
                meta):
     self.__meta = meta
     self.__in_with = 0
+    self.__plans = {}
 
   def __enter__(self):
     self.__in_with += 1
@@ -208,6 +209,32 @@ class Stripe:
     subscription.delete(at_period_end = at_period_end)
     subscription = None
     return subscription
+
+  def plan(self, id):
+    """
+    Retrieve a plan from its id. Because plans are mostly immutable and only a
+    few plans exist, they are cached.
+
+    XXX: Thread safe?
+
+    id -- The plan id.
+    """
+    if id not in self.__plans:
+      plan = stripe.Plan.retrieve(
+        id,
+        api_key = self.__meta.stripe_api_key)
+      self.__plans[id] = plan
+    return self.__plans[id]
+
+  def coupon(self, id):
+    """
+    Retrieve a coupon from its id.
+    id -- The coupon id.
+    """
+    coupon = stripe.Coupon.retrieve(
+      id,
+      api_key = self.__meta.stripe_api_key)
+    return coupon
 
   @staticmethod
   def apply_coupon(subscription, coupon):
