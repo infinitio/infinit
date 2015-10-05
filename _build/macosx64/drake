@@ -26,7 +26,7 @@ with drake.Drake('../..') as d:
   cxx_config.flag('-ftemplate-depth=512')
   cxx_config.flag('-stdlib=libc++')
 
-  python3 = '/usr/local/Frameworks/Python.framework/Versions/3.4'
+  python3 = '/usr/local/Frameworks/Python.framework/Versions/3.5'
   d.run(cxx_toolkit,
         None,
         cxx_config,
