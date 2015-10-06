@@ -818,6 +818,33 @@ with Stripe() as stripe:
       assertEq(invoice['amount_due'],
                1200 * number_of_members)
 
+  # Next invoice.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    coupon_id = 'coupon_after_%s' % test_suffix
+    from stripe import Coupon, Invoice
+    discount = 0.5
+    Coupon.create(
+      api_key = Stripe.key,
+      percent_off= int(discount * 100),
+      duration='repeating',
+      duration_in_months = 1,
+      max_redemptions = 1,
+      id=coupon_id)
+    admin = User(meta, 'sergio_%s@infinit.io' % test_suffix)
+    admin.login()
+    team = admin.create_team(
+      name = 'team_burton_%s' % test_suffix,
+      stripe_token = stripe.pay(admin.email))
+    last_charge = admin.invoices['invoices'][0]['last_charge']
+    admin.put('team', {'stripe_coupon': coupon_id})
+    invoices = admin.get('user/invoices', {'upcoming': True})
+    assert 'next' in invoices
+    customer = stripe.customer_with_email(admin.email)
+    invoice = Invoice.upcoming(customer=customer['id'])
+    assertEq(invoice['amount_due'], discount * 1200)
+    assertEq(invoice['amount_due'], invoices['next']['amount_due'])
+
   # Plan specif coupons.
   with Meta(stripe_api_key = Stripe.key) as meta:
     test_suffix = stripe.suffix()
