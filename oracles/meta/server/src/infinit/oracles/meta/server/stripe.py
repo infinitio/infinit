@@ -170,12 +170,18 @@ class Stripe:
       elle.log.err('error fetching invoice: %s' % e)
       return None
 
-  def invoices(self, customer, before = None, after = None):
+  def invoices(self, customer, before = None, after = None, upcoming = True):
     """
     Returns a customer's invoices.
     By default this returns results for the last year.
     """
-    return self.__fetch_invoices(customer, before, after, paid_only = False)
+    invoices = self.__fetch_invoices(customer, before, after, paid_only = False)
+    if upcoming:
+      next = None if self.__meta.stripe_api_key is None else \
+             stripe.Invoice.upcoming(customer = customer['id'],
+                                     api_key = self.__meta.stripe_api_key)
+      return invoices, next
+    return invoices, None
 
   def receipts(self, customer, before = None, after = None):
     """

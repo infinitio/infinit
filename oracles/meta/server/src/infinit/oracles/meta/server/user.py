@@ -4205,8 +4205,8 @@ class Mixin:
 
   @api('/user/invoices')
   @require_logged_in_fields(['stripe_id'])
-  def user_invoices_api(self):
-    return self.__user_invoices(self.user)
+  def user_invoices_api(self, upcoming = False):
+    return self.__user_invoices(self.user, upcoming = upcoming)
 
   @api('/users/<identifier>/invoices')
   @require_admin
@@ -4216,7 +4216,7 @@ class Mixin:
       return self.not_found()
     return self.__user_invoices(user)
 
-  def __user_invoices(self, user):
+  def __user_invoices(self, user, upcoming = False):
     def not_found(reason):
         return self.not_found({
           'error': 'stripe_customer_not_found',
@@ -4227,7 +4227,8 @@ class Mixin:
     customer = self._stripe.fetch_customer(user)
     if customer is None:
       return not_found('No stripe customer found for user.')
-    invoices = self._stripe.invoices(customer)
+    invoices, next_invoice = self._stripe.invoices(customer,
+                                                   upcoming = upcoming)
     charges = self._stripe.charges(customer)
     res = []
     for i in invoices:
@@ -4237,7 +4238,7 @@ class Mixin:
           last_charge = c
           break
       res.append({'invoice': i, 'last_charge': last_charge})
-    return {'invoices': res}
+    return {'invoices': res, 'next': next_invoice}
 
   @api('/user/receipts')
   @require_logged_in
