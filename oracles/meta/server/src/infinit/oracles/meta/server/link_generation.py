@@ -533,6 +533,10 @@ class Mixin:
           'size',
           'status',
       ])
+    # Should ALWAYS exists.
+    owner = self.user_by_id(link['sender_id'], fields = ['plan', 'accounts'],
+                            ensure_existence = False)
+    ret_link['owner_premium'] = self.premium_or_team(owner) if owner else False
     if link.get('link') is not None:
       ret_link['link'] = link['link']
     ret_link['password'] = link.get('password') is not None # deprecated in favour of 'has_password'
