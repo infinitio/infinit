@@ -155,11 +155,7 @@ class Stripe:
       return []
     if not paid_only:
       return invoices
-    res = []
-    for i in invoices:
-      if i['paid']:
-        res.append(i)
-    return res
+    return [i for i in invoices if i['paid']]
 
   def invoice(self, invoice_id: str):
     """
