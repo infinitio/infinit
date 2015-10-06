@@ -99,9 +99,9 @@ with Stripe() as stripe:
     user.login()
     res = user.update_plan('plus', stripe_token = stripe.pay(user.email),
             interval = 'year')
-    assertEq(res['amount'], 9999)
+    assertEq(res['amount'], 7200)
     check_plus_quotas(user)
-    stripe.check_plan(user.email, 'plus_year', 9999)
+    stripe.check_plan(user.email, 'plus_year', 7200)
 
   # Update from basic to premium_year.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -110,9 +110,9 @@ with Stripe() as stripe:
     user.login()
     res = user.update_plan('premium', stripe_token = stripe.pay(user.email),
             interval = 'year')
-    assertEq(res['amount'], 10000)
+    assertEq(res['amount'], 10200)
     check_premium_quotas(user)
-    stripe.check_plan(user.email, 'premium_year', 10000)
+    stripe.check_plan(user.email, 'premium_year', 10200)
 
   # Update from basic to plus to premium.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -452,12 +452,12 @@ with Stripe() as stripe:
     user.update_plan('premium', stripe_token = stripe.pay(user.email),
                      interval = 'year')
     check_premium_quotas(user)
-    stripe.check_plan(user.email, 'premium_year', 10000)
+    stripe.check_plan(user.email, 'premium_year', 10200)
     # Next charge should be next year.
     from stripe import Invoice
     invoice = Invoice.upcoming(
       customer = stripe.customer_with_email(user.email)['id'])
-    assertEq(invoice['amount_due'], 10000)
+    assertEq(invoice['amount_due'], 10200)
     import datetime
     next_charge = datetime.datetime.fromtimestamp(invoice['date'])
     now = datetime.datetime.utcnow()
