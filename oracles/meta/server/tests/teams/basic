@@ -163,6 +163,20 @@ with Stripe() as stripe:
     bob.join_team(team['id'])
     stripe.check_plan(admin.email, 'team', percent_off = 30, quantity = 2)
 
+  # Rename team.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    admin = User(meta, 'boss_%s@infinit.io' % test_suffix)
+    admin.login()
+    team = admin.create_team(
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(admin.email),
+      stripe_coupon = 'coupon_30')
+    new_name = 'super_team'
+    admin.put('team', {'name': new_name})
+    team = admin.get('team')
+    assertEq(team['name'], new_name)
+
   # Adding and removing users.
   with Meta(stripe_api_key = Stripe.key) as meta:
     test_suffix = stripe.suffix()

@@ -547,35 +547,75 @@ class Mixin:
   # ============================================================================
   # View.
   # ============================================================================
+  def __team_view(self, team):
+    return team.view
+
   @api('/team', method = 'GET')
   @require_logged_in
   def team_view(self):
     team = Team.find(self,
                      {'members.id': self.user['_id']},
                      ensure_existence = True)
-    return team.view
+    return self.__team_view(team)
 
   @api('/teams/<identifier>', method = 'GET')
   @require_key
   def team_view_admin(self, identifier: bson.ObjectId):
     team = Team.find(self, {'_id': identifier}, ensure_existence = True)
-    return team.view
+    return self.__team_view(team)
 
   # ============================================================================
   # Update.
   # ============================================================================
+  def __edit_team(self,
+                  team,
+                  user = None,
+                  name = None,
+                  plan = None,
+                  stripe_coupon = None,
+                  stripe_token = None,
+                  interval = None,
+                  step = None):
+    self.__require_team_admin(team, user)
+    if name is not None and name != team['name']:
+      team = team.edit({'$set': {'name': name, 'lower_name': name.lower()}})
+    no_action = (plan is None and interval is None and\
+                 step is None and stripe_coupon is None)
+    if no_action:
+      return self.__team_view(team)
+    self._user_update(user,
+                      plan = plan, stripe_token = stripe_token,
+                      stripe_coupon = stripe_coupon, interval = interval,
+                      step = step)
+    return self.__team_view(
+      Team.find(self, team['id'], ensure_existence = True))
+
   @api('/team', method = 'PUT')
   @require_logged_in
-  def update_team(self, name):
-    team = Team.team_for_user(self, self.user, ensure_existence = True)
-    self.__require_team_admin(team, self.user)
-    return team.edit({'$set': {'name': name, 'lower_name': name.lower()}}).view
+  def update_team(self,
+                  name = None,
+                  plan = None,
+                  stripe_coupon = None,
+                  stripe_token = None,
+                  interval = None,
+                  step = None):
+    user = self.user
+    team = Team.team_for_user(self, user, ensure_existence = True)
+    return self.__edit_team(team, user, name = name, plan = plan,
+                            stripe_coupon = stripe_coupon,
+                            stripe_token = stripe_token,
+                            interval = interval,
+                            step = step)
 
   @api('/teams/<identifier>', method = 'PUT')
   @require_admin
   def update_team_admin(self, identifier : bson.ObjectId, name):
     team = Team.find(self, {'_id': identifier}, ensure_existence = True)
-    return team.edit({'$set': {'name': name, 'lower_name': name.lower()}}).view
+    return self.__edit_team(team, None, name = name, plan = plan,
+                            stripe_coupon = stripe_coupon,
+                            stripe_token = stripe_token,
+                            interval = interval,
+                            step = step)
 
   # ============================================================================
   # Add invitee.
