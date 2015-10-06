@@ -59,7 +59,7 @@ with Stripe() as stripe:
     assertGT(quotas['links']['quota'],
              previous_quotas['links']['quota'])
     check_premium_quotas(user)
-    stripe.check_plan(user.email, 'premium', 999)
+    stripe.check_plan(user.email, 'premium', 999, check_next_invoice = True)
 
   # Bad requests.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -75,10 +75,12 @@ with Stripe() as stripe:
     user.login()
     res = user.update_plan('premium', stripe_token = stripe.pay(user.email))
     assertEq(res['amount'], 999)
-    stripe.check_plan(user.email, 'premium', 999)
+    stripe.check_plan(user.email, 'premium', 999, check_next_invoice = True)
     res = user.update_plan('premium', stripe_coupon = 'coupon_30')
     assertEq(res['amount'], 0.7 * 999)
-    stripe.check_plan(user.email, 'premium', 999, percent_off = 30)
+
+    stripe.check_plan(user.email, 'premium', 999, percent_off = 30,
+                      check_next_invoice = True)
 
   # Update from basic to plus.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -122,7 +124,9 @@ with Stripe() as stripe:
     stripe.check_plan(user.email, 'plus', 699)
     user.update_plan('premium')
     check_premium_quotas(user)
-    stripe.check_plan(user.email, 'premium', 999)
+    # Here, the user is charged 1299 during his next invoice...
+    # That doesn't make any sense.
+    stripe.check_plan(user.email, 'premium', 999, check_next_invoice = False)
 
   # Update from basic to premium to basic.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -148,7 +152,7 @@ with Stripe() as stripe:
     stripe.check_plan(user.email, 'premium', 999)
     user.update_plan('plus')
     check_plus_quotas(user)
-    stripe.check_plan(user.email, 'plus', 699)
+    stripe.check_plan(user.email, 'plus', 699, check_next_invoice = False)
 
   # Getting premium (then getting eligible for plus by referral) then go back to
   # 'basic'.
@@ -178,7 +182,8 @@ with Stripe() as stripe:
                            stripe_coupon = 'coupon_30')
     assertEq(res['amount'], 999 * 0.70)
     check_premium_quotas(user)
-    stripe.check_plan(user.email, 'premium', 999, percent_off = 30)
+    stripe.check_plan(user.email, 'premium', 999, percent_off = 30,
+                      check_next_invoice = False)
 
   # Using coupons on different plans.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -201,7 +206,8 @@ with Stripe() as stripe:
     res = user.update_plan('premium', stripe_coupon = 'coupon_50')
     assertEq(res['amount'], 999 * 0.5)
     check_premium_quotas(user)
-    stripe.check_plan(user.email, 'premium', 999, percent_off = 50)
+    stripe.check_plan(user.email, 'premium', 999, percent_off = 50,
+                      check_next_invoice = False)
 
   # Delete user account.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -213,6 +219,82 @@ with Stripe() as stripe:
     stripe.check_plan(user.email, 'premium', 999)
     user.delete('user')
     stripe.check_plan(user.email, 'premium', 999, canceled = True)
+
+  # Create a coupon with 'repeating' for one month.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    coupon_id = 'coupon_%s' % test_suffix
+    from stripe import Coupon
+    Coupon.create(
+      api_key = Stripe.key,
+      percent_off = 90,
+      duration='repeating',
+      duration_in_months = 1,
+      max_redemptions = 1,
+      id=coupon_id)
+    user = User(meta, 'coupon_%s@infinit.io' % test_suffix)
+    user.login()
+    p = user.update_plan('premium', stripe_token = stripe.pay(user.email),
+                         stripe_coupon = coupon_id)
+    check_premium_quotas(user)
+    data = stripe.check_plan(user.email, 'premium', 999, percent_off = 90,
+                             check_next_invoice = False)
+    # It last one month, next invoice will be 999 again.
+    from stripe import Invoice
+    invoice = Invoice.upcoming(customer=stripe.customer_with_email(user.email))
+    assertEq(invoice['amount_due'], 999)
+    coupon = data[0]['discount']['coupon']
+    assert coupon['max_redemptions'] == 1
+    assert coupon['times_redeemed'] == 1
+    user.delete('user')
+    data = stripe.check_plan(user.email, 'premium', 999, percent_off = 90, canceled = True)
+    coupon = data[0]['discount']['coupon']
+    assert coupon['max_redemptions'] == 1
+    assert coupon['times_redeemed'] == 1
+    user2 = User(meta, 'coupon_2_%s@infinit.io' % test_suffix)
+    user2.login()
+    throws(lambda: user2.update_plan('premium', stripe_token = stripe.pay(user2.email),
+                                     stripe_coupon = stripe.suffix()),
+           403)
+
+  # Create a coupon with 'once'.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    coupon_id = 'super_coupon_%s' % test_suffix
+    from stripe import Coupon
+    Coupon.create(
+      api_key = Stripe.key,
+      percent_off = 100,
+      duration='once',
+      max_redemptions = 1,
+      id=coupon_id)
+    user = User(meta, 'coupon_%s@infinit.io' % test_suffix)
+    user.login()
+    p = user.update_plan('premium', stripe_token = stripe.pay(user.email),
+                         stripe_coupon = coupon_id)
+    check_premium_quotas(user)
+    invoices = user.invoices
+    # Coupon is 100% (so user is not charged).
+    assertEq(invoices['invoices'][0]['last_charge'], None)
+    # Next charge should be next month.
+    from stripe import Invoice
+    invoice = Invoice.upcoming(customer = stripe.customer_with_email(user.email)['id'])
+    assertEq(invoice['amount_due'], 999)
+    import datetime
+    next_charge = datetime.datetime.fromtimestamp(invoice['date'])
+    now = datetime.datetime.utcnow()
+    time_until_next_charge = next_charge - now
+    assert time_until_next_charge.days > 27 and time_until_next_charge.days < 32
+
+  # Invoices.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    throws(lambda: user.invoices, 404)
+    res = user.update_plan('premium', stripe_token = stripe.pay(user.email))
+    invoices = user.invoices['invoices']
+    assert len(invoices) == 1
 
   # Change email address.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -247,7 +329,7 @@ with Stripe() as stripe:
     meta.mailer = MailService()
     jean.update_plan('premium', stripe_token = stripe.pay(jean.email))
     check_premium_quotas(jean)
-    stripe.check_plan(jean.email, 'premium', 999)
+    stripe.check_plan(jean.email, 'premium', 999, check_next_invoice = True)
     new_email = 'serge_jean_pierre_%s@infinit.io' % test_suffix
     jean.put('user/accounts/%s' % new_email)
     keys = get_keys(meta.emailer.emails, 1)
@@ -262,4 +344,3 @@ with Stripe() as stripe:
     # Add email address to stripe list for cleanup.
     stripe.emails.add(new_email)
     throws(lambda: stripe.customer_with_email(original_email), StripeTestException)
-

@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+
+from utils import Meta, Trophonius, User, throws
+from infinit.oracles.utils import sign
+
+with Meta(enable_emails = True) as meta, Trophonius(meta) as trophonius:
+  user = User(meta, 'foobar@infinit.io')
+  user.login(trophonius = trophonius)
+  del meta.emailer.emails[:]
+  meta.post('users/%s/lost-password' % user.email)
+  emails = meta.emailer.emails
+  assert len(emails) == 1
+  email = emails[0]
+  del user.notifications[:]
+  meta.post('users/%s/reset-password' % user.email,
+            {
+              'password': '2' * 64,
+              'password_hash': '3' * 64,
+              'reset_token': email.variables['reset_token'],
+            })
+  notification = user.next_notification()
+  assert notification.type == 12
+  throws(lambda: user.accounts, 403)
+
+with Meta(enable_emails = True) as meta, Trophonius(meta) as trophonius:
+  user = User(meta, 'foobar@infinit.io')
+  user.login(trophonius = trophonius)
+  web_user = User(meta, user_to_copy = user)
+  web_user.post('web-login', web_user.web_login_parameters)
+  del user.notifications[:]
+  res = web_user.post('user/change_password', {
+    'old_password': web_user.password,
+    'new_password': '2' * 64,
+    'new_password_hash': '4' * 64
+    })
+  notification = user.next_notification()
+  assert notification.type == 12
+  throws(lambda: user.accounts, 403)
+
+with Meta(enable_emails = True) as meta, Trophonius(meta) as trophonius:
+  user = User(meta, 'foobar@infinit.io')
+  user.login(trophonius = trophonius)
+  web_user = User(meta, user_to_copy = user)
+  web_user.post('web-login', web_user.web_login_parameters)
+
+  del meta.emailer.emails[:]
+  new_email = 'castor@infinit.io'
+  web_user.put('user/accounts/%s' % new_email)
+  emails = meta.emailer.emails
+  assert len(emails) == 1
+  email = emails[0]
+  web_user.post('users/%s/accounts/%s/confirm' % (
+    web_user.email, new_email),
+                {
+                  'confirm_token': email.variables['confirm_token']
+                })
+  del user.notifications[:]
+  res = web_user.post('user/accounts/%s/make_primary' % new_email,
+                      {
+                        'password': web_user.password,
+                      })
+  notification = user.next_notification()
+  assert notification.type == 12
+  throws(lambda: user.accounts, 403)

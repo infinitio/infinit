@@ -686,6 +686,7 @@ class Stripe():
           cu.delete()
       if not users['has_more']:
         break
+
     # Remove created plans.
     cursor = None
     while True:
@@ -699,6 +700,21 @@ class Stripe():
           p = stripe.Plan.retrieve(plan['id'])
           p.delete()
       if not plans['has_more']:
+        break
+
+    # Remove coupons.
+    cursor = None
+    while True:
+      if cursor:
+        coupons = stripe.Coupon.all(limit = 100, starting_after = cursor)
+      else:
+        coupons = stripe.Coupon.all(limit = 100)
+      for coupon in coupons['data']:
+        cursor = coupon['id']
+        if self.suffix() in coupon['id']:
+          p = stripe.Coupon.retrieve(coupon['id'])
+          p.delete()
+      if not coupons['has_more']:
         break
 
   def pay(self, email):
@@ -734,9 +750,11 @@ class Stripe():
                  email,
                  plan_id,
                  amount = None,
-                 percent_off = None,
+                 percent_off = 0,
                  canceled = False,
-                 quantity = None):
+                 quantity = None,
+                 check_next_invoice = False):
+    check_next_invoice = check_next_invoice and not canceled
     customer = self.customer_with_email(email)
     data = customer['subscriptions']['data']
     assertNeq(len(data), 0)
@@ -744,13 +762,17 @@ class Stripe():
       if sub['plan']['id'] == plan_id:
         if amount is not None:
           assertEq(sub['plan']['amount'], amount)
-        if percent_off is not None:
+          if check_next_invoice:
+            from stripe import Invoice
+            invoice = Invoice.upcoming(customer=customer['id'])
+            assertEq(invoice['amount_due'], int(amount * (1 - percent_off / 100)))
+        if sub and 'discount' in sub and sub['discount'] is not None:
           assertEq(sub['discount']['coupon']['percent_off'], percent_off)
         if canceled is True:
           assertEq(sub['cancel_at_period_end'], True)
         if quantity is not None:
           assertEq(sub['quantity'], quantity)
-        return
+        return data
     raise StripeTestException(
       'unable to find subscription with plan (%s) for %s' % (plan_id, email))
 
@@ -767,22 +789,29 @@ class User(Client):
                device_name = 'device',
                facebook = False,
                version = None,
+               user_to_copy = None,
                **kwargs):
     super().__init__(meta, version)
-    if not facebook:
-      self.email = email is not None and email or random_email() + '@infinit.io'
-      self.password, self.email_confirmation_token = \
-        meta.create_user(self.email,
-                         get_confirmation_code = True,
-                         **kwargs)
-      self.__id = meta.get('users/%s' % self.email)['id']
+    if user_to_copy is None:
+      if not facebook:
+        self.email = email is not None and email or random_email() + '@infinit.io'
+        self.password, self.email_confirmation_token = \
+          meta.create_user(self.email,
+                           get_confirmation_code = True,
+                           **kwargs)
+        self.__id = meta.get('users/%s' % self.email)['id']
+      else:
+        self.__id = None
     else:
-      self.__id = None
+      self.email = user_to_copy.email
+      self.password = user_to_copy.password
+      self.__id = user_to_copy.id
     self.device_id = uuid4()
     self.trophonius = None
     self.__version = version or \
                      infinit.oracles.meta.server.Meta.extract_version(
                        Version.version, '')
+
 
   def on_other_device(self):
     from copy import copy
@@ -1140,6 +1169,10 @@ class User(Client):
                      })
     stripe.plans.add(plan['id'])
     return plan
+
+  @property
+  def invoices(self):
+    return self.get('user/invoices')
 
   def create_team(self,
                   name,

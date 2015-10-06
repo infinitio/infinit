@@ -497,7 +497,8 @@ with Stripe() as stripe:
       name = 'infinit_%s' % test_suffix,
       stripe_token = stripe.pay(admin.email),
       plan = plan['id'])
-    stripe.check_plan(admin.email, plan['id'], 10, quantity = 1)
+    stripe.check_plan(admin.email, plan['id'], 10, quantity = 1,
+                      check_next_invoice = False)
 
   # User existing plan.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -520,7 +521,8 @@ with Stripe() as stripe:
     stripe.check_plan(member.email, 'premium', 999)
     admin.invite_team_member(member.email)
     member.join_team(team['id'])
-    stripe.check_plan(admin.email, plan['id'], 10, quantity = 2)
+    stripe.check_plan(admin.email, plan['id'], 10, quantity = 2,
+                      check_next_invoice = False)
     # Member plan should be canceled prorata.
     stripe.check_no_plan(member.email)
 
@@ -759,6 +761,43 @@ with Stripe() as stripe:
     bob.join_team(team['id'])
     throws(lambda: admin.update_plan(plan = 'basic'), 403)
     throws(lambda: bob.update_plan(plan = 'basic'), 403)
+
+  # Coupons and invoices.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    coupon_id = 'coupon_team_%s' % test_suffix
+    from stripe import Coupon, Invoice
+    discount = 0.5
+    Coupon.create(
+      api_key = Stripe.key,
+      percent_off= int(discount * 100),
+      duration='repeating',
+      duration_in_months = 1,
+      max_redemptions = 1,
+      id=coupon_id)
+    admin = User(meta, 'sergio_%s@infinit.io' % test_suffix)
+    admin.login()
+    team = admin.create_team(
+      name = 'team_burton_%s' % test_suffix,
+      stripe_token = stripe.pay(admin.email),
+      stripe_coupon = coupon_id)
+    last_charge = admin.invoices['invoices'][0]['last_charge']
+    invoice = admin.invoices['invoices'][0]['invoice']
+    assertEq(last_charge['amount'], discount * 1200)
+    customer = stripe.customer_with_email(admin.email)
+    invoice = Invoice.upcoming(customer=customer['id'])
+    # Coupon last one month, so next month amount due has to be 1200.
+    assertEq(invoice['amount_due'], 1200)
+    # Add members.
+    users = ['alice', 'bob', 'serge']
+    for user in users:
+      member = User(meta, '%s_%s@infinit.io' % (user, test_suffix))
+      member.login()
+      admin.invite_team_member(member.email)
+      member.join_team(team['id'])
+      invoice = Invoice.upcoming(customer=customer['id'])
+      assertEq(invoice['amount_due'],
+               1200 + ((1 + discount) * 1200) * (users.index(user) + 1))
 
   # XXX: Add tests for all admin functions calls.
 

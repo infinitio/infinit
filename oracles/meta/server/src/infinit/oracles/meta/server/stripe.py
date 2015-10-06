@@ -190,16 +190,17 @@ class Stripe:
   def set_plan(self, customer, subscription, plan, coupon):
     elle.log.trace(
       'set plan (customer: %s, subscription: %s, plan: %s, coupon: %s)'
-      % (customer, subscription, plan, coupon))
+      % (customer['email'], subscription, plan, coupon))
     assert self.__in_with >= 0
     if subscription is None:
       elle.log.trace('create subscription')
-      subscription = customer.subscriptions.create(
-        plan = plan, coupon = coupon)
-      coupon = None
+      subscription = customer.subscriptions.create(plan = plan, coupon = coupon)
+      elle.log.debug('newly created subscription: %s' % subscription)
     else:
       elle.log.debug('update subscription')
       subscription.plan = plan
+      if coupon:
+        subscription.coupon = coupon
     return subscription
 
   def remove_plan(self, subscription, at_period_end = True):
@@ -209,10 +210,15 @@ class Stripe:
 
   def update_subscription(self, customer, plan, coupon, at_period_end = False):
     elle.log.trace('update subscription (customer: %s, plan: %s, coupon: %s)'
-                   % (customer, plan, coupon))
+                   % (customer['email'], plan, coupon))
     subscription = self.subscription(customer)
+    coupon_used = False
     if plan is not None:
-      subscription = self.set_plan(customer, subscription, plan, coupon)
+      subscription = self.set_plan(customer = customer,
+                                   subscription = subscription,
+                                   plan = plan, coupon = coupon)
+      if coupon is not None:
+        coupon_used = True
     else:
       if coupon is None:
         if subscription is not None:
@@ -223,8 +229,9 @@ class Stripe:
           'error': 'invalid_plan_coupon',
           'reason': 'cannot use a coupon on basic plan',
         })
-      elle.log.debug('set coupon (%s)' % coupon)
-      subscription.coupon = coupon
+      if not coupon_used:
+        elle.log.debug('set coupon (%s)' % coupon)
+        subscription.coupon = coupon
     if subscription:
       elle.log.debug('save subscription: %s' % subscription)
       subscription = subscription.save()
