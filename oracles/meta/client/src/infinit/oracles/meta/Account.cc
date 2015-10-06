@@ -146,7 +146,16 @@ namespace infinit
       void
       Account::Quotas::QuotaUsage::serialize(elle::serialization::Serializer& s)
       {
-        s.serialize("quota", this->quota);
+        // XXX: Remove the try catch when feature/json-reset-optionals is
+        // merged.
+        try
+        {
+          s.serialize("quota", this->quota);
+        }
+        catch (elle::serialization::TypeError const&)
+        {
+          this->quota.reset();
+        }
         s.serialize("used", this->used);
       }
 
@@ -164,7 +173,16 @@ namespace infinit
       void
       Account::Quotas::Limit::serialize(elle::serialization::Serializer& s)
       {
-        s.serialize("limit", this->limit);
+        // XXX: Remove the try catch when feature/json-reset-optionals is
+        // merged.
+        try
+        {
+          s.serialize("limit", this->limit);
+        }
+        catch (elle::serialization::TypeError const&)
+        {
+          this->limit.reset();
+        }
       }
 
       void
