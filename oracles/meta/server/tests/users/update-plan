@@ -444,6 +444,38 @@ with Stripe() as stripe:
     throws(lambda: stripe.customer_with_email(original_email),
            StripeTestException)
 
+  # Moving from monthly to yearly.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    coupon = '30_%s' % test_suffix
+    from stripe import Coupon
+    Coupon.create(
+      api_key = Stripe.key,
+      percent_off = 30,
+      duration='repeating',
+      duration_in_months = 1,
+      max_redemptions = 2,
+      id=coupon)
+    user = User(meta, 'jean_loic_%s@infinit.io' % test_suffix)
+    user.login()
+    res = user.update_plan(
+      'premium',
+      stripe_token = stripe.pay(user.email),
+#      stripe_coupon = coupon
+    )
+    assertEq(res['amount'], 999)
+    user.update_plan('premium', interval = 'year')
+    invoices = user.get('user/invoices', {'upcoming': True})
+    assertEq(invoices['next']['amount_due'], 10200)
+    import calendar
+    from datetime import datetime, timedelta
+    def timestamp(x):
+      return calendar.timegm(
+        (datetime.utcnow() + timedelta(days = x)).timetuple())
+    around_one_year = [timestamp(x) for x in [364, 367]]
+    assertGT(invoices['next']['date'], around_one_year[0])
+    assertGT(around_one_year[1], invoices['next']['date'])
+
   # Yearly subscription.
   with Meta(stripe_api_key = Stripe.key) as meta:
     test_suffix = stripe.suffix()
