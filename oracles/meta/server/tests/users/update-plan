@@ -441,4 +441,26 @@ with Stripe() as stripe:
     stripe.check_plan(new_email, 'premium', 999)
     # Add email address to stripe list for cleanup.
     stripe.emails.add(new_email)
-    throws(lambda: stripe.customer_with_email(original_email), StripeTestException)
+    throws(lambda: stripe.customer_with_email(original_email),
+           StripeTestException)
+
+  # Yearly subscription.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    user = User(meta, 'jean_%s@infinit.io' % test_suffix)
+    user.login()
+    user.update_plan('premium', stripe_token = stripe.pay(user.email),
+                     interval = 'year')
+    check_premium_quotas(user)
+    stripe.check_plan(user.email, 'premium_year', 10000)
+    # Next charge should be next year.
+    from stripe import Invoice
+    invoice = Invoice.upcoming(
+      customer = stripe.customer_with_email(user.email)['id'])
+    assertEq(invoice['amount_due'], 10000)
+    import datetime
+    next_charge = datetime.datetime.fromtimestamp(invoice['date'])
+    now = datetime.datetime.utcnow()
+    time_until_next_charge = next_charge - now
+    # time_until_next_charge should be 11 months, n days, ...
+    assertIn(time_until_next_charge.days, list(range(364, 368)))
