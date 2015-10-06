@@ -672,16 +672,18 @@ class Stripe():
   def clear(self):
     import stripe
     stripe.api_key = Stripe.key
-    # Remove created users.
+    import re
+    from datetime import datetime, timedelta
+    import calendar
+    yesterday = calendar.timegm((datetime.utcnow() -
+                                 timedelta(days = 1)).timetuple())
+    test_item = re.compile('.*\d{%s}.*' % len(self.__suffix))
+
     def is_old(object, field):
       # Garbage old items.
-      import re
-      p = re.compile('.*\d{%s}.*' % len(self.__suffix))
-      from datetime import datetime, timedelta
-      import calendar
-      yesterday = calendar.timegm((datetime.utcnow() - timedelta(days = 1)).timetuple())
-      return p.match(object.get(field)) and object['created'] < yesterday
+      return test_item.match(object.get(field)) and object['created'] < yesterday
 
+    # Remove created users.
     def cleanup(Collection, field):
       cursor = None
       while True:
@@ -691,8 +693,11 @@ class Stripe():
           items = Collection.all(limit = 100)
         for item in items['data']:
           if self.suffix() in item[field] or is_old(item, field):
-            i = Collection.retrieve(item['id'])
-            i.delete()
+            try:
+              i = Collection.retrieve(item['id'])
+              i.delete()
+            except stripe.error.InvalidRequestError:
+              pass
           else:
             cursor = item['id']
         if not items['has_more']:
