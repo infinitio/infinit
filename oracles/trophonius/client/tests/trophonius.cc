@@ -877,7 +877,7 @@ ELLE_TEST_SCHEDULED_THROWS(connection_callback_throws, std::runtime_error)
   client.ping_period(100_ms);
   ELLE_LOG("connect")
     client.connect("0", uuid(), "0");
-    for (int i=0; i<30 && !beacon; ++i)
+    for (int i = 0; i < 30 && !beacon; ++i)
       reactor::sleep(valgrind(100_ms));
   BOOST_CHECK(beacon);
 }
