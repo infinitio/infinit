@@ -1309,3 +1309,10 @@ def assertNin(e, c):
 def assertGT(a, b):
   if a <= b:
     raise Exception('%r <= %r' % (a, b))
+
+def wait(condition, duration):
+  for i in range(10):
+    if condition():
+      return
+    import time
+    time.sleep(duration / 10)
