@@ -396,44 +396,6 @@ class InstrumentedMeta(infinit.oracles.meta.server.Meta):
   def forward(self, duration):
     self.__now += duration
 
-
-basic_user_transfer_size_limit = 10 * 1000 * 1000 * 1000 # 10 GB
-def make_plan(name,
-              default_storage,
-              storage_bonuses,
-              send_to_self_quota,
-              send_to_self_bonus,
-              file_size_limit,
-              features = {},
-              team = False):
-  return {
-    'name': name,
-    'quotas': {
-      'links': {
-        'default_storage': default_storage,
-        'bonuses': {
-          'referrer': storage_bonuses[0],
-          'referree': storage_bonuses[1],
-          'facebook_linked': storage_bonuses[2],
-          'social_post': storage_bonuses[3],
-        },
-      },
-      'p2p': {
-        'size_limit': file_size_limit,
-      },
-      'send_to_self': {
-        'default_quota': send_to_self_quota,
-        'bonuses': {
-          'referrer': send_to_self_bonus[0],
-          'facebook_linked': send_to_self_bonus[1],
-          'social_post': send_to_self_bonus[2],
-        },
-      }
-    },
-    'features': features,
-    'team': team,
-  }
-
 class Meta:
 
   def __init__(self,

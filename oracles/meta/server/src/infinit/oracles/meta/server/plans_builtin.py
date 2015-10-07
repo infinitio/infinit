@@ -23,7 +23,7 @@ class BuiltInPlans:
             'social_post': 2,
             'facebook_linked': 2,
           },
-          'default_quota': 5,
+          'default_quota': None,
         }
       }
     }
@@ -34,7 +34,7 @@ class BuiltInPlans:
       'name': 'plus',
       'quotas': {
         'p2p': {
-          'size_limit': None,
+          'size_limit': int(5e10),
         },
         'links': {
           'bonuses': {
@@ -43,7 +43,7 @@ class BuiltInPlans:
             'facebook_linked': int(3e8),
             'social_post': int(5e8),
           },
-          'default_storage': int(5e9),
+          'default_storage': int(3e9),
         },
         'send_to_self': {
           'bonuses': {

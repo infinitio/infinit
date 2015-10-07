@@ -66,13 +66,13 @@ with Stripe() as stripe:
       0)
     res = admin.me
     assertEq(res['plan'], 'basic')
-    assertNeq(res['quotas']['send_to_self']['quota'], None)
+    assertEq(res['quotas']['send_to_self']['quota'], None)
     assertNeq(res['quotas']['p2p']['limit'], None)
     bob.logout()
     bob.login()
     res = bob.me
     assertEq(res['plan'], 'basic')
-    assertNeq(res['quotas']['send_to_self']['quota'], None)
+    assertEq(res['quotas']['send_to_self']['quota'], None)
     assertNeq(res['quotas']['p2p']['limit'], None)
 
   # Create and deleting a team_year.
@@ -113,13 +113,13 @@ with Stripe() as stripe:
       0)
     res = admin.me
     assertEq(res['plan'], 'basic')
-    assertNeq(res['quotas']['send_to_self']['quota'], None)
+    assertEq(res['quotas']['send_to_self']['quota'], None)
     assertNeq(res['quotas']['p2p']['limit'], None)
     bob.logout()
     bob.login()
     res = bob.me
     assertEq(res['plan'], 'basic')
-    assertNeq(res['quotas']['send_to_self']['quota'], None)
+    assertEq(res['quotas']['send_to_self']['quota'], None)
     assertNeq(res['quotas']['p2p']['limit'], None)
 
   # Team uniqueness.

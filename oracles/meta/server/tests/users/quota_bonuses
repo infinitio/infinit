@@ -16,8 +16,8 @@ with Meta() as meta:
   with open('%s/avatar.jpg' % os.path.dirname(__file__), 'rb') as f:
     alice.post('user/avatar', body = f.read())
   assert alice.me['has_avatar'] == True
-  assertGT(alice.me['quotas']['send_to_self']['quota'],
-           previous_quota)
+  assertEq(alice.me['quotas']['send_to_self']['quota'], None),
+  assertEq(previous_quota, None)
   for bonus in ['send_to_self']:
     assertGT(alice.me['quotas'][bonus]['bonus'],
              previous_bonuses[bonus])
@@ -25,6 +25,7 @@ with Meta() as meta:
 def social_post(user, medium):
   previous_links = user.me['quotas']['links']['quota']
   previous_send_to_self = user.me['quotas']['send_to_self']['quota']
+  assertEq(previous_send_to_self, None)
   previous_bonuses = {
     'send_to_self': alice.me['quotas']['send_to_self']['bonus'],
     'links': alice.me['quotas']['links']['bonus']
@@ -32,8 +33,9 @@ def social_post(user, medium):
   user.post('user/social_posts/' + medium)
   assertGT(user.me['quotas']['links']['quota'],
            previous_links)
-  assertGT(user.me['quotas']['send_to_self']['quota'],
-           previous_send_to_self)
+  assertEq(
+    user.me['quotas']['send_to_self']['quota'],
+    None)
   for bonus in ['send_to_self', 'links']:
     assertGT(alice.me['quotas'][bonus]['bonus'],
              previous_bonuses[bonus])
@@ -68,8 +70,6 @@ with Meta() as meta, Trophonius(meta) as t:
   bob.facebook_connect("token", check_registration = True)
   assertGT(bob.me['quotas']['links']['quota'],
            alice.me['quotas']['links']['quota'])
-  assertGT(bob.me['quotas']['send_to_self']['quota'],
-           alice.me['quotas']['send_to_self']['quota'])
   meta.inner.facebook.set_next_client_data({
     'id': int(uniform(1000000000000000, 1500000000000000)),
     'email': None,
@@ -80,7 +80,6 @@ with Meta() as meta, Trophonius(meta) as t:
            alice.me['quotas']['links']['quota'])
   assertEq(bob.me['quotas']['send_to_self']['quota'],
            alice.me['quotas']['send_to_self']['quota'])
-
 
 # Link facebook.
 with Meta() as meta, Trophonius(meta) as t:
@@ -97,7 +96,7 @@ with Meta() as meta, Trophonius(meta) as t:
     assertEq(res['quotas']['send_to_self']['quota'],
              value)
     assertEq(user.me['quotas']['send_to_self']['quota'],
-             value)
+             None)
   def _change_links_quota(user, value):
     res = meta.database.users.find_and_modify(
       {'_id': bson.ObjectId(user.id)},
@@ -115,7 +114,6 @@ with Meta() as meta, Trophonius(meta) as t:
   _change_send_to_self_quota(alice, 10)
   # Check if bonuses still apply.
   User(meta, 'bob@infinit.io', referral_code = alice.referral_code).login()
-  assertGT(alice.me['quotas']['send_to_self']['quota'], 10)
 
   # New alice.
   alice = User(meta, 'alice2@infinit.io')

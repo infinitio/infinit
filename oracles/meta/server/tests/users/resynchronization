@@ -47,7 +47,7 @@ with Meta() as meta:
   meta.meta.forward(datetime.timedelta(seconds = 1))
   res = bob.get('user/synchronize?init=0')
   assert len(res['running_transactions']) == 0
-  assertEq(len(res['final_transactions']), 0)
+  assert len(res['final_transactions']) == 0
 
   # Create a link.
   file_list = [

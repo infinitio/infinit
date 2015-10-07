@@ -8,14 +8,14 @@ with Stripe() as stripe:
   def check_basic_quotas(user):
     res = user.me
     assertEq(res['plan'], 'basic')
-    assertNeq(res['quotas']['send_to_self']['quota'], None)
+    assertEq(res['quotas']['send_to_self']['quota'], None)
     assertNeq(res['quotas']['p2p']['limit'], None)
 
   def check_plus_quotas(user):
     res = user.me
     assertEq(res['plan'], 'plus')
     assertEq(res['quotas']['send_to_self']['quota'], None)
-    assertEq(res['quotas']['p2p']['limit'], None)
+    assertNeq(res['quotas']['p2p']['limit'], None)
 
   def check_premium_quotas(user):
     res = user.me

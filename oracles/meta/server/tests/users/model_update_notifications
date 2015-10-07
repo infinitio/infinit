@@ -19,8 +19,7 @@ with Stripe() as stripe:
     assertEq(len(alice.notifications), 0)
 
     quotas = notif['account']['quotas']
-    assertGT(quotas['send_to_self']['quota'],
-             plans['basic']['quotas']['send_to_self']['default_quota'])
+    assertEq(quotas['send_to_self']['quota'], None)
     assertEq(quotas['send_to_self']['quota'],
              alice.synchronize()['account']['quotas']['send_to_self']['quota'])
     assertGT(quotas['links']['quota'],
