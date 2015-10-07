@@ -523,6 +523,10 @@ class Meta:
     self.__meta.mailer = mailer
 
   @property
+  def metrics(self):
+    return self.__metrics
+
+  @property
   def plans(self):
     return {p: self.inner.plans[p].view for p in self.inner.plans}
 
