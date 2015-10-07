@@ -370,7 +370,7 @@ with Stripe() as stripe:
   with Meta(stripe_api_key = Stripe.key) as meta:
     test_suffix = stripe.suffix()
     coupons = ['coupon_%s_reusable_%s' % (n, test_suffix) for
-               n in range(0, 10)]
+               n in range(0, 5)]
     from stripe import Coupon
     user = User(meta, 'jean_%s@infinit.io' % test_suffix)
     user.login()
