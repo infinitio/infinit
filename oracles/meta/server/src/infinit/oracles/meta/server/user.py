@@ -2886,6 +2886,7 @@ class Mixin:
       did = bottle.request.session.get('device')
       raise Exception('device not found from _id %s' %(did))
     user = self.user
+    self._cancel_expired_transactions(user)
     user2 = self.database.users.find_and_modify(
       query = {'devices.id': device['id'], '_id': user['_id']},
       update = {

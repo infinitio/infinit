@@ -39,13 +39,15 @@ with Meta() as meta:
   for tr in trs:
     bob.post("transaction/update", {"transaction_id": tr, "status": transaction_status.CANCELED})
 
+  meta.meta.forward(datetime.timedelta(seconds = 1))
   res = bob.get('user/synchronize?init=0')
   assert len(res['running_transactions']) == 0
   assert len(res['final_transactions']) == 20
 
+  meta.meta.forward(datetime.timedelta(seconds = 1))
   res = bob.get('user/synchronize?init=0')
   assert len(res['running_transactions']) == 0
-  assert len(res['final_transactions']) == 0
+  assertEq(len(res['final_transactions']), 0)
 
   # Create a link.
   file_list = [
@@ -184,4 +186,3 @@ with Meta() as meta:
   bob.post('user/social_posts/%s' % 'twitter')
   res = referral_actions(bob)
   check_referral_actions(res, referrals = 1, fb_posts = 1, twitter_posts = 1)
-

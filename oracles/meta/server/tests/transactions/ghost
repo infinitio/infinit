@@ -3,6 +3,10 @@
 from utils import *
 from infinit.oracles.meta.server import transaction_status
 
+from infinit.oracles.notification import notifications
+for name, value in notifications.items():
+  globals()[name.upper()] = value
+
 class Metrics:
 
   def __init__(self):
@@ -69,3 +73,94 @@ with Meta(metrics = Metrics()) as meta:
   assertEq(len([metric['user'] for metric in metrics]), 2)
   assertEq(len([metric['ghost_code'] for metric in metrics]), 2)
   assertEq(set([metric['sender'] for metric in metrics]), {str(bob.id)})
+
+from datetime import datetime, timedelta
+yesterday = datetime.now() - timedelta(days = 1)
+tomorrow = datetime.now() + timedelta(days = 1)
+
+# Expired transactions.
+with Meta(metrics = Metrics()) as meta, Trophonius(meta) as trophonius:
+  bob = User(meta, "bob@infinit.io")
+  bob.login(trophonius = trophonius)
+  # Create a transaction (date_string means that the date is represented as a
+  # string in the database.
+  def create_transaction(date_string, expired = True, is_ghost = False):
+    transaction, res = bob.sendfile(recipient = "alice@infinit.io", initialize = True)
+    tid = res['created_transaction_id']
+    res = bob.transaction_update(tid, transaction_status.GHOST_UPLOADED)
+    date = yesterday if expired else tomorrow
+    meta.database.transactions.update(
+      {'_id': bson.ObjectId(tid)},
+      {
+        '$set': {
+          'aws_credentials': {
+            'expiration': str(date) if date_string else date
+          },
+          'is_ghost': is_ghost,
+        }
+      })
+    if not date_string:
+      assert meta.database.transactions.find(
+        {
+          'aws_credentials.expiration': {'$type': 9}
+        }).count() >= 1
+    return bson.ObjectId(tid), expired and is_ghost
+
+  transactions = []
+  count = 2
+  import itertools
+  for _ in range(0, count):
+    for combination in itertools.product(*([[True, False]] * 3)):
+      transactions.append(create_transaction(*combination))
+  expected_expired = set([t[0] for t in transactions if t[1]])
+  assertEq(len(expected_expired), 2 * count)
+  expired = meta.inner._expired_transactions(
+    meta.inner.user_by_id(bson.ObjectId(bob.id), fields = []))
+  expired_ids = [t['_id'] for t in expired]
+  # Assert transactions marked as expired are the only one matched by
+  # _expired_transactions.
+  assertEq(set(expired_ids), expected_expired)
+
+  # synchronize will cancel expired transactions only.
+  meta.metrics.got = {}
+  del bob.notifications[:]
+  res = bob.synchronize()
+  # Check notifications.
+  wait(lambda: len(bob.notifications) >= 4, 1)
+  notifications = bob.notifications
+  notifications = list(filter(lambda x: x['notification_type'] == PEER_TRANSACTION,
+                              notifications))
+  assertEq(len(notifications), 4)
+  assertEq(set([bson.ObjectId(n['_id']) for n in notifications]),
+           expected_expired)
+  # Only canceled.
+  statuses = set([n['status'] for n in notifications])
+  assertEq(statuses.intersection(set([transaction_status.CANCELED])),
+           set([transaction_status.CANCELED]))
+  # Final transactions.
+  assertEq(len(res['final_transactions']), len(expected_expired))
+  def canceled_only(trs):
+    return list(filter(lambda x: x['status'] == transaction_status.CANCELED,
+                       trs))
+  assertEq(len(canceled_only(res['final_transactions'])),
+           len(expected_expired))
+  assertEq(set(bson.ObjectId(t['id']) for t
+               in canceled_only(res['final_transactions'])),
+           expected_expired)
+  # Transactions.
+  assertEq(len(bob.get('transactions?negate=0', {
+    'filter': "[%s]" % transaction_status.CANCELED,
+  })['transactions']), 2 * count)
+  assertEq(len(bob.get('transactions?negate=0', {
+    'filter': "[%s]" % transaction_status.CANCELED,
+  })['transactions']), 2 * count)
+  # Metrics.
+  metrics = meta.metrics.got
+  assertEq(len(metrics['ended']), 2 * count)
+  assert all([m['how_ended'] == 'canceled' for m in metrics['ended']])
+  assertEq(
+    len(list(filter(lambda x: x['onboarding'] == False, metrics['ended']))),
+    2 * count)
+  res = bob.synchronize(init = True)
+  assertEq(len(res['running_transactions']), len(transactions) - 2 * count)
+  assertEq(len(res['final_transactions']), 2 * count)

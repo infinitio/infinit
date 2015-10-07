@@ -1502,7 +1502,7 @@ class Mixin:
       'status': {'$in': transaction_status.final}
       })
     if modification_time:
-      query.update({'modification_time': {'$gt': modification_time}})
+      query.update({'modification_time': {'$gte': modification_time}})
     finals = self.database.transactions.aggregate([
         {'$match': query},
         {'$sort': {'modification_time': DESCENDING}},
