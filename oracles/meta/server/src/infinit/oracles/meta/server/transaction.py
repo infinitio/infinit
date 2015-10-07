@@ -613,6 +613,13 @@ class Mixin:
         self.__add_referrer_update_query(sender, 'ghost_invite'),
       )
       self.__ensure_ghost_download_limit(recipient)
+      model_message = {
+        'account': {'referral_actions': self._referral_actions(sender)}}
+      self.notifier.notify_some(
+        notifier.MODEL_UPDATE,
+        message = model_message,
+        recipient_ids = {sender['_id']},
+        version = (0, 9, 43))
     elle.log.debug("transaction recipient has id %s" % recipient['_id'])
     _id = sender['_id']
     elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'
