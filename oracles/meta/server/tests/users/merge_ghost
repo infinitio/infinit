@@ -94,6 +94,9 @@ with Meta(enable_emails = True) as meta:
     email = 'navet@infinit.io'
     alice.send(email)
 
+    # Referral actions notification.
+    assertEq(alice.next_notification().type, MODEL_UPDATE)
+    # New swagger notification.
     assertEq(alice.next_notification().type, NEW_SWAGGER)
 
     meta.mailer = MailService()
@@ -118,6 +121,8 @@ with Meta(enable_emails = True) as meta:
 
     email = 'poireau@infinit.io'
     tr, _ = alice.send(email)
+    # Referral actions notification.
+    assertEq(alice.next_notification().type, MODEL_UPDATE)
     # Ghost is a new swagger.
     assertEq(alice.next_notification().type, NEW_SWAGGER)
     assertEq(bob.notifications, [])
