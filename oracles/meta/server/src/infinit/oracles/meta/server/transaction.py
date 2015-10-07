@@ -207,7 +207,8 @@ class Mixin:
         # the transaction id ...
         self._transaction_update(str(transaction['_id']),
                                  status = transaction_status.CANCELED,
-                                 user = user)
+                                 user = user,
+                                 cancel_reason = 'all')
       except error.Error as e:
         elle.log.warn('unable to cancel transaction (%s)' % \
                       str(transaction['_id']))
@@ -330,6 +331,7 @@ class Mixin:
         'total_size',
         'paused',
         'premium',
+        'cancel_reason',
       ])
       # handle both negative search and empty transaction
       if not transaction:
@@ -804,6 +806,64 @@ class Mixin:
           }
         })
 
+  def _expired_transactions(self, user):
+    expiration = datetime.datetime.now()
+    return self.database.transactions.find(
+      {
+        'involved': user['_id'],
+        'status': {
+          '$in': [
+            transaction_status.CREATED,
+            transaction_status.INITIALIZED,
+            transaction_status.GHOST_UPLOADED,
+            transaction_status.CLOUD_BUFFERED,
+          ]
+        },
+        'is_ghost': True,
+        'aws_credentials.expiration': {'$exists': True},
+        '$or': [
+          {
+            'aws_credentials.expiration': {'$lt': expiration}
+          },
+          {
+            'aws_credentials.expiration': {'$lt': str(expiration)}
+          },
+        ]
+      },
+      fields = ['id', 'status', 'aws_credentials'],
+    )
+
+  def _cancel_expired_transactions(self, user):
+    user_agent = None
+    if self.metrics is not None:
+      device = self.current_device
+      if device and 'version' in device and 'os' in device:
+        user_agent = 'MetaClientProxy/%s.%s.%s (%s)' % (
+          device['version']['major'],
+          device['version']['minor'],
+          device['version']['subminor'],
+          device['os']
+        )
+    for tr in self._expired_transactions(user):
+      reason = 'expired %s' % tr['aws_credentials']['expiration']
+      self._transaction_update(
+        str(tr['_id']),
+        status = transaction_status.CANCELED,
+        user = user,
+        cancel_reason = reason)
+      if self.metrics is not None:
+        self.metrics.send(
+          [{
+            'event': 'ended',
+            'transaction': str(tr['_id']),
+            'how_ended': 'canceled',
+            'message': reason,
+            'onboarding': False,
+            'by_user': False,
+          }],
+          collection = 'transactions',
+          user_agent = user_agent)
+
   @api('/transactions')
   @require_logged_in
   def transactions(self,
@@ -1011,7 +1071,8 @@ class Mixin:
                           device_id = None,
                           device_name = None,
                           user = None,
-                          paused = None):
+                          paused = None,
+                          cancel_reason = ''):
     with elle.log.trace('update transaction %s to status %s' %
                         (transaction_id, status)):
       if user is None:
@@ -1084,6 +1145,7 @@ class Mixin:
         elif status == transaction_status.CANCELED:
           self.__complete_transaction_unaccepted_stats(
             transaction['recipient_id'], transaction)
+          diff['cancel_reason'] = cancel_reason
           if not transaction.get('canceler', None):
             diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
             diff.update(self.cloud_cleanup_transaction(transaction = transaction))
