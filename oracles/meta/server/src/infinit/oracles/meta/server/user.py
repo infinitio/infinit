@@ -358,27 +358,31 @@ class Mixin:
     ret_msg = {'code': error[0], 'message': error[1]}
     response(403, ret_msg)
 
-  def remove_current_session(self, user = None, device = None):
-    for key in ['identifier', 'email']:
-      if key in bottle.request.session:
-        # Web sessions have no device.
-        if 'device' in bottle.request.session:
-          self.database.users.update(
-            {'devices.id': bottle.request.session['device']},
-            {'$unset': {'devices.$.push_token': True}},
-          )
-          del bottle.request.session['device']
-        if 'facebook_access_token' in bottle.request.session:
-          del bottle.request.session['facebook_access_token']
-        del bottle.request.session[key]
-        return True
-    return False
+  def remove_current_session(self):
+    with elle.log.debug('remove current session'):
+      for key in ['identifier', 'email']:
+        if key in bottle.request.session:
+          elle.log.debug('remove %s from session %s' % (
+            key, bottle.request.session))
+          # Web sessions have no device.
+          if 'device' in bottle.request.session:
+            self.database.users.update(
+              {'devices.id': bottle.request.session['device']},
+              {'$unset': {'devices.$.push_token': True}},
+            )
+            del bottle.request.session['device']
+          if 'facebook_access_token' in bottle.request.session:
+            del bottle.request.session['facebook_access_token']
+          del bottle.request.session[key]
+          return True
+      return False
 
   def remove_session(self, user, device = None):
-    query = ({'identifier': {'$in': [user.get('email'), user['_id']]}})
-    if device:
-      query.update({'device': device['id']})
-    self.sessions.remove(query)
+    with elle.log.debug('remove session for %s' % user['_id']):
+      query = ({'identifier': {'$in': [user.get('email'), user['_id']]}})
+      if device:
+        query.update({'device': device['id']})
+      self.sessions.remove(query)
 
   def _login(self,
              email: utils.enforce_as_email_address,
@@ -779,6 +783,8 @@ class Mixin:
   def kickout(self, reason, user = None):
     if user is None:
       user = self.user
+    # Remove sessions.
+    self.remove_session(user)
     with elle.log.trace('kickout %s: %s' % (user['_id'], reason)):
       self.remove_session(user)
       self.notifier.notify_some(
@@ -1701,50 +1707,51 @@ class Mixin:
       if res != 0:
         return self.fail(res)
     user = self.user
-    if 'email' not in user:
-      self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
-    if user['password'] != hash_password(old_password):
-      return self.fail(error.PASSWORD_NOT_VALID)
-    # Invalidate credentials.
-    self.remove_session(user)
-    # Kick them out of the app.
-    self.notifier.notify_some(
-      notifier.INVALID_CREDENTIALS,
-      recipient_ids = {self.user['_id']},
-      message = {'response_details': 'user password changed'})
-    self.logout()
-    # Cancel transactions as identity will change.
-    self.cancel_transactions(user)
+    with elle.log.trace('%s: change password' % user['_id']):
+      if 'email' not in user:
+        self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
+      if user['password'] != hash_password(old_password):
+        return self.fail(error.PASSWORD_NOT_VALID)
+      # Invalidate credentials.
+      self.remove_session(user)
+      # Kick them out of the app.
+      self.notifier.notify_some(
+        notifier.INVALID_CREDENTIALS,
+        recipient_ids = {self.user['_id']},
+        message = {'response_details': 'user password changed'})
+      self.logout()
+      # Cancel transactions as identity will change.
+      self.cancel_transactions(user)
 
-    assert 'email' in user
-    with elle.log.trace('generate identity'):
-      identity, public_key = papier.generate_identity(
-        str(user['_id']),  # Unique ID.
-        user['email'],    # Description.
-        new_password,     # Password.
-        conf.INFINIT_AUTHORITY_PATH,
-        conf.INFINIT_AUTHORITY_PASSWORD
+      assert 'email' in user
+      with elle.log.trace('generate identity'):
+        identity, public_key = papier.generate_identity(
+          str(user['_id']),  # Unique ID.
+          user['email'],    # Description.
+          new_password,     # Password.
+          conf.INFINIT_AUTHORITY_PATH,
+          conf.INFINIT_AUTHORITY_PASSWORD
+        )
+      operation = {
+        '$set': {
+          'password': hash_password(new_password),
+          'identity': identity,
+          'public_key': public_key
+        }
+      }
+      if new_password_hash is not None:
+        operation['$set'].update({
+          'password_hash': utils.password_hash(new_password_hash)
+        })
+      else:
+        operation['$unset'] = {
+          'password_hash': True
+        }
+      self.database.users.update(
+        {'_id': user['_id']},
+        operation
       )
-    operation = {
-      '$set': {
-        'password': hash_password(new_password),
-        'identity': identity,
-        'public_key': public_key
-      }
-    }
-    if new_password_hash is not None:
-      operation['$set'].update({
-        'password_hash': utils.password_hash(new_password_hash)
-      })
-    else:
-      operation['$unset'] = {
-        'password_hash': True
-      }
-    self.database.users.update(
-      {'_id': user['_id']},
-      operation
-    )
-    return self.success()
+      return self.success()
 
   ## ------ ##
   ## Delete ##
@@ -3028,7 +3035,7 @@ class Mixin:
                                                new = True)
     self._quota_updated_notify(user)
     return {
-      'plan': new_plan_name or 'basic'
+      'plan': new_plan_name or 'basic',
     }
 
   # DEPRECATED: (0.9.43) in favour of /user/update.
@@ -3055,6 +3062,8 @@ class Mixin:
   @require_logged_in
   def user_update_api(self,
                       plan = None,
+                      interval = None,
+                      step = None,
                       stripe_token = None,
                       stripe_coupon = None,
                       ):
@@ -3063,8 +3072,12 @@ class Mixin:
         'error': 'user_in_team',
         'reason': 'User cannot change plan when part of a team.'
       })
+    elle.log.trace('plan: %s, interval: %s, step: %s'\
+            % (plan, interval, step))
     return self._user_update(self.user,
                              plan = plan,
+                             interval = interval,
+                             step = step,
                              stripe_token = stripe_token,
                              stripe_coupon = stripe_coupon)
 
@@ -3073,6 +3086,8 @@ class Mixin:
   def user_update_admin_api(self,
                             identifier,
                             plan = None,
+                            interval = None,
+                            step = None,
                             stripe_token = None,
                             stripe_coupon = None):
     user = self.user_from_identifier(identifier)
@@ -3081,12 +3096,28 @@ class Mixin:
         {'reason': 'No user with identifier: %s' % identifier})
     return self._user_update(user,
                              plan = plan,
+                             interval = interval,
+                             step = step,
                              stripe_token = stripe_token,
                              stripe_coupon = stripe_coupon)
+
+  def _postfixes_for_stripe(self, plan, interval, step):
+    """
+    Postfixes plan name for Stripe.
+    """
+    if interval is None:
+      return plan
+    if interval == 'month' and step is not None:
+      return plan if step == 1 else "%s_%s_%s" % (plan, interval, step)
+    else:
+      plan = '%s_%s' % (plan, interval)
+      return plan if step is None or step == 1 else '%s_%s' % (plan, step)
 
   def _user_update(self,
                    user,
                    plan = None,
+                   interval = None,
+                   step = None,
                    stripe_token = None,
                    stripe_coupon = None,
                    force_prorata = False,
@@ -3122,13 +3153,17 @@ class Mixin:
         if team_member or (plan is None) or (plan['name'] in free_plans):
           stripe_plan = None
         else:
-          stripe_plan = plan.stripe_id if plan is not None else None
+          # Convert the plan id according to interval and step.
+          elle.log.debug('int: %s, step: %s' % (interval, step))
+          stripe_plan = self._postfixes_for_stripe(plan.stripe_id, interval,
+                  step) if plan is not None else None
         sub = self._stripe.update_subscription(customer, stripe_plan,
           coupon = stripe_coupon, at_period_end = not force_prorata)
         if sub:
           res.update(_build_response(sub))
     if plan is not None and user.get('plan_id') != plan.id:
       res.update(self._change_plan(user, plan.id))
+    elle.log.debug('res: %s' % res)
     return res
 
   @api('/user/contacts', method='PUT')
@@ -3235,14 +3270,12 @@ class Mixin:
     self.check_signature(
       {'action': 'reset-password', 'email': email},
       reset_token)
-    # Remove sessions.
-    self.remove_session(user)
     # Cancel all the current transactions.
     self.cancel_transactions(user)
     # Remove all the devices from the user because they are based on
     # his old public key.
-    self.remove_devices(user)
     self.kickout('account was reset', user = user)
+    self.remove_devices(user)
     import papier
     identity, public_key = papier.generate_identity(
       str(user['_id']),
@@ -4213,9 +4246,9 @@ class Mixin:
     return {'invoice': invoice, 'last_charge': last_charge}
 
   @api('/user/invoices')
-  @require_logged_in
-  def user_invoices_api(self):
-    return self.__user_invoices(self.user)
+  @require_logged_in_fields(['stripe_id'])
+  def user_invoices_api(self, upcoming = False):
+    return self.__user_invoices(self.user, upcoming = upcoming)
 
   @api('/users/<identifier>/invoices')
   @require_admin
@@ -4225,13 +4258,19 @@ class Mixin:
       return self.not_found()
     return self.__user_invoices(user)
 
-  def __user_invoices(self, user):
+  def __user_invoices(self, user, upcoming = False):
+    def not_found(reason):
+        return self.not_found({
+          'error': 'stripe_customer_not_found',
+          'reason': reason
+        })
+    if 'stripe_id' not in user:
+      return not_found('User is not registered to stripe')
     customer = self._stripe.fetch_customer(user)
     if customer is None:
-      return self.not_found({
-        'error': 'stripe_customer_not_found',
-        'reason': 'No stripe customer found for user.'})
-    invoices = self._stripe.invoices(customer)
+      return not_found('No stripe customer found for user.')
+    invoices, next_invoice = self._stripe.invoices(customer,
+                                                   upcoming = upcoming)
     charges = self._stripe.charges(customer)
     res = []
     for i in invoices:
@@ -4241,7 +4280,7 @@ class Mixin:
           last_charge = c
           break
       res.append({'invoice': i, 'last_charge': last_charge})
-    return {'invoices': res}
+    return {'invoices': res, 'next': next_invoice}
 
   @api('/user/receipts')
   @require_logged_in

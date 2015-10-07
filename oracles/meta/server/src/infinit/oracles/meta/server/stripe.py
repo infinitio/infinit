@@ -9,6 +9,7 @@ class Stripe:
                meta):
     self.__meta = meta
     self.__in_with = 0
+    self.__plans = {}
 
   def __enter__(self):
     self.__in_with += 1
@@ -28,7 +29,7 @@ class Stripe:
         # Invalid parameters were supplied to Stripe's API
         import traceback
         elle.log.warn('Unable to perform action (%s): %s' % (e.args[0], ''.join(traceback.format_tb(tb))))
-        return self.__meta.unavailable({
+        return self.__meta.forbidden({
           'error': 'stripe_issue',
           'reason': e.args[0]
         })
@@ -154,11 +155,7 @@ class Stripe:
       return []
     if not paid_only:
       return invoices
-    res = []
-    for i in invoices:
-      if i['paid']:
-        res.append(i)
-    return res
+    return [i for i in invoices if i['paid']]
 
   def invoice(self, invoice_id: str):
     """
@@ -173,12 +170,18 @@ class Stripe:
       elle.log.err('error fetching invoice: %s' % e)
       return None
 
-  def invoices(self, customer, before = None, after = None):
+  def invoices(self, customer, before = None, after = None, upcoming = True):
     """
     Returns a customer's invoices.
     By default this returns results for the last year.
     """
-    return self.__fetch_invoices(customer, before, after, paid_only = False)
+    invoices = self.__fetch_invoices(customer, before, after, paid_only = False)
+    if upcoming:
+      next = None if self.__meta.stripe_api_key is None else \
+             stripe.Invoice.upcoming(customer = customer['id'],
+                                     api_key = self.__meta.stripe_api_key)
+      return invoices, next
+    return invoices, None
 
   def receipts(self, customer, before = None, after = None):
     """
@@ -190,16 +193,22 @@ class Stripe:
   def set_plan(self, customer, subscription, plan, coupon):
     elle.log.trace(
       'set plan (customer: %s, subscription: %s, plan: %s, coupon: %s)'
-      % (customer, subscription, plan, coupon))
+      % (customer['email'], subscription, plan, coupon))
     assert self.__in_with >= 0
+    if coupon is not None and not self.coupon_applicable(plan_id = plan,
+                                                         coupon_id = coupon):
+      raise stripe.StripeError(
+        message = 'coupon %s cannot be used for this plan' % coupon)
     if subscription is None:
       elle.log.trace('create subscription')
-      subscription = customer.subscriptions.create(
-        plan = plan, coupon = coupon)
-      coupon = None
+      subscription = customer.subscriptions.create(plan = plan, coupon = coupon)
+      if coupon:
+        subscription.metadata = {'coupons': '1', 'coupon_1': coupon}
+      elle.log.debug('newly created subscription: %s' % subscription)
     else:
       elle.log.debug('update subscription')
       subscription.plan = plan
+      Stripe.apply_coupon(subscription, coupon)
     return subscription
 
   def remove_plan(self, subscription, at_period_end = True):
@@ -207,12 +216,88 @@ class Stripe:
     subscription = None
     return subscription
 
+  def plan(self, id):
+    """
+    Retrieve a plan from its id. Because plans are mostly immutable and only a
+    few plans exist, they are cached.
+
+    XXX: Thread safe?
+
+    id -- The plan id.
+    """
+    if id not in self.__plans:
+      plan = stripe.Plan.retrieve(
+        id,
+        api_key = self.__meta.stripe_api_key)
+      self.__plans[id] = plan
+    return self.__plans[id]
+
+  def coupon(self, id):
+    """
+    Retrieve a coupon from its id.
+    id -- The coupon id.
+    """
+    coupon = stripe.Coupon.retrieve(
+      id,
+      api_key = self.__meta.stripe_api_key)
+    return coupon
+
+  def __coupon_applicable(self, plan, coupon):
+    """
+    Check if the given coupon can be applied to plan.
+    plan -- The plan object.
+    coupon -- The coupon object.
+    """
+    interval = plan.interval
+    if 'type_of_plan' in coupon.metadata:
+      if plan.id not in coupon.metadata['type_of_plan']:
+        return False
+    if 'interval' in coupon.metadata:
+      return interval == coupon.metadata['interval']
+    return True
+
+  def coupon_applicable(self, plan_id, coupon_id):
+    """
+    Check if the given coupon can be applied to plan.
+    plan_id -- The plan id.
+    coupon_id -- The coupon id.
+    """
+    return self.__coupon_applicable(self.plan(plan_id),
+                                    self.coupon(coupon_id))
+
+  @staticmethod
+  def apply_coupon(subscription, coupon_id):
+    """
+    Apply a coupon to the subscription if not already used.
+    subscription - The current subscription.
+    coupon - The coupon id.
+    """
+    if coupon_id is not None:
+      number_of_coupons = 0
+      if 'coupons' in subscription.metadata:
+        number_of_coupons = int(subscription.metadata['coupons'])
+        previous_coupons = [subscription.metadata['coupon_%s' % coupon]
+                            for coupon in range(1, number_of_coupons + 1)]
+        if coupon_id in previous_coupons:
+          raise stripe.StripeError(
+            message = 'coupon %s already used' % coupon_id)
+      subscription.metadata.update({
+        'coupons': number_of_coupons + 1,
+        'coupon_%s' % (number_of_coupons + 1): coupon_id,
+      })
+      subscription.coupon = coupon_id
+
   def update_subscription(self, customer, plan, coupon, at_period_end = False):
     elle.log.trace('update subscription (customer: %s, plan: %s, coupon: %s)'
-                   % (customer, plan, coupon))
+                   % (customer['email'], plan, coupon))
     subscription = self.subscription(customer)
+    coupon_used = False
     if plan is not None:
-      subscription = self.set_plan(customer, subscription, plan, coupon)
+      subscription = self.set_plan(customer = customer,
+                                   subscription = subscription,
+                                   plan = plan, coupon = coupon)
+      if coupon is not None:
+        coupon_used = True
     else:
       if coupon is None:
         if subscription is not None:
@@ -223,9 +308,24 @@ class Stripe:
           'error': 'invalid_plan_coupon',
           'reason': 'cannot use a coupon on basic plan',
         })
-      elle.log.debug('set coupon (%s)' % coupon)
-      subscription.coupon = coupon
+      if not coupon_used:
+        elle.log.debug('set coupon (%s)' % coupon)
+        Stripe.apply_coupon(subscription, coupon)
     if subscription:
       elle.log.debug('save subscription: %s' % subscription)
       subscription = subscription.save()
     return subscription
+
+  def pay(self, customer, description = ""):
+    """
+    Pay the amount due for current month.
+    customer - The customer object.
+    description - An optional description.
+    """
+    from stripe import Invoice
+    invoice = Invoice.create(
+      customer = customer['id'],
+      api_key = self.__meta.stripe_api_key,
+      description = description,
+    )
+    invoice.pay()

@@ -29,7 +29,7 @@ class BuiltInPlans:
     }
 
   @staticmethod
-  def plus():
+  def plus(interval = 'month', interval_count = 1):
     return {
       'name': 'plus',
       'quotas': {

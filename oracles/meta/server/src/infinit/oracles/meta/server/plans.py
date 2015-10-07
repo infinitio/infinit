@@ -74,16 +74,27 @@ class Plan(dict):
       meta,
       body,
       stripe_info,
-      team = True):
+      team = True,
+      interval = 'month',
+      step = 1):
+    """
+        self['interval'] can be 'month' or 'year'
+        self['step'] is a positive integer.
+            if self['interval'] is 'month' then value < 12
+            if self['interval'] is 'year' then value is 1
+    """
     elle.log.trace('create plan %s (%s)' % (body, stripe_info))
     Plan.__required_fields(meta, stripe_info)
     self.__meta = meta
     self.__id = None
     self.__stripe_info = Plan.__fill_missing_stripe_fields(stripe_info)
     self.__stripe_info['name'] = self.__stripe_info['name'].strip()
+    # Add plan interval support for genericity
+    self.__stripe_info['interval'] = interval
+    self.__stripe_info['interval_count'] = step if interval == 'month' else 1
     if self.__stripe_info['name'] in Plan.prohibited_names:
       return self.conflict(meta, 'none')
-    self['team'] = True
+    self['team'] = team
     # Use default team as plan barebones.
     self['quotas'] = BuiltInPlans.team()['quotas']
     merge(self, body)
@@ -318,8 +329,8 @@ class Plan(dict):
     """Following fields are required to create plans.
     """
     required_fields = {
+      'currency': 'usd',
       'interval': 'month',
-      'currency': 'usd'
     }
     for field in required_fields:
       if field not in stripe_info:
@@ -396,9 +407,11 @@ class Mixin:
   # -------------- #
   @api('/plans', method = 'POST')
   @require_admin
-  def create_plan(self, body, stripe_info, team_plan : bool = True):
+  def create_plan(self, body, stripe_info, team_plan : bool = True,
+                  interval = 'month', step = 1):
     return Plan(self, stripe_info = stripe_info, body = body,
-                team = team_plan).save().view
+                team = team_plan, interval = interval,
+                step = step).save().view
 
   # ---------- #
   # Get plans. #
@@ -459,7 +472,6 @@ class Mixin:
     self.database.plans.save(BuiltInPlans.plus())
     self.database.plans.save(BuiltInPlans.premium())
     self.database.plans.save(BuiltInPlans.team())
-
 
   def __check_plans_integrity(self):
     # Explore sub dictionnaries.

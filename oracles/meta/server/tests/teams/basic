@@ -75,6 +75,53 @@ with Stripe() as stripe:
     assertNeq(res['quotas']['send_to_self']['quota'], None)
     assertNeq(res['quotas']['p2p']['limit'], None)
 
+  # Create and deleting a team_year.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    plan_id = 'team'
+    admin = User(meta, 'boss_%s@infinit.io' % test_suffix)
+    admin.login()
+    # Create team with yearly billings.
+    team_name = 'infinit_%s' % test_suffix
+    team = admin.create_team(
+      name = team_name, stripe_token = stripe.pay(admin.email),
+      plan = plan_id, interval = 'year')
+    throws(lambda: admin.create_team(
+           name = 'fail', stripe_token = stripe.pay(admin.email)), 403)
+    team = admin.get('team')
+    assertEq(team['name'], team_name)
+    assertEq(team['admin']['id'], admin.id)
+    assertEq(len(team['members']), 1)
+    assertEq(team['members'][0]['id'], admin.id)
+    stripe.check_plan(admin.email, 'team_year', quantity = 1)
+    # Add member.
+    bob = User(meta, 'bob_%s@infinit.io' % test_suffix)
+    bob.login()
+    admin.invite_team_member(bob.email)
+    bob.join_team(team['id'])
+    team = admin.get('team')
+    assertEq(len(team['members']), 2)
+    stripe.check_plan(admin.email, 'team_year', quantity = 2)
+    # Fail delete team.
+    throws(lambda: admin.delete('team'), 403)
+    # Delete team.
+    admin.delete('team', {'password': admin.password})
+    throws(lambda: admin.get('team'), 404)
+    stripe.check_plan(admin.email, 'team_year', canceled = True)
+    assertEq(
+      meta.inner.database.teams.find({'_id': bson.ObjectId(team['id'])}).count(),
+      0)
+    res = admin.me
+    assertEq(res['plan'], 'basic')
+    assertNeq(res['quotas']['send_to_self']['quota'], None)
+    assertNeq(res['quotas']['p2p']['limit'], None)
+    bob.logout()
+    bob.login()
+    res = bob.me
+    assertEq(res['plan'], 'basic')
+    assertNeq(res['quotas']['send_to_self']['quota'], None)
+    assertNeq(res['quotas']['p2p']['limit'], None)
+
   # Team uniqueness.
   with Meta(stripe_api_key = Stripe.key) as meta:
     test_suffix = stripe.suffix()
@@ -115,6 +162,20 @@ with Stripe() as stripe:
     admin.invite_team_member(bob.email)
     bob.join_team(team['id'])
     stripe.check_plan(admin.email, 'team', percent_off = 30, quantity = 2)
+
+  # Rename team.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    admin = User(meta, 'boss_%s@infinit.io' % test_suffix)
+    admin.login()
+    team = admin.create_team(
+      name = 'infinit_%s' % test_suffix,
+      stripe_token = stripe.pay(admin.email),
+      stripe_coupon = 'coupon_30')
+    new_name = 'super_team'
+    admin.put('team', {'name': new_name})
+    team = admin.get('team')
+    assertEq(team['name'], new_name)
 
   # Adding and removing users.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -450,7 +511,8 @@ with Stripe() as stripe:
       name = 'infinit_%s' % test_suffix,
       stripe_token = stripe.pay(admin.email),
       plan = plan['id'])
-    stripe.check_plan(admin.email, plan['id'], 10, quantity = 1)
+    stripe.check_plan(admin.email, plan['id'], 10, quantity = 1,
+                      check_next_invoice = False)
 
   # User existing plan.
   with Meta(stripe_api_key = Stripe.key) as meta:
@@ -473,7 +535,8 @@ with Stripe() as stripe:
     stripe.check_plan(member.email, 'premium', 999)
     admin.invite_team_member(member.email)
     member.join_team(team['id'])
-    stripe.check_plan(admin.email, plan['id'], 10, quantity = 2)
+    stripe.check_plan(admin.email, plan['id'], 10, quantity = 2,
+                      check_next_invoice = False)
     # Member plan should be canceled prorata.
     stripe.check_no_plan(member.email)
 
@@ -713,8 +776,114 @@ with Stripe() as stripe:
     throws(lambda: admin.update_plan(plan = 'basic'), 403)
     throws(lambda: bob.update_plan(plan = 'basic'), 403)
 
-  # XXX: Add tests for all admin functions calls.
+  # Coupons and invoices.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    coupon_id = 'coupon_team_%s' % test_suffix
+    from stripe import Coupon, Invoice
+    discount = 0.5
+    Coupon.create(
+      api_key = Stripe.key,
+      percent_off= int(discount * 100),
+      duration='repeating',
+      duration_in_months = 1,
+      max_redemptions = 1,
+      id=coupon_id)
+    admin = User(meta, 'sergio_%s@infinit.io' % test_suffix)
+    admin.login()
+    team = admin.create_team(
+      name = 'team_burton_%s' % test_suffix,
+      stripe_token = stripe.pay(admin.email),
+      stripe_coupon = coupon_id)
+    last_charge = admin.invoices['invoices'][0]['last_charge']
+    invoice = admin.invoices['invoices'][0]['invoice']
+    assertEq(last_charge['amount'], discount * 1200)
+    customer = stripe.customer_with_email(admin.email)
+    invoice = Invoice.upcoming(customer=customer['id'])
+    # Coupon last one month, so next month amount due has to be 1200.
+    assertEq(invoice['amount_due'], 1200)
+    # Add members.
+    users = ['alice', 'bob', 'serge']
+    for user in users:
+      member = User(meta, '%s_%s@infinit.io' % (user, test_suffix))
+      member.login()
+      admin.invite_team_member(member.email)
+      member.join_team(team['id'])
+      invoices = admin.invoices['invoices']
+      number_of_members = users.index(user) + 2
+      assertEq(len(invoices), number_of_members)
+      assertEq(sum([invoice['invoice']['amount_due'] for invoice in invoices]),
+               1200 * number_of_members * 0.5)
+      invoice = Invoice.upcoming(customer=customer['id'])
+      assertEq(invoice['amount_due'],
+               1200 * number_of_members)
 
+  # Next invoice.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    coupon_id = 'coupon_after_%s' % test_suffix
+    from stripe import Coupon, Invoice
+    discount = 0.5
+    Coupon.create(
+      api_key = Stripe.key,
+      percent_off= int(discount * 100),
+      duration='repeating',
+      duration_in_months = 1,
+      max_redemptions = 1,
+      id=coupon_id)
+    admin = User(meta, 'sergio_%s@infinit.io' % test_suffix)
+    admin.login()
+    team = admin.create_team(
+      name = 'team_burton_%s' % test_suffix,
+      stripe_token = stripe.pay(admin.email))
+    last_charge = admin.invoices['invoices'][0]['last_charge']
+    admin.put('team', {'stripe_coupon': coupon_id})
+    invoices = admin.get('user/invoices', {'upcoming': True})
+    assert 'next' in invoices
+    customer = stripe.customer_with_email(admin.email)
+    invoice = Invoice.upcoming(customer=customer['id'])
+    assertEq(invoice['amount_due'], discount * 1200)
+    assertEq(invoice['amount_due'], invoices['next']['amount_due'])
+
+  # Plan specif coupons.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    from random import randint
+    def coupon(metadata):
+      from stripe import Coupon
+      coupon_id = 'coupon_%s_%s' % (test_suffix, str(randint(1e9, 9e9)))
+      Coupon.create(
+        api_key = Stripe.key,
+        percent_off= 20,
+        duration='once',
+        id=coupon_id,
+        metadata = metadata)
+      return coupon_id
+    def new_user():
+      user = User(meta, '%s_sergio_%s@infinit.io' % (
+        str(randint(1e9, 9e9)), test_suffix))
+      user.login()
+      return user
+    def team_name():
+      return 'team_%s_%s' % (str(randint(1e9, 9e9)), test_suffix)
+    user = new_user()
+    user.create_team(
+      name = team_name(),
+      stripe_token = stripe.pay(user.email),
+      stripe_coupon = coupon({'type_of_plan': 'team'}))
+    user = new_user()
+    throws(lambda: user.create_team(
+      name = team_name(),
+      stripe_token = stripe.pay(user.email),
+      stripe_coupon = coupon({'type_of_plan': 'premium'})),
+           403)
+    throws(lambda: user.create_team(
+      name = team_name(),
+      stripe_token = stripe.pay(user.email),
+      stripe_coupon = coupon({'interval': 'year'})),
+           403)
+
+  # XXX: Add tests for all admin functions calls.
   # # Infinit administration.
   # with Meta(stripe_api_key = Stripe.key) as meta:
   #   test_suffix = stripe.suffix()

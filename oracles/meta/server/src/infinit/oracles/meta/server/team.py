@@ -17,6 +17,8 @@ class Team(dict):
     admin,
     name,
     plan,
+    interval = 'month',
+    step = 1
   ):
     name = name.strip()
     self.__meta = meta
@@ -30,6 +32,8 @@ class Team(dict):
     self['invitees'] = []
     self['creation_time'] = now
     self['modification_time'] = now
+    self['interval'] = interval
+    self['step'] = step
 
   @staticmethod
   def from_data(meta, team_db):
@@ -135,7 +139,8 @@ class Team(dict):
     self['id'] = self.__id
     return self
 
-  def register_to_stripe(self, stripe_token, stripe_coupon = None):
+  def register_to_stripe(self, stripe_token, interval = None, step = None,
+                         stripe_coupon = None):
     """Stripe needs an email address so the admin will be used as the
     subscription"""
     elle.log.trace('register to stripe %s (coupon: %s)' % (
@@ -145,17 +150,22 @@ class Team(dict):
     elle.log.debug('plan: %s' % self.plan_id)
     return self.__meta._user_update(
       admin, plan = self.plan_id, stripe_token = stripe_token,
-      stripe_coupon = stripe_coupon)
+      stripe_coupon = stripe_coupon, interval = interval, step = step)
 
   def __update_stripe_quantity(self, quantity):
     elle.log.trace('update subscrition quantity to %s' % quantity)
     admin = self.__meta.user_from_identifier(self['admin'])
     with self.__meta._stripe:
+      customer = self.__meta._stripe.fetch_customer(admin)
       subscription = self.__meta._stripe.subscription(
-        self.__meta._stripe.fetch_customer(admin))
+        customer
+        )
       if quantity != subscription.quantity:
         subscription.quantity = quantity
-        subscription.save()
+        subscription = subscription.save()
+        self.__meta._stripe.pay(
+          customer,
+          description = "%s: change quantity to %s" % (self, quantity))
 
   def __cancel_stripe_subscription(self):
     elle.log.trace('cancel subscription for team: %s' % self.id)
@@ -436,6 +446,11 @@ class Team(dict):
       'storage_used': self.storage_used,
     }
 
+  def __str__(self):
+    admin_user = self.admin_user
+    return "Team(%s / %s) administrated by %s" % (self.id, self.name, (admin_user['email'],
+                                                                       admin_user['_id']))
+
 class Mixin:
   # ============================================================================
   # Helpers.
@@ -470,12 +485,14 @@ class Mixin:
   def __create_team(self, owner, name,
                     stripe_token,
                     plan,
+                    interval = 'month',
+                    step = 1,
                     stripe_coupon = None):
     elle.log.trace('create team %s (plan: %s)' % (name, plan))
     Plan.find(self, plan, ensure_existence = True)
-    team = Team(self, owner, name, plan).db_insert()
+    team = Team(self, owner, name, plan, interval, step).db_insert()
     assert team is not None
-    team.register_to_stripe(stripe_token, stripe_coupon)
+    team.register_to_stripe(stripe_token, interval, step, stripe_coupon)
     return team
 
   @api('/teams', method = 'POST')
@@ -484,6 +501,8 @@ class Mixin:
                   name,
                   stripe_token,
                   plan : Plan.translate_in,
+                  interval = 'month',
+                  step = 1,
                   stripe_coupon = None):
     user = self.user
     team = Team.team_for_user(self, user)
@@ -493,12 +512,15 @@ class Mixin:
           'error': 'already_in_a_team',
           'reason': 'You already are in team %s.' % team['name'],
         })
+    elle.log.debug('create_team: plan: %s, name: %s, stripe_token: %s' %
+        (plan, name, stripe_token))
     if plan is None or name is None or stripe_token is None:
       return self.bad_request({
         'error': 'missing_fields',
         'reason': 'Plan, name or stripe_token missing.'})
     return self.__create_team(user, name, stripe_token = stripe_token,
-                              plan = plan, stripe_coupon = stripe_coupon)
+                              plan = plan, interval = interval, step = step,
+                              stripe_coupon = stripe_coupon)
 
   # ============================================================================
   # Deletion.
@@ -525,35 +547,75 @@ class Mixin:
   # ============================================================================
   # View.
   # ============================================================================
+  def __team_view(self, team):
+    return team.view
+
   @api('/team', method = 'GET')
   @require_logged_in
   def team_view(self):
     team = Team.find(self,
                      {'members.id': self.user['_id']},
                      ensure_existence = True)
-    return team.view
+    return self.__team_view(team)
 
   @api('/teams/<identifier>', method = 'GET')
   @require_key
   def team_view_admin(self, identifier: bson.ObjectId):
     team = Team.find(self, {'_id': identifier}, ensure_existence = True)
-    return team.view
+    return self.__team_view(team)
 
   # ============================================================================
   # Update.
   # ============================================================================
+  def __edit_team(self,
+                  team,
+                  user = None,
+                  name = None,
+                  plan = None,
+                  stripe_coupon = None,
+                  stripe_token = None,
+                  interval = None,
+                  step = None):
+    self.__require_team_admin(team, user)
+    if name is not None and name != team['name']:
+      team = team.edit({'$set': {'name': name, 'lower_name': name.lower()}})
+    no_action = (plan is None and interval is None and\
+                 step is None and stripe_coupon is None)
+    if no_action:
+      return self.__team_view(team)
+    self._user_update(user,
+                      plan = plan, stripe_token = stripe_token,
+                      stripe_coupon = stripe_coupon, interval = interval,
+                      step = step)
+    return self.__team_view(
+      Team.find(self, team['id'], ensure_existence = True))
+
   @api('/team', method = 'PUT')
   @require_logged_in
-  def update_team(self, name):
-    team = Team.team_for_user(self, self.user, ensure_existence = True)
-    self.__require_team_admin(team, self.user)
-    return team.edit({'$set': {'name': name, 'lower_name': name.lower()}}).view
+  def update_team(self,
+                  name = None,
+                  plan = None,
+                  stripe_coupon = None,
+                  stripe_token = None,
+                  interval = None,
+                  step = None):
+    user = self.user
+    team = Team.team_for_user(self, user, ensure_existence = True)
+    return self.__edit_team(team, user, name = name, plan = plan,
+                            stripe_coupon = stripe_coupon,
+                            stripe_token = stripe_token,
+                            interval = interval,
+                            step = step)
 
   @api('/teams/<identifier>', method = 'PUT')
   @require_admin
   def update_team_admin(self, identifier : bson.ObjectId, name):
     team = Team.find(self, {'_id': identifier}, ensure_existence = True)
-    return team.edit({'$set': {'name': name, 'lower_name': name.lower()}}).view
+    return self.__edit_team(team, None, name = name, plan = plan,
+                            stripe_coupon = stripe_coupon,
+                            stripe_token = stripe_token,
+                            interval = interval,
+                            step = step)
 
   # ============================================================================
   # Add invitee.

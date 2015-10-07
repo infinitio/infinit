@@ -36,6 +36,7 @@ with Stripe() as stripe:
     plan_creation_query = {
       'name': 'name with typo' + suffix,
       'amount': 1200,
+      'interval': 'month',
       'body': {
         'quotas': {
           'links': {

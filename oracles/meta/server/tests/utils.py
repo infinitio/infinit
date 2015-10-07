@@ -591,12 +591,16 @@ class Meta:
                   stripe,
                   name,
                   body,
-                  amount = 999):
+                  amount = 999,
+                  interval = 'month',
+                  step = 1):
     previous_admin_state = self.inner._force_admin
     self.inner._force_admin = True
     plan = self.post('plans',
                      {
                        'body': body,
+                       'interval': interval,
+                       'step': step,
                        'stripe_info': {
                          'amount': amount,
                          'name': name,
@@ -668,34 +672,40 @@ class Stripe():
   def clear(self):
     import stripe
     stripe.api_key = Stripe.key
+    import re
+    from datetime import datetime, timedelta
+    import calendar
+    yesterday = calendar.timegm((datetime.utcnow() -
+                                 timedelta(days = 1)).timetuple())
+    test_item = re.compile('.*\d{%s}.*' % len(self.__suffix))
+
+    def is_old(object, field):
+      # Garbage old items.
+      return test_item.match(object.get(field)) and object['created'] < yesterday
+
     # Remove created users.
-    cursor = None
-    while True:
-      if cursor:
-        users = stripe.Customer.all(limit = 100, starting_after = cursor)
-      else:
-        users = stripe.Customer.all(limit = 100)
-      for user in users['data']:
-        cursor = user['id']
-        if self.suffix() in user['email']:
-          cu = stripe.Customer.retrieve(user['id'])
-          cu.delete()
-      if not users['has_more']:
-        break
-    # Remove created plans.
-    cursor = None
-    while True:
-      if cursor:
-        plans = stripe.Plan.all(limit = 100, starting_after = cursor)
-      else:
-        plans = stripe.Plan.all(limit = 100)
-      for plan in plans['data']:
-        cursor = plan['id']
-        if self.suffix() in plan['name']:
-          p = stripe.Plan.retrieve(plan['id'])
-          p.delete()
-      if not plans['has_more']:
-        break
+    def cleanup(Collection, field):
+      cursor = None
+      while True:
+        if cursor:
+          items = Collection.all(limit = 100, starting_after = cursor)
+        else:
+          items = Collection.all(limit = 100)
+        for item in items['data']:
+          if self.suffix() in item[field] or is_old(item, field):
+            try:
+              i = Collection.retrieve(item['id'])
+              i.delete()
+            except stripe.error.InvalidRequestError:
+              pass
+          else:
+            cursor = item['id']
+        if not items['has_more']:
+          break
+
+    cleanup(stripe.Customer, 'email')
+    cleanup(stripe.Plan, 'name')
+    cleanup(stripe.Coupon, 'id')
 
   def pay(self, email):
     self.emails.add(email)
@@ -730,9 +740,11 @@ class Stripe():
                  email,
                  plan_id,
                  amount = None,
-                 percent_off = None,
+                 percent_off = 0,
                  canceled = False,
-                 quantity = None):
+                 quantity = None,
+                 check_next_invoice = False):
+    check_next_invoice = check_next_invoice and not canceled
     customer = self.customer_with_email(email)
     data = customer['subscriptions']['data']
     assertNeq(len(data), 0)
@@ -740,15 +752,19 @@ class Stripe():
       if sub['plan']['id'] == plan_id:
         if amount is not None:
           assertEq(sub['plan']['amount'], amount)
-        if percent_off is not None:
+          if check_next_invoice:
+            from stripe import Invoice
+            invoice = Invoice.upcoming(customer=customer['id'])
+            assertEq(invoice['amount_due'], int(amount * (1 - percent_off / 100)))
+        if sub and 'discount' in sub and sub['discount'] is not None:
           assertEq(sub['discount']['coupon']['percent_off'], percent_off)
         if canceled is True:
           assertEq(sub['cancel_at_period_end'], True)
         if quantity is not None:
           assertEq(sub['quantity'], quantity)
-        return
+        return data
     raise StripeTestException(
-      'unable to find subscription with plan (%s) for %s' % (plan, email))
+      'unable to find subscription with plan (%s) for %s' % (plan_id, email))
 
   def check_no_plan(self, email):
     customer = self.customer_with_email(email)
@@ -763,22 +779,29 @@ class User(Client):
                device_name = 'device',
                facebook = False,
                version = None,
+               user_to_copy = None,
                **kwargs):
     super().__init__(meta, version)
-    if not facebook:
-      self.email = email is not None and email or random_email() + '@infinit.io'
-      self.password, self.email_confirmation_token = \
-        meta.create_user(self.email,
-                         get_confirmation_code = True,
-                         **kwargs)
-      self.__id = meta.get('users/%s' % self.email)['id']
+    if user_to_copy is None:
+      if not facebook:
+        self.email = email is not None and email or random_email() + '@infinit.io'
+        self.password, self.email_confirmation_token = \
+          meta.create_user(self.email,
+                           get_confirmation_code = True,
+                           **kwargs)
+        self.__id = meta.get('users/%s' % self.email)['id']
+      else:
+        self.__id = None
     else:
-      self.__id = None
+      self.email = user_to_copy.email
+      self.password = user_to_copy.password
+      self.__id = user_to_copy.id
     self.device_id = uuid4()
     self.trophonius = None
     self.__version = version or \
                      infinit.oracles.meta.server.Meta.extract_version(
                        Version.version, '')
+
 
   def on_other_device(self):
     from copy import copy
@@ -892,7 +915,8 @@ class User(Client):
   def synchronize(self, init = False):
     return self.get('user/synchronize?init=%s' % (init and '1' or '0'))
 
-  def update_plan(self, plan, stripe_token = None, stripe_coupon = None):
+  def update_plan(self, plan, interval = None, step = None,
+                  stripe_token = None, stripe_coupon = None, team = False):
     body = {
       'plan': plan,
     }
@@ -900,8 +924,11 @@ class User(Client):
       body.update({'stripe_token': stripe_token})
     if stripe_coupon:
       body.update({'stripe_coupon': stripe_coupon})
-    return self.put('user/update', body)
-
+    if interval:
+      body.update({'interval': interval})
+    if step:
+      body.update({'step': step})
+    return self.put('team', body) if team else self.put('user/update', body)
 
   @property
   def device(self):
@@ -1116,10 +1143,14 @@ class User(Client):
                   stripe,
                   name,
                   body,
-                  amount = 999):
+                  amount = 999,
+                  interval = 'month',
+                  step = 1):
     plan = self.post('plans',
                      {
                        'body': body,
+                       'interval': interval,
+                       'step': step,
                        'stripe_info': {
                          'amount': amount,
                          'name': name,
@@ -1128,15 +1159,23 @@ class User(Client):
     stripe.plans.add(plan['id'])
     return plan
 
+  @property
+  def invoices(self):
+    return self.get('user/invoices')
+
   def create_team(self,
                   name,
                   stripe_token,
                   plan = 'team',
+                  interval = 'month',
+                  step = 1,
                   stripe_coupon = None):
     body = {
        'name': name,
        'stripe_token': stripe_token,
        'plan': plan,
+       'interval': interval,
+       'step': step
     }
     if stripe_coupon:
       body.update({'stripe_coupon': stripe_coupon})
