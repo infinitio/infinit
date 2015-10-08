@@ -120,6 +120,7 @@ class Meta(bottle.Bottle,
       stripe_api_key = None,
       metrics = infinit.oracles.metrics.Metrics(),
       gcs = None,
+      smser = None,
   ):
     self.__production = production
     import os
@@ -223,6 +224,7 @@ class Meta(bottle.Bottle,
     self._stripe = Stripe(self)
     self.__metrics = metrics
     self.__gcs = gcs
+    self.__smser = smser or infinit.oracles.smser.NoopSMSer()
     # Show deprecation warnings. How is this not the default ...
     import warnings
     warnings.simplefilter('default', DeprecationWarning)
@@ -242,6 +244,10 @@ class Meta(bottle.Bottle,
   @property
   def production(self):
     return self.__production
+
+  @property
+  def smser(self):
+    return self.__smser
 
   @property
   def stripe_api_key(self):
