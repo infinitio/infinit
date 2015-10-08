@@ -616,13 +616,6 @@ class Mixin:
         self.__add_referrer_update_query(sender, 'ghost_invite'),
       )
       self.__ensure_ghost_download_limit(recipient)
-      model_message = {
-        'account': {'referral_actions': self._referral_actions(sender)}}
-      self.notifier.notify_some(
-        notifier.MODEL_UPDATE,
-        message = model_message,
-        recipient_ids = {sender['_id']},
-        version = (0, 9, 43))
     elle.log.debug("transaction recipient has id %s" % recipient['_id'])
     _id = sender['_id']
     elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'
@@ -644,7 +637,7 @@ class Mixin:
     transaction = {
       'sender_id': _id,
       'sender_fullname': sender['fullname'],
-      'sender_device_id': device_id, # bson.ObjectId(device_id),
+      'sender_device_id': device_id,
       'recipient_id': recipient['_id'], #X
       'recipient_fullname': recipient['fullname'],
       'recipient_device_id': recipient_device_id if recipient_device_id else '',
@@ -722,8 +715,17 @@ class Mixin:
       'recipient': recipient_view,
       'transaction': self._transaction_view(transaction),
     }
-    if is_ghost and not self.__user_id_premium(sender['_id']):
-      if self.__user_id_ghost_download_limited(recipient['_id']):
+    if is_ghost:
+      # Notify sender they've invited someone.
+      model_message = {
+        'account': {'referral_actions': self._referral_actions(sender)}}
+      self.notifier.notify_some(
+        notifier.MODEL_UPDATE,
+        message = model_message,
+        recipient_ids = {sender['_id']},
+        version = (0, 9, 43))
+      if not self.__user_id_premium(sender['_id']) and \
+        self.__user_id_ghost_download_limited(recipient['_id']):
         res.update({'status_info_code': error.GHOST_DOWNLOAD_LIMIT_REACHED[0]})
     return self.success(res)
 
@@ -961,29 +963,14 @@ class Mixin:
     }
 
   def on_ghost_uploaded(self, transaction, device_id, device_name, user):
-    elle.log.log('Transaction finished');
-    # Guess if this was a ghost cloud upload or not
-    recipient = self.__user_fetch(
-      transaction['recipient_id'],
-      fields = self.__user_view_fields + \
-        ['email', 'ghost_code', 'shorten_ghost_profile_url'])
+    recipient = self.__user_fetch(transaction['recipient_id'])
     if recipient['register_status'] == 'deleted':
       self.gone({
         'reason': 'user %s is deleted' % recipient['_id'],
         'recipient_id': recipient['_id'],
       })
-    elle.log.log('Peer status: %s' % recipient['register_status'])
-    elle.log.log('transaction: %s' % transaction.keys())
-    peer_email = recipient.get('email', '')
     if transaction.get('is_ghost', False):
-      tid = transaction.id
-      trace('send invitation to new user %s for transaction %s' % (
-        peer_email, tid))
       ghost_upload_file = self._upload_file_name(transaction)
-      # Generate GET URL for ghost cloud uploaded file
-      # FIXME: AFAICT nothing prevent us from generating this directly
-      # on transaction creation and greatly simplify the client and
-      # server code.
       # Figure out which backend was used
       backend_name = transaction['aws_credentials']['protocol']
       if backend_name == 'aws':
@@ -997,35 +984,13 @@ class Mixin:
       else:
         elle.log.err('unknown backend %s' % (backend_name))
       ghost_get_url = backend.generate_get_url(
-        region, bucket, tid, ghost_upload_file)
-      elle.log.log('Generating cloud GET URL for %s: %s'
+        region, bucket, transaction.id, ghost_upload_file)
+      elle.log.log('generating cloud GET URL for %s: %s'
         % (ghost_upload_file, ghost_get_url))
       # Generate hash for transaction and store it in the transaction
       # collection.
       transaction_hash = self._hash_transaction(transaction)
-      if peer_email:
-        variables = {
-          'sender': self.email_user_vars(user),
-          'ghost_email': peer_email,
-          'transaction':
-            self.email_transaction_vars(transaction, recipient),
-          'ghost_profile': recipient.get(
-            'shorten_ghost_profile_url',
-              self.__ghost_profile_url(recipient, type = "email")),
-        }
-        # Ghost created pre 0.9.30 has no ghost code.
-        if 'ghost_code' in recipient:
-          variables.update({
-            'ghost_code': recipient['ghost_code'],
-          })
-          variables['sender']['avatar'] += '?ghost_code=%s' % recipient['ghost_code']
-        self.emailer.send_one(
-          'Transfer (Initial)',
-          recipient_email = peer_email,
-          sender_name = '%s via Infinit' % user['fullname'],
-          reply_to = user['email'],
-          variables = variables,
-        )
+      self.send_ghost_invite_mail(transaction, user)
       return {
         'transaction_hash': transaction_hash,
         'download_link': ghost_get_url,
@@ -1033,6 +998,55 @@ class Mixin:
     else:
       elle.log.trace('Recipient is not a ghost, nothing to do')
       return {}
+
+  def send_ghost_invite_mail(self, transaction, user):
+    elle.log.log('send ghost invite mail');
+    # Guess if this was a ghost cloud upload or not
+    recipient = self.__user_fetch(
+      transaction['recipient_id'],
+      fields = self.__user_view_fields + \
+        ['email', 'ghost_code', 'shorten_ghost_profile_url'])
+    elle.log.log('peer status: %s' % recipient['register_status'])
+    elle.log.log('transaction: %s' % transaction.keys())
+    peer_email = recipient.get('email', '')
+    tid = transaction['_id']
+    trace('send invitation to new user %s for transaction %s' % (
+      peer_email, tid))
+    if peer_email:
+      def expiration_day(transaction):
+        days = [
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday',
+          'Sunday']
+        ctime = transaction['creation_time']
+        return days[(ctime + datetime.timedelta(days = 6)).weekday()]
+      variables = {
+        'sender': self.email_user_vars(user),
+        'ghost_email': peer_email,
+        'transaction':
+          self.email_transaction_vars(transaction, recipient),
+        'ghost_profile': recipient.get(
+          'shorten_ghost_profile_url',
+            self.__ghost_profile_url(recipient, type = "email")),
+        'expiration_day': expiration_day(transaction)
+      }
+      # Ghost created pre 0.9.30 has no ghost code.
+      if 'ghost_code' in recipient:
+        variables.update({
+          'ghost_code': recipient['ghost_code'],
+        })
+        variables['sender']['avatar'] += '?ghost_code=%s' % recipient['ghost_code']
+      self.emailer.send_one(
+        'Transfer (Initial)',
+        recipient_email = peer_email,
+        sender_name = '%s via Infinit' % user['fullname'],
+        reply_to = user['email'],
+        variables = variables,
+      )
 
   @api('/transaction/update', method = 'POST')
   @require_logged_in_fields(['emailing.delight'])
@@ -1132,9 +1146,9 @@ class Mixin:
         elif status == transaction_status.GHOST_UPLOADED:
           self.__delight(user, 'Shared', transaction, recipient)
           diff.update(self.on_ghost_uploaded(transaction = transaction,
-                                       device_id = device_id,
-                                       device_name = device_name,
-                                       user = user))
+                                             device_id = device_id,
+                                             device_name = device_name,
+                                             user = user))
         elif status == transaction_status.CANCELED:
           self.__complete_transaction_unaccepted_stats(
             transaction['recipient_id'], transaction)
