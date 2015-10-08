@@ -17,6 +17,7 @@ sys.path.insert(0, '%s/../lib/python' % os.path.dirname(SELF))
 # libcrypto.so through a RPATH on our native module.
 import infinit.oracles.meta.server
 import infinit.oracles.metrics
+import infinit.oracles.smser
 import bottle
 import elle.log
 
@@ -101,6 +102,10 @@ parser.add_option('--stripe-api-key',
                   action = 'store',
                   help = 'Stripe API key',
                   default = None)
+parser.add_option('--enable-smses',
+                  action = 'store_true',
+                  help = 'Enable SMS support',
+                  default = False)
 
 options, args = parser.parse_args()
 
@@ -139,6 +144,10 @@ e9FGZj7sEHpPuDE=
   args['gcs'] = GCS(login = gcs_login,
                     key = gcs_key,
                     bucket_ns = 'test')
+
+if options.enable_smses:
+  args['smser'] = \
+    infinit.oracles.smser.SMSer(nexmo_api_secret = 'ac557312')
 
 app = infinit.oracles.meta.server.Meta(
   debug = options.debug,
