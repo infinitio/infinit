@@ -22,6 +22,7 @@ from .plugins.response import response
 from infinit.oracles.meta.server.utils import json_value
 import infinit.oracles.emailer
 
+seven_days = datetime.timedelta(days = 7)
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
 # This allows for a code with > 8 billion possibilities.
@@ -820,17 +821,9 @@ class Mixin:
           ]
         },
         'is_ghost': True,
-        'aws_credentials.expiration': {'$exists': True},
-        '$or': [
-          {
-            'aws_credentials.expiration': {'$lt': expiration}
-          },
-          {
-            'aws_credentials.expiration': {'$lt': str(expiration)}
-          },
-        ]
+        'creation_time': {'$lt': self.now - seven_days}
       },
-      fields = ['id', 'status', 'aws_credentials'],
+      fields = ['id', 'status', 'creation_time'],
     )
 
   def _cancel_expired_transactions(self, user):
@@ -845,7 +838,7 @@ class Mixin:
           device['os']
         )
     for tr in self._expired_transactions(user):
-      reason = 'expired %s' % tr['aws_credentials']['expiration']
+      reason = 'expired %s' % (tr['creation_time'] + seven_days)
       self._transaction_update(
         str(tr['_id']),
         status = transaction_status.CANCELED,
