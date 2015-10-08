@@ -179,6 +179,11 @@ def configure(production_build,
     # XXX: Use real dependencies (using pip).
     dependencies = ['gridfs', 'bson', 'pymongo-2.8.egg-info'])
   build_binary.dependencies_add(pymongo.targets())
+  nexmo = drake.PythonModule(
+    'nexmo', version = '1.0.1',
+    python_path = drake.path_build('lib/python', absolute = True),
+    dependencies = ['requests'])
+  build_binary.dependencies_add(nexmo.targets())
 
   build << build_binary
   build << drake.copy(templates, 'share/infinit/meta/server')
