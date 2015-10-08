@@ -33,8 +33,7 @@ class GhostReminder(oracles.sisyphus.boulders.drip.GhostReminder):
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
     emailer = DummyEmailer()
-    sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
-                                     emailer = emailer)
+    sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port, emailer = emailer)
     gestapo(sisy._Sisyphus__mongo)
     reminder = GhostReminder(sisy)
 
@@ -156,3 +155,46 @@ with mongobox.MongoBox() as mongo:
         else:
           raise Exception('unexpected filename: %s' % mail[0])
       assert mail_a and mail_b
+
+# Check expiration_day field of mails.
+with mongobox.MongoBox() as mongo:
+  with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
+    emailer = DummyEmailer()
+    sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port, emailer = emailer)
+    gestapo(sisy._Sisyphus__mongo)
+    reminder = GhostReminder(sisy)
+
+    def forward(duration):
+      reminder.now += duration
+      meta.now = reminder.now
+
+    def day_of_week(from_date, days):
+      weekdays = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday']
+      return weekdays[(from_date + datetime.timedelta(days = days)).weekday()]
+
+    # Ghost upload a transaction
+    device = 'device'
+    sender = user_register(meta, 'sender@infinit.io')
+    ghost_email = 'ghost@infinit.io'
+    tid = transaction_create(meta, sender, recipient_identifier = ghost_email)
+    ctime = datetime.datetime.utcnow()
+    meta._cloud_buffer(tid, sender)
+    meta._transaction_update(tid, statuses['ghost_uploaded'],
+                             device, None, sender)
+
+    forward(reminder.delay + datetime.timedelta(minutes = 1))
+    sisy.boulders_run()
+    emails = emailer.emails
+    assertEq(len(emails), 1)
+    def days(count):
+      return datetime.timedelta(days = count)
+    # Number of days will be rounded down.
+    assertEq(emails[0][1]['transaction']['expiration_day'],
+             day_of_week(ctime, 6))

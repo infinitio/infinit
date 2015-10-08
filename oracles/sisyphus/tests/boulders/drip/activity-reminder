@@ -98,10 +98,8 @@ with mongobox.MongoBox() as mongo:
     forward(reminder.delay(0) * 0.5)
     sisy.boulders_run()
     assert not emailer.emails
-    import sys
 
     # Check first reminder
-    import sys
     forward(reminder.delay(0) * 1.1)
     sisy.boulders_run()
     check_mail(emailer.emails, email, 'Pending', True)
@@ -184,3 +182,80 @@ with mongobox.MongoBox() as mongo:
     forward(reminder.delay(i) * 2)
     sisy.boulders_run()
     assert not emailer.emails
+
+# Check expiry_days field of mails.
+with mongobox.MongoBox() as mongo:
+  with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
+    emailer = DummyEmailer()
+    metrics = Metrics()
+    sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
+                                     emailer = emailer)
+    # gestapo(sisy.mongo)
+    reminder = ActivityReminder(sisy)
+
+    def forward(duration):
+      reminder.now += duration
+      meta.now = reminder.now
+
+    # Create a users
+    sender_email = 'sender@infinit.io'
+    sender = user_register(meta, sender_email)
+    sender_device = meta._create_device(sender)
+    sender_device_id = sender_device['id']
+    sender_device['id'] = uuid.UUID(sender_device['id'])
+    meta.set_connection_status(
+      sender['_id'], sender_device['id'], True, 'tropho-id')
+    recipient_email = 'recipient@infinit.io'
+    recipient = user_register(meta, recipient_email)
+    recipient_device = meta._create_device(recipient)
+    recipient_device_id = recipient_device['id']
+    recipient_device['id'] = uuid.UUID(recipient_device['id'])
+    meta.set_connection_status(
+      recipient['_id'], recipient_device['id'], True, 'tropho-id')
+    # Create normal transaction
+    tid = transaction_create(meta, sender,
+                             device = sender_device,
+                             recipient_identifier = recipient_email)
+    meta._cloud_buffer(tid, sender)
+    meta._transaction_update(tid, statuses['cloud_buffered'],
+                             sender_device_id, None, sender)
+    meta.set_connection_status(
+      sender['_id'], sender_device['id'], False, 'tropho-id')
+    meta.set_connection_status(
+      recipient['_id'], recipient_device['id'], False, 'tropho-id')
+    sisy.boulders_run()
+    assertEq(len(emailer.emails), 0)
+
+    # Check that cloud buffer expires_in_days is correct.
+    forward(reminder.delay(0) * 1.1)
+    sisy.boulders_run()
+    emails = emailer.emails
+    check_mail(emails, recipient_email, 'Pending', False)
+    # reminder.delay(0) is 8 hrs so same day. Days are rounded down.
+    assertEq(emails[0][1]['transactions'][0]['expires_in_days'], 13)
+    forward(reminder.delay(1) * 1.1)
+    sisy.boulders_run()
+    emails = emailer.emails
+    check_mail(emails, recipient_email, 'Pending', False)
+    # reminder.delay(1) is 2 days. Days are rounded down.
+    assertEq(emails[0][1]['transactions'][0]['expires_in_days'], 11)
+
+    # Create ghost transaction
+    meta.set_connection_status(
+      sender['_id'], sender_device['id'], True, 'tropho-id')
+    ghost_email = 'ghost@infinit.io'
+    tid = transaction_create(meta, sender,
+                             device = sender_device,
+                             recipient_identifier = ghost_email)
+    meta._cloud_buffer(tid, sender)
+    meta.set_connection_status(
+      sender['_id'], sender_device['id'], False, 'tropho-id')
+    sisy.boulders_run()
+    assertEq(len(emailer.emails), 0)
+
+    # Check that ghost buffer expires_in_days is correct.
+    forward(datetime.timedelta(days = 4))
+    sisy.boulders_run()
+    emails = emailer.emails
+    check_mail(emails, sender_email, 'Pending', True)
+    assertEq(emails[0][1]['transactions'][0]['expires_in_days'], 2)
