@@ -3845,6 +3845,44 @@ class Mixin:
                        invite_type = 'ghost', # plain, ghost or reminder.
                        user_cancel = False,
                        ):
+    elle.log.trace('send %s invite (ghost_code: %s) to %s' %
+                   (invite_type, ghost_code, destination))
+    allowed_types = ['ghost', 'plain']
+    if invite_type not in allowed_types:
+      return {}
+    sender = self.user
+    # Only send messages from English speakers.
+    if 'en' not in sender.get('language', ''):
+      return {}
+    recipient = self.database.users.find_one({'ghost_code': ghost_code})
+    # Only send if the recipient has a phone number.
+    if recipient is None:
+      return {}
+    if not recipient.keys() & {'phone_number', 'shorten_ghost_profile_url'}:
+      return {}
+    if invite_type == 'ghost':
+      message = '%s just sent you some photos with Infinit: %s' % \
+        (sender['fullname'], recipient['shorten_ghost_profile_url'])
+    elif invite_type == 'plain':
+      message = '%s wants to send you some photos with Infinit: %s' % \
+        (sender['fullname'], recipient['shorten_ghost_profile_url'])
+    # Catch any exception so that we return to client cleanly and don't retry
+    # sending the message.
+    try:
+      success = self.smser.send_message(destination, message)
+    except Exception as e:
+      success = False
+      elle.log.err('unable to send SMS: %s' % e)
+    if self.metrics is not None:
+      self.metrics.send(
+        [{
+          'event': 'app/send_sms_ghost_code',
+          'ghost_code': ghost_code,
+          'method': 'server sms',
+          'fail_reason': '' if success else 'fail',
+          'status': success,
+        }],
+        collection = 'users')
     return {}
 
   def __mongo_id_to_base64(self, mongo_id: bson.ObjectId):
