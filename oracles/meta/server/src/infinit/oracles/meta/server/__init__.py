@@ -21,6 +21,7 @@ import pymongo.errors
 import re
 
 import infinit.oracles.emailer
+import infinit.oracles.smser
 import infinit.oracles.metrics
 
 from .plugins.certification import Plugin as CertificationPlugin
