@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+
+import datetime
+
+from utils import *
+
+with Meta() as meta:
+
+  def send_sms_invite(user,
+                      destination,
+                      ghost_code,
+                      invite_type = 'ghost',
+                      user_cancel = False,
+                      message = ''):
+    user.post('user/send_invite', {
+      'destination': destination,
+      'message': message,
+      'ghost_code': ghost_code,
+      'invite_type': invite_type,
+      'user_cancel': user_cancel,
+     })
+
+  def set_language(user, language):
+    meta.inner.database.users.update({'_id': bson.ObjectId(user.id)},
+                                     {'$set': {'language': language}})
+
+  number = '+33 6 10 15 00 65'
+  bob = User(meta, 'bob@infinit.io')
+  # Check requires logged in.
+  throws(lambda: send_sms_invite(bob, number, 'aaaaa'), 403)
+  set_language(bob, 'en')
+
+  # Create ghost.
+  bob.login()
+  t, _ = bob.sendfile(number)
+  ghost = meta.inner.database.users.find_one(
+    {'_id': bson.ObjectId(t['recipient_id'])})
+  ghost_code = ghost['ghost_code']
+
+  # Check ghost invite.
+  send_sms_invite(bob, number, ghost_code)
+  smses = meta.smser.smses
+  assertEq(len(smses), 1)
+  assertEq(smses[0].recipient, number)
+
+  # Check plain invite.
+  send_sms_invite(bob, number, ghost_code, 'plain')
+  smses = meta.smser.smses
+  assertEq(len(smses), 1)
+  assertEq(smses[0].recipient, number)
+
+  # Check reminder invite.
+  send_sms_invite(bob, number, ghost_code, 'reminder')
+  smses = meta.smser.smses
+  assertEq(len(smses), 0)
+
+  # Check only English.
+  set_language(bob, 'de')
+  send_sms_invite(bob, number, ghost_code, 'plain')
+  smses = meta.smser.smses
+  assertEq(len(smses), 0)
