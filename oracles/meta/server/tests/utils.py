@@ -3,6 +3,7 @@
 import infinit.oracles.emailer
 import infinit.oracles.meta.server
 from infinit.oracles.meta.server.mail import Mailer
+from infinit.oracles.smser import SMSer
 from infinit.oracles.meta.server.invitation import Invitation
 from infinit.oracles.meta.server import error
 from infinit.oracles.meta.server import transaction_status
@@ -324,7 +325,6 @@ class NoOpInvitation(Invitation):
     # XXX: Reset lists to secure the tests.
     # self.lists = {}
 
-
 class Email:
 
   def __str__(self):
@@ -382,6 +382,33 @@ class TestEmailer(infinit.oracles.emailer.Emailer):
         i += 1
     return res
 
+class SMS:
+
+  def __init__(self, recipient, message):
+    self.recipient = recipient
+    self.message = message
+
+  def __str__(self):
+    return repr(self)
+
+  def __repr__(self):
+    return 'SMS(%s, %s)' % (self.recipient, self.message)
+
+class TestSMSer(infinit.oracles.smser.SMSer):
+
+  def __init__(self):
+    self.__smses = []
+
+  def send_message(self, destination, message):
+    sms = SMS(destination, message)
+    self.__smses.append(sms)
+
+  @property
+  def smses(self):
+    res = self.__smses
+    self.__smses = []
+    return res
+
 
 class InstrumentedMeta(infinit.oracles.meta.server.Meta):
 
@@ -404,6 +431,7 @@ class Meta:
                force_admin = False,
                emailer = None,
                metrics = None,
+               smser = None,
                **kw):
     self.__mongo = mongobox.MongoBox()
     self.__server = bottle.WSGIRefServer(port = 0)
@@ -418,11 +446,17 @@ class Meta:
     if 'shorten_ghost_profile_url' not in self.__meta_args:
       self.__meta_args['shorten_ghost_profile_url'] = False
     self.__emailer = emailer or TestEmailer()
+    self.__smser = smser or TestSMSer()
     self.__version = infinit.oracles.meta.server.Meta.extract_version(Version.version, '')
 
   @property
   def emailer(self):
     return self.__emailer
+
+  @property
+  def smser(self):
+    return self.__smser
+
 
   @property
   def version(self):
@@ -445,6 +479,7 @@ class Meta:
           force_admin = self.__force_admin,
           emailer = self.__emailer,
           metrics = self.__metrics,
+          smser = self.__smser,
           **self.__meta_args)
         self.__meta.mailer = NoOpMailer()
         self.__meta.invitation = NoOpInvitation()
