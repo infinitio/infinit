@@ -18,6 +18,8 @@ import infinit.oracles.emailer
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
 
 meta = 'https://meta.api.production.infinit.io'
+ghost_buffer_expiration_days = 7
+cloud_buffer_expiration_days = 14
 
 class Emailing(Boulder):
 
@@ -478,6 +480,7 @@ class GhostReminder(Drip):
   @property
   def fields(self):
     return [
+      'creation_time',
       'files',
       'files_count',
       'message',
@@ -501,10 +504,25 @@ class GhostReminder(Drip):
     sender_id = transaction['sender_id']
     sender = self.sisyphus.mongo.meta.users.find_one(
       sender_id, fields = self.user_fields)
+    transaction_vars = self.transaction_vars(transaction, recipient)
+    def expiration_day(transaction):
+        days = [
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday',
+          'Sunday']
+        ctime = transaction['creation_time']
+        return days[(ctime + datetime.timedelta(days = 6)).weekday()]
+    transaction_vars.update({
+      'expiration_day': expiration_day(transaction),
+    })
     return {
       'sender': self.user_vars(sender),
       'recipient': self.user_vars(recipient),
-      'transaction': self.transaction_vars(transaction, recipient),
+      'transaction': transaction_vars,
     }
 
   def sender(self, v):
@@ -677,10 +695,20 @@ class ActivityReminder(Drip):
       response.update(transited)
     return response
 
+  def _transaction_vars(self, t, user):
+    res = self.transaction_vars(t, user)
+    def expires_in_days(transaction):
+      expiration = datetime.timedelta(
+        days = ghost_buffer_expiration_days if transaction['is_ghost'] else \
+               cloud_buffer_expiration_days)
+      return (transaction['creation_time'] + expiration - self.now).days
+    res.update({'expires_in_days': expires_in_days(t)})
+    return res
+
   def _vars(self, element, user):
     meta = self.sisyphus.mongo.meta
     transactions = [
-        self.transaction_vars(t, user) for t in
+        self._transaction_vars(t, user) for t in
         meta.transactions.find(
           {
             '_id':
