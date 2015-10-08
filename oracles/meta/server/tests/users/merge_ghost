@@ -30,8 +30,7 @@ class MailService(NoOpMailer):
         })
 
 # Normal.
-with Meta(enable_emails = True,
-          shorten_ghost_profile_url = False) as meta:
+with Meta(enable_emails = True, shorten_ghost_profile_url = False) as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login()
   bob = User(meta, 'bob@infinit.io')
@@ -43,6 +42,7 @@ with Meta(enable_emails = True,
   bob.put('user/accounts/%s' % eve)
   emails = meta.emailer.emails
   assertEq(len(emails), 1)
+  assertEq(emails[0].template, 'Confirm New Email Address')
   bob.post('users/%s/accounts/%s/confirm' % (bob.email, eve),
            {'confirm_token': emails[0].variables['confirm_token']})
   # Spoiler: Eve is bob...
@@ -94,15 +94,16 @@ with Meta(enable_emails = True) as meta:
     email = 'navet@infinit.io'
     alice.send(email)
 
-    # Referral actions notification.
-    assertEq(alice.next_notification().type, MODEL_UPDATE)
     # New swagger notification.
     assertEq(alice.next_notification().type, NEW_SWAGGER)
+    # Referral actions notification.
+    assertEq(alice.next_notification().type, MODEL_UPDATE)
 
     meta.mailer = MailService()
     bob.put('user/accounts/%s' % email)
     emails = meta.emailer.emails
     assertEq(len(emails), 1)
+    assertEq(emails[0].template, 'Confirm New Email Address')
     bob.post('users/%s/accounts/%s/confirm' % (bob.email, email),
              {'confirm_token': emails[0].variables['confirm_token']})
 
@@ -121,16 +122,17 @@ with Meta(enable_emails = True) as meta:
 
     email = 'poireau@infinit.io'
     tr, _ = alice.send(email)
-    # Referral actions notification.
-    assertEq(alice.next_notification().type, MODEL_UPDATE)
     # Ghost is a new swagger.
     assertEq(alice.next_notification().type, NEW_SWAGGER)
+    # Referral actions notification.
+    assertEq(alice.next_notification().type, MODEL_UPDATE)
     assertEq(bob.notifications, [])
     assertEq(len(bob.transactions), 1)
     meta.mailer = MailService()
     bob.put('user/accounts/%s' % email)
     emails = meta.emailer.emails
     assertEq(len(emails), 1)
+    assertEq(emails[0].template, 'Confirm New Email Address')
     bob.post('users/%s/accounts/%s/confirm' % (bob.email, email),
              {'confirm_token': emails[0].variables['confirm_token']})
     assertEq(len(bob.transactions), 2)
@@ -149,6 +151,7 @@ with Meta(enable_emails = True) as meta:
   eve_id = bob.get('users/%s' % eve)['id']
   emails = meta.emailer.template('Transfer (Initial)')
   code = emails[0].variables['ghost_code']
+  assertIn('expiration_day', emails[0].variables)
   throws(lambda: meta.get('ghost/code/00000'), 404)
   bob.post('ghost/%s/merge' % code)
   throws(lambda: meta.get('ghost/code/%s' % code), 404)
