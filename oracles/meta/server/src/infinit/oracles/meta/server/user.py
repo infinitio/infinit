@@ -130,8 +130,8 @@ class Mixin:
       user['favorites'] = []
     if 'stripe_id' in user:
       with self._stripe:
-        user['stripe'] = \
-          self._stripe.fetch_customer(user).get('subscriptions', {})
+        customer = self._stripe.fetch_customer(user)
+        user['stripe'] = customer.get('subscriptions', {}) if customer else {}
     team = Team.team_for_user(self, user)
     if team:
       def __joined_team(team, user):
