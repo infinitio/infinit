@@ -52,6 +52,7 @@ def configure(production_build,
     'src/infinit/oracles/metrics.py',
     'src/infinit/oracles/notification.py',
     'src/infinit/oracles/servers.py',
+    'src/infinit/oracles/smser.py',
     'src/infinit/oracles/transaction.py',
     'src/infinit/oracles/utils.py',
   )
