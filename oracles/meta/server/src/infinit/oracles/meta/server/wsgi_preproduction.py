@@ -31,7 +31,7 @@ e9FGZj7sEHpPuDE=
 ''', 'UTF-8')
 gcs = GCS(login = gcs_login, key = gcs_key)
 
-smser = infinit.oracles.SMSer(nexmo_api_secret = 'ac557312')
+smser = infinit.oracles.smser.NexmoSMSer(nexmo_api_secret = 'ac557312')
 
 application = infinit.oracles.meta.server.Meta(
   mongo_replica_set = ['mongo-0', 'mongo-1', 'mongo-2',],

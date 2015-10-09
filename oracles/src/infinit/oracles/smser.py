@@ -6,6 +6,11 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.SMSer'
 
 class SMSer:
 
+  def send_message(self, destination, message):
+    elle.log.trace('would send SMS to %s: %s' % (destination, message))
+
+class NexmoSMSer(SMSer):
+
   @property
   def api_key(self):
     return '5e948e95'
@@ -60,9 +65,6 @@ class SMSer:
     return None
 
 class NoopSMSer(SMSer):
-
-  def __init__(self):
-    pass
 
   def send_message(self, destination, message):
     elle.log.trace('would send SMS to %s: %s' % (destination, message))

@@ -147,7 +147,7 @@ e9FGZj7sEHpPuDE=
 
 if options.enable_smses:
   args['smser'] = \
-    infinit.oracles.smser.SMSer(nexmo_api_secret = 'ac557312')
+    infinit.oracles.smser.NexmoSMSer(nexmo_api_secret = 'ac557312')
 
 app = infinit.oracles.meta.server.Meta(
   debug = options.debug,
