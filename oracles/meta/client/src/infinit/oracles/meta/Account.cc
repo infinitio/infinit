@@ -325,7 +325,7 @@ namespace elle
     {
       if (repr == "pending")
         return ReferralStatus::ReferralStatus_Pending;
-      else if (repr == "complete")
+      else if (repr == "completed")
         return ReferralStatus::ReferralStatus_Complete;
       else if (repr == "blocked")
         return ReferralStatus::ReferralStatus_Blocked;
