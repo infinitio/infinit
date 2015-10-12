@@ -273,7 +273,8 @@ class Mixin:
         transaction['sender_id'],
         counts = ['reached_peer', 'reached'],
         time = False)
-      if not self.__user_id_premium(transaction['sender_id']):
+      if not self.premium_or_team(self.user_from_identifier(
+          transaction['sender_id'], fields = ['plan'])):
         self.__user_fetch_and_modify(
           query = {
             '_id': transaction['recipient_id'],
@@ -340,7 +341,9 @@ class Mixin:
       else:
         no_ghost_downloads = \
           self.__user_id_ghost_download_limited(transaction['recipient_id'])
-        sender_premium = self.__user_id_premium(transaction['sender_id'])
+        sender_premium = self.premium_or_team(
+          self.user_from_identifier(transaction['sender_id'],
+                                    fields = ['plan']))
         has_download_link = transaction.get('download_link')
         if no_ghost_downloads and has_download_link and not sender_premium:
           del transaction['download_link']
@@ -724,7 +727,7 @@ class Mixin:
         message = model_message,
         recipient_ids = {sender['_id']},
         version = (0, 9, 43))
-      if not self.__user_id_premium(sender['_id']) and \
+      if not self.premium_or_team(sender) and \
         self.__user_id_ghost_download_limited(recipient['_id']):
         res.update({'status_info_code': error.GHOST_DOWNLOAD_LIMIT_REACHED[0]})
     return self.success(res)

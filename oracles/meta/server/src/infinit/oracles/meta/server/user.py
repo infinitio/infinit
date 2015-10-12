@@ -317,16 +317,6 @@ class Mixin:
       },
       fields = {}, new = False)
 
-  def __user_id_premium(self, user_id: bson.ObjectId):
-    """
-    Check if a user_id has a premium account.
-    """
-    return self.__user_fetch(
-      {
-        '_id': user_id,
-        'plan': 'premium',
-      }) is not None
-
   def __user_id_ghost_download_limited(self, user_id: bson.ObjectId):
     """
     Check if ghost has reached their direct download limit.
