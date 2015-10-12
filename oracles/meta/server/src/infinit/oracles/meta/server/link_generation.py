@@ -214,7 +214,7 @@ class Mixin:
         self.bad_request('no name')
       if any(p is not None
              for p in [password, expiration_date, background]):
-        self.require_premium()
+        self.require_premium_or_team()
       link_size = __link_size_from_file_list(files)
       self._link_check_quota(user, link_size)
       team = Team.team_for_user(self, user)
@@ -598,7 +598,7 @@ class Mixin:
         if team:
           settings = team.get('shared_settings')
         else:
-          self.require_premium(owner)
+          self.require_premium_or_team(owner)
           settings = owner.get('account')
         domains = (d['name']
                    for d in (settings.get('custom_domains', ())

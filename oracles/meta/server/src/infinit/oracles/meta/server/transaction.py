@@ -66,7 +66,7 @@ class Transaction(dict):
     self['strings'] = ''
     self['cloud_buffered'] = False
     self['paused'] = False
-    self['premium'] = meta.user_premium(sender)
+    self['premium'] = meta.premium_or_team(sender)
     # Stats
     self['creation_time'] = meta.now
     self['modification_time'] = meta.now

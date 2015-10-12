@@ -3973,6 +3973,10 @@ class Mixin:
     if not self.user_premium(user):
       self.payment_required({'reason': 'premium plan required'})
 
+  def require_premium_or_team(self, user = None):
+    if not self.premium_or_team(user):
+      self.payment_required({'reason': 'premium plan required'})
+
   ## ----- ##
   ## Plans ##
   ## ----- ##
