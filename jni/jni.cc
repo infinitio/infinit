@@ -1360,7 +1360,7 @@ extern "C" jlong Java_io_infinit_State_gapSendSmsGhostCodeMetric(
   JNIEnv* env, jobject thiz, jlong handle, jboolean success, jstring code, jstring fail_reason)
 {
   return gap_invitation_message_sent_metric((gap_State*)handle, success,
-    to_string(env, code), gap_invite_message_native, to_string(env, fail_reason));
+    to_string(env, code), gap_invite_message_native_sms, to_string(env, fail_reason), false);
 }
 
 extern "C" jstring Java_io_infinit_State_gapSessionId(
