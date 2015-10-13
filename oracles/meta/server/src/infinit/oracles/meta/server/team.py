@@ -620,18 +620,10 @@ class Mixin:
   # ============================================================================
   # Add invitee.
   # ============================================================================
-  def __invite_team_member(self, team, invitee):
-    return team.add_invitee(invitee).view
-
-  @api('/team/invitees/<identifier>', method = 'PUT')
-  @require_logged_in
-  def add_team_invitee(self, identifier : utils.identifier):
-    user = self.user
-    team = Team.team_for_user(self, user, ensure_existence = True)
-    self.__require_team_admin(team, user)
-    invitee = self.user_from_identifier(identifier,
-                                        fields = ['_id', 'email', 'fullname'])
-    if invitee is None:
+  def __invite_team_member(self, team, identifier):
+    invitee = self.user_from_identifier(
+      identifier, fields = ['_id', 'email', 'fullname'])
+    if invitee is None or 'email' not in invitee:
       if utils.is_an_email_address(identifier):
         invitee = identifier
       else:
@@ -640,7 +632,15 @@ class Mixin:
           'reason': 'No user was found with the identifier (%s) and it is not \
                      a valid email address.' % identifier,
         })
-    return self.__invite_team_member(team, invitee)
+    return team.add_invitee(invitee).view
+
+  @api('/team/invitees/<identifier>', method = 'PUT')
+  @require_logged_in
+  def add_team_invitee(self, identifier : utils.identifier):
+    user = self.user
+    team = Team.team_for_user(self, user, ensure_existence = True)
+    self.__require_team_admin(team, user)
+    return self.__invite_team_member(team, identifier)
 
   @api('/teams/<team_id>/invitees/<user_identifier>', method = 'PUT')
   @require_admin
@@ -648,8 +648,7 @@ class Mixin:
                              team_id : bson.ObjectId,
                              user_identifier : utils.identifier):
     team = Team.find(self, {'_id': team_id}, ensure_existence = True)
-    invitee = self.user_from_identifier(user_identifier)
-    return team.__invite_team_member(team, invitee)
+    return team.__invite_team_member(team, user_identifier)
 
   # ============================================================================
   # Remove invitee.

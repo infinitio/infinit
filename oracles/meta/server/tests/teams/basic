@@ -883,6 +883,26 @@ with Stripe() as stripe:
       stripe_coupon = coupon({'interval': 'year'})),
            403)
 
+  # Invite a contact.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    plan_id = 'team'
+    admin = User(meta, 'boss_%s@infinit.io' % test_suffix)
+    admin.login()
+    # Create team.
+    team_name = 'infinit_%s' % test_suffix
+    team = admin.create_team(
+      name = team_name, stripe_token = stripe.pay(admin.email),
+      plan = plan_id)
+    bob = 'bobby_%s@infinit.io' % test_suffix
+    admin.put('user/contacts',
+              {'contacts': [{'emails':[bob]}]})
+    # Add member.
+    admin.invite_team_member(bob)
+    bob = User(meta, bob)
+    bob.login()
+    bob.join_team(team['id'])
+
   # XXX: Add tests for all admin functions calls.
   # # Infinit administration.
   # with Meta(stripe_api_key = Stripe.key) as meta:

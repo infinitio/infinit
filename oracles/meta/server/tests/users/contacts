@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User, throws
+from utils import *
 import infinit.oracles.meta.server.transaction_status as transaction_status
 
 import bson
@@ -8,10 +8,13 @@ import bson
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login()
+  assertEq(meta.database.users.count(), 1)
   alice.put('user/contacts',
     {'contacts': [{'emails':['bob@infinit.io']}]})
+  assertEq(meta.database.users.count(), 2)
   assert alice.swaggers == []
   bob = User(meta, 'bob@infinit.io')
+  assertEq(meta.database.users.count(), 2)
   assert [str(bob.id)] == alice.swaggers
   alice.put('user/contacts',
     {'contacts': [{'emails':['bob@infinit.io']}]})
