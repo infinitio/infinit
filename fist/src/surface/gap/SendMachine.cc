@@ -373,8 +373,8 @@ namespace surface
         }
         else
           source_file_path = *this->_files.begin();
-        ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",
-                   *this, source_file_path, file_size);
+        ELLE_TRACE("%s: will ghost-cloud-upload %s"
+                   *this, source_file_path);
         auto credentials = this->_cloud_credentials(true);
         auto gcs_creds
           = dynamic_cast<infinit::oracles::meta::CloudCredentialsGCS*>(credentials.get());
@@ -387,6 +387,7 @@ namespace surface
         }
         std::string source_file_name = source_file_path.filename().string();
         file_size = boost::filesystem::file_size(source_file_path);
+        ELLE_DEBUG("file size: %s", file_size);
         auto get_credentials = [this] (bool first_time)
           {
             auto creds = this->_cloud_credentials(first_time);
