@@ -184,7 +184,7 @@ namespace surface
             ELLE_TRACE("%s: Got current range %s", *this, range);
             // expect bytes=a-b
             size_t beg = range.find_first_of('-');
-            position = std::stol(range.substr(beg+1))+1;
+            position = std::stoull(range.substr(beg+1))+1;
           }
           else
             ELLE_TRACE("%s: got no range, starting from the beginning", *this);
