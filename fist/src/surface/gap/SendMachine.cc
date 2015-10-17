@@ -373,7 +373,7 @@ namespace surface
         }
         else
           source_file_path = *this->_files.begin();
-        ELLE_TRACE("%s: will ghost-cloud-upload %s"
+        ELLE_TRACE("%s: will ghost-cloud-upload %s",
                    *this, source_file_path);
         auto credentials = this->_cloud_credentials(true);
         auto gcs_creds
