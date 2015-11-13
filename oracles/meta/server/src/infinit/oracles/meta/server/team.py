@@ -163,9 +163,15 @@ class Team(dict):
       if quantity != subscription.quantity:
         subscription.quantity = quantity
         subscription = subscription.save()
-        self.__meta._stripe.pay(
-          customer,
-          description = "%s: change quantity to %s" % (self, quantity))
+        from stripe.error import InvalidRequestError
+        try:
+          self.__meta._stripe.pay(
+            customer,
+            description = "%s: change quantity to %s" % (self, quantity))
+        except InvalidRequestError as e:
+          if 'Nothing to invoice' in e.args[0]:
+            return
+          raise
 
   def __cancel_stripe_subscription(self):
     elle.log.trace('cancel subscription for team: %s' % self.id)

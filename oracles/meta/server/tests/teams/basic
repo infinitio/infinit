@@ -883,6 +883,31 @@ with Stripe() as stripe:
       stripe_coupon = coupon({'interval': 'year'})),
            403)
 
+  # Check with a 100% discount coupon.
+  with Meta(stripe_api_key = Stripe.key) as meta:
+    test_suffix = stripe.suffix()
+    plan_id = 'team'
+    admin = User(meta, 'boss_%s@infinit.io' % test_suffix)
+    admin.login()
+    # Create team.
+    coupon_id = 'coupon_one_hundred_percent_%s' % test_suffix
+    team_name = 'infinit_%s' % test_suffix
+    from stripe import Coupon
+    Coupon.create(
+      api_key = Stripe.key,
+      percent_off= 100,
+      duration='repeating',
+      duration_in_months = 1,
+      id=coupon_id)
+    team = admin.create_team(
+      name = team_name, stripe_token = stripe.pay(admin.email),
+      plan = plan_id,
+      stripe_coupon = coupon_id)
+    member = User(meta, 'bob_%s@infinit.io' % test_suffix)
+    member.login()
+    admin.invite_team_member(member.email)
+    member.join_team(team['id'])
+
   # Invite a contact.
   with Meta(stripe_api_key = Stripe.key) as meta:
     test_suffix = stripe.suffix()
