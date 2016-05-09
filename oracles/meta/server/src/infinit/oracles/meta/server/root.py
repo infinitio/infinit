@@ -292,71 +292,73 @@ class Mixin:
   @api('/cron/daily-summary', method = 'POST')
   @require_admin
   def daily_summary(self):
+    # Deactivate daily summary
+    return self.success({"emails": list()})
     """
     Send a summary of the unaccepted transfers of the day received after the
     last connection.
     """
-    daily_summary_str = 'daily-summary'
-    # XXX: Remove exists when it's in prod for a while.
-    # It's just to initiate the database.mailer entry.
-    exists = self.database.mailer.find_one({'name': daily_summary_str})
-    summary = self.database.mailer.find_one(
-      {
-        'name': daily_summary_str,
-        'last-sent': {'$lt': time.time() - 86400 },
-      })
-    if summary or exists is None:
-      with elle.log.trace('run daily cron'):
-        # Hardcoded 86400 represents a day in seconds. The system is for daily
-        # report.
-        query = {
-          'status': transaction_status.INITIALIZED,
-          'mtime': {'$gt': exists is None and time.time() - 86400 or summary['last-sent']},
-        }
-        group = {
-          '_id': '$recipient_id',
-          'mtime': {'$max': '$mtime'},
-          'peers': {'$addToSet': '$sender_id'},
-          'count': {'$sum': 1},
-        }
-        transactions = self.database.transactions.aggregate([
-          {'$match': query},
-          {'$group': group},
-          ])['result']
+    # daily_summary_str = 'daily-summary'
+    # # XXX: Remove exists when it's in prod for a while.
+    # # It's just to initiate the database.mailer entry.
+    # exists = self.database.mailer.find_one({'name': daily_summary_str})
+    # summary = self.database.mailer.find_one(
+    #   {
+    #     'name': daily_summary_str,
+    #     'last-sent': {'$lt': time.time() - 86400 },
+    #   })
+    # if summary or exists is None:
+    #   with elle.log.trace('run daily cron'):
+    #     # Hardcoded 86400 represents a day in seconds. The system is for daily
+    #     # report.
+    #     query = {
+    #       'status': transaction_status.INITIALIZED,
+    #       'mtime': {'$gt': exists is None and time.time() - 86400 or summary['last-sent']},
+    #     }
+    #     group = {
+    #       '_id': '$recipient_id',
+    #       'mtime': {'$max': '$mtime'},
+    #       'peers': {'$addToSet': '$sender_id'},
+    #       'count': {'$sum': 1},
+    #     }
+    #     transactions = self.database.transactions.aggregate([
+    #       {'$match': query},
+    #       {'$group': group},
+    #       ])['result']
 
-        users = dict()
-        for transaction in transactions:
-          query = {
-            '_id': transaction['_id'],
-            'last_connection': {'$lt': transaction['mtime']}
-          }
-          u = self.database.users.find_one(query, fields = ['email'])
-          if u:
-            query = {
-              '_id': {'$in': transaction['peers']},
-            }
-            fields = {'fullname': 1, '_id': 0}
+    #     users = dict()
+    #     for transaction in transactions:
+    #       query = {
+    #         '_id': transaction['_id'],
+    #         'last_connection': {'$lt': transaction['mtime']}
+    #       }
+    #       u = self.database.users.find_one(query, fields = ['email'])
+    #       if u:
+    #         query = {
+    #           '_id': {'$in': transaction['peers']},
+    #         }
+    #         fields = {'fullname': 1, '_id': 0}
 
-            peer = self.database.users.find(query = query,
-                                            fields = fields)
-            users[u['email']] = {
-              'count': transaction['count'],
-              'recipients': list(map(lambda x: x['fullname'], peer))
-            }
+    #         peer = self.database.users.find(query = query,
+    #                                         fields = fields)
+    #         users[u['email']] = {
+    #           'count': transaction['count'],
+    #           'recipients': list(map(lambda x: x['fullname'], peer))
+    #         }
 
-        template_name = 'daily-summary'
-        with elle.log.debug('send email'):
-          self.mailer.send_template(
-            to = list(users.keys()),
-            template_name = template_name,
-            merge_vars = users,
-          )
-        summary = self.database.mailer.find_and_modify(
-          {
-            'name': daily_summary_str,
-          },
-          {
-            'name': daily_summary_str,
-            'last-sent': time.time(),
-          }, upsert = True)
-        return self.success({"emails": list(users.keys())})
+    #     template_name = 'daily-summary'
+    #     with elle.log.debug('send email'):
+    #       self.mailer.send_template(
+    #         to = list(users.keys()),
+    #         template_name = template_name,
+    #         merge_vars = users,
+    #       )
+    #     summary = self.database.mailer.find_and_modify(
+    #       {
+    #         'name': daily_summary_str,
+    #       },
+    #       {
+    #         'name': daily_summary_str,
+    #         'last-sent': time.time(),
+    #       }, upsert = True)
+    #     return self.success({"emails": list(users.keys())})
