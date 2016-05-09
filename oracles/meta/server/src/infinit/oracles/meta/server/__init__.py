@@ -524,28 +524,23 @@ class Meta(bottle.Bottle,
     e = exception
     import socket
     hostname = socket.getfqdn()
-    with elle.log.log(
-        '%s: send email for fatal error: %s' % (self, e)):
-      args = {
-        'backtrace': ''.join(
-          traceback.format_exception(type(e), e, None)),
-        'hostname': hostname,
-        'route': route,
-        'session': bottle.request.session,
-        'url': bottle.request.url,
-        'user': self.user,
-      }
-      self.mailer.send(to = 'infrastructure@infinit.io',
-                       fr = 'root@%s' % hostname,
-                       subject = 'Meta: fatal error: %s' % e,
-                       body = '''\
-Error while querying %(route)s:
-
-URL: %(url)s
-User: %(user)s
-Session: %(session)s
-
-%(backtrace)s''' % args)
+    with elle.log.log('%s: send email for fatal error: %s' % (self, e)):
+      self.emailer.send_one(
+        'Infrastructure Error',
+        recipient_email = 'infrastructure@infinit.io',
+        recipient_name = 'Infrastructure',
+        sender_email = 'root@%s' % hostname,
+        reply_to = 'root@%s' % hostname,
+        variables = {
+          'backtrace': ''.join(traceback.format_exception(type(e), e, None)),
+          'exception': str(e),
+          'hostname': hostname,
+          'route': str(route),
+          'session': str(bottle.request.session),
+          'url': bottle.request.url,
+          'user': self.user,
+        }
+      )
 
   def report_short_link_problem(self, retries):
     with elle.log.log('unable to create short link after %s tries' % retries):
