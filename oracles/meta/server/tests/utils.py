@@ -351,6 +351,7 @@ class TestEmailer(infinit.oracles.emailer.Emailer):
                sender_name = None,
                reply_to = None,
                variables = None,
+               files = None,
              ):
     o = Email()
     o.template = template
@@ -361,6 +362,7 @@ class TestEmailer(infinit.oracles.emailer.Emailer):
     o.sender.email = sender_email
     o.sender.name = sender_name
     o.variables = variables
+    o.files = files
     self.__check(o)
     self.__emails.append(o)
 

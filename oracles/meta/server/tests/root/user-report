@@ -1,44 +1,26 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User, NoOpMailer
+from utils import *
 
 count = 1
 
-class MailService(NoOpMailer):
-
-  def __init__(self, response):
-    super().__init__()
-    self.response = response
-
-  def template_message(self, template_name, message):
-    NoOpMailer.template_message(self, template_name, message)
-
-  def view_message(self, message):
-    print(message)
-    self.response['email'] = message['to'][0]['email']
-    if len(message['attachments']):
-      self.response['attachment'] = message['attachments'][0]['content']
-    self.response['content'] = message['text']
-    self.response['subject'] = message['subject']
-    self.response['from'] = "%s <%s>" % (message['from_name'], message['from_email'])
-
 with Meta() as meta:
-  response = dict()
-  meta.mailer = MailService(response)
-
   res = meta.post(
     'debug/report/user',
     {
       'send': False,
     })
-  assert response == {}
+  assertEq(len(meta.emailer.emails), 0)
 
   res = meta.post(
     'debug/report/user',
     {
       'send': True,
     })
-  assert response['email'] == 'crash@infinit.io'
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
+  assertEq(emails[0].recipient.email, 'crash@infinit.io')
+  assertEq(emails[0].files, None)
 
   res = meta.post(
     'debug/report/user',
@@ -46,10 +28,10 @@ with Meta() as meta:
       'send': True,
       'client_os': 'Kanard',
     })
-  assert 'Kanard' in response['content']
-  assert response['email'] == 'crash@infinit.io'
-
-  response.clear()
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
+  assertEq(emails[0].variables['os'], 'Kanard')
+  assertEq(emails[0].files, None)
 
   res = meta.post(
     'debug/report/user',
@@ -58,14 +40,19 @@ with Meta() as meta:
       'client_os': 'Kanard',
       'message': 'Duck are rapists',
     })
-  assert 'Kanard' in response['content']
-  assert 'Duck' in response['content']
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
+  assertEq(emails[0].variables['os'], 'Kanard')
+  assertEq(emails[0].variables['message'], 'Duck are rapists')
+  assertEq(emails[0].files, None)
 
   res = meta.post(
     'debug/report/user',
     {
       'send': True,
       'client_os': 'Kanard',
-      'file': 'content'
+      'file': 'Y29udGVudA=='
     })
-  assert 'content' in response['attachment']
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
+  assertEq(len(emails[0].files), 1)
