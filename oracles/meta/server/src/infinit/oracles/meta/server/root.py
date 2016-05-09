@@ -9,9 +9,10 @@ from bson.code import Code
 from datetime import datetime, timedelta
 
 import elle.log
-from . import conf, mail, error, notifier, transaction_status
+from . import conf, error, notifier, transaction_status
 from .utils import api, require_admin, hash_password
 from . import utils
+import infinit.oracles.emailer
 import infinit.oracles.meta.version
 
 LOST_PASSWORD_TEMPLATE_ID = 'lost-password'
@@ -211,41 +212,39 @@ class Mixin:
     """
     Store the existing crash into database and send a mail if set.
     """
-    with elle.log.trace('user report: %s to %s' % (user_name, email)):
-      elle.log.trace('to be sent: %s' % type)
-      template_dict = {
-        'client_os': client_os,
-        'version': version,
-        "user_name": user_name,
-        "env": '\n'.join(env),
-        "message": message,
-        "more": more,
-        "transaction_id": transaction_id
-      }
-      template = mail.report_templates.get(type, None)
-      if template is None:
-        self.fail(error.UNKNOWN)
-      # Username can contain '@'. If it's not a valid email,
-      user_email = '@' in user_name and user_name or None
-      if len(file):
-        attachment = ('log.tar.bz', file)
-      else:
-        attachment = None
-      subject = template['subject'] % template_dict
-      if send:
-        res = self.mailer.send(
-          to = email,
-          fr = user_email,
-          subject = subject,
-          body = template['content'] % template_dict,
-          attachment = attachment,
+    if type not in ['backtrace', 'user']:
+      return {}
+    with elle.log.trace('user report (%s): %s to %s' % (type, user_name, email)):
+      if not send:
+        elle.log.log('not sending user report')
+        return {}
+      def send_report(files = None):
+        user_email = user_name if user_name != 'Unknown' else 'crash@infinit.io'
+        self.emailer.send_one(
+          'Crash Report' if type == 'backtrace' else 'User Report',
+          recipient_email = email,
+          recipient_name = 'Developers',
+          sender_email = user_email,
+          reply_to = user_email,
+          variables = {
+            'email': user_email,
+            'environment': env,
+            'os': client_os,
+            'version': version,
+            'message': message,
+          },
+          files = files,
         )
-        for r in res:
-          if 'reject_reason' in r and r['reject_reason'] is not None:
-            self.bad_request({'reason': r['reject_reason']})
+      if file:
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+          with open('%s/log.tar.bz' % temp_dir, 'wb') as log_file:
+            import base64
+            log_file.write(base64.decodebytes(file.encode('ascii')))
+          with open('%s/log.tar.bz' % temp_dir, 'rb') as log_file:
+            send_report([log_file])
       else:
-        print('Would send:\nTO: %s\nRCPT TO: %s\nSUBJECT: %s\nBODY:\n%s\n.\n' %
-          (email, user_email, subject, template['content'] % template_dict))
+        send_report()
       return {}
 
   @api('/genocide', method = 'POST')
