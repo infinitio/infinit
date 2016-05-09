@@ -24,11 +24,11 @@
 	branch = develop
 [submodule "surface/objcpp-gap"]
 	path = surface/objcpp-gap
-	url = git@git.infinit.io:objc++-gap
+	url = git@git.infinit.io:objcxx-gap
 	branch = develop
 [submodule "oracles/sendwithus_python"]
 	path = oracles/sendwithus_python
-	url = https://github.com/mefyl/sendwithus_python.git
+	url = https://github.com/infinit/sendwithus_python.git
 [submodule "oracles/PyAPNs"]
 	path = oracles/PyAPNs
 	url = https://github.com/mefyl/PyAPNs.git
