@@ -224,7 +224,7 @@ class Mixin:
           'Crash Report' if type == 'backtrace' else 'User Report',
           recipient_email = email,
           recipient_name = 'Developers',
-          sender_email = user_email,
+          sender_email = 'crash@infinit.io',
           reply_to = user_email,
           variables = {
             'email': user_email,
