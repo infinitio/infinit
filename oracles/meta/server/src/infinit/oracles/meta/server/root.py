@@ -212,6 +212,9 @@ class Mixin:
     """
     Store the existing crash into database and send a mail if set.
     """
+    # XXX: Only send user reports.
+    if type == 'backtrace':
+      return {}
     if type not in ['backtrace', 'user']:
       return {}
     with elle.log.trace('user report (%s): %s to %s' % (type, user_name, email)):
