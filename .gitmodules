@@ -1,30 +1,30 @@
 [submodule "elle"]
 	path = elle
-	url = git@git.infinit.io:elle
+	url = ../elle
 [submodule "surface/osx"]
 	path = surface/osx
-	url = git@git.infinit.io:osx-app
+	url = ../osx-app
 [submodule "oracles/bottle"]
 	path = oracles/bottle
 	url = https://github.com/mefyl/bottle.git
 [submodule "oracles/mongobox"]
 	path = oracles/mongobox
-	url = https://github.com/infinitdotio/mongobox.git
+	url = ../mongobox.git
 [submodule "surface/fist-resources"]
 	path = surface/fist-resources
-	url = git@git.infinit.io:fist-resources
+	url = ../fist-resources
 	branch = develop
 [submodule "fist-gui-qt"]
 	path = fist-gui-qt
-	url = git@git.infinit.io:fist-gui-qt.git
+	url = ../fist-gui-qt
 	branch = develop
 [submodule "surface/ios"]
 	path = surface/ios
-	url = git@git.infinit.io:ios-app
+	url = ../ios-app
 	branch = develop
 [submodule "surface/objcpp-gap"]
 	path = surface/objcpp-gap
-	url = git@git.infinit.io:objc++-gap
+	url = ../objcpp-gap
 	branch = develop
 [submodule "oracles/sendwithus_python"]
 	path = oracles/sendwithus_python
